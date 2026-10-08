@@ -1,6 +1,6 @@
 # Getting started
 
-Phase 1 requires Python 3.11 or newer and no runtime/test packages. It does not implement a model, training, or serving.
+Foundation commands require Python 3.11 or newer and no runtime/test packages. Phase 2 adds an optional CPU reference model; training and serving remain future work.
 
 From the repository root, run without installing anything:
 
@@ -39,7 +39,41 @@ python -m unittest discover -s tests -v
 
 Backend acquisition needs network access or a pre-provisioned wheel. The runtime and source-tree workflow remain offline. requirements.lock has no runtime/test dependencies. The package version 0.0.0 denotes unreleased foundation code; this PR creates no tag or release.
 
-CPU CI runs the standard-library suite, config validation, frozen fixture audit, and exact replay under Python 3.11/3.12/3.13. Actions are pinned to full commit identities; hosted jobs have read-only repository access and a five-minute limit. CI installs no model packages and uses no privileged/self-hosted runner.
+CPU CI runs the standard-library suite, config validation, frozen fixture audit, and exact replay under Python 3.11/3.12/3.13. Actions are pinned to full commit identities; hosted jobs have read-only repository access and a five-minute limit. The separate Phase 2 model jobs acquire hash-locked CPU packages before their offline conformance steps and have a ten-minute limit. All jobs use hosted runners with read-only access, without secrets or self-hosted execution.
+
+## CPU reference model
+
+The frozen acquisition lane is Linux x86_64 with CPython 3.11, 3.12 or 3.13. Create a separate environment and install the full CPU lock (about 200 MB of wheel downloads; no GPU packages):
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --no-deps -r requirements.lock
+python -m pip check
+PYTHONPATH=src python -m unittest discover -s tests/model -v
+PYTHONPATH=src python -m trinite inspect-model --lane dense
+PYTHONPATH=src python -m trinite inspect-model --lane ternary --text '(1+1)%2=0' --capture-layer final --capture-position 0
+```
+
+Acquisition needs the official CPU index or a pre-provisioned wheel cache; every selected package/version/hash is pinned, including transitive dependencies. This lock's setuptools is Torch runtime support; optional isolated project builds retain their separately pinned backend. Source-tree model execution does not need a build. To use an offline wheelhouse, supply --no-index --find-links=/path/to/wheels with the same lock. The model suite is separate from foundation discovery and must be run explicitly; it never silently skips missing Torch.
+
+inspect-model builds an untrained reference model. --seed selects a private initialization generator; matching configs/seeds create matching dense/ternary latent tensors without consuming the global Torch RNG. --text runs a forward pass, and paired --capture-layer/--capture-position options select detached states. Supported layers are embedding, block.0 through block.5 for the default model, and final. Positions include BOS/EOS. The CLI returns named tensor/code identities, hex scales, environment and capture metadata; it does not generate text or load a checkpoint. See [PHASE-2.md](PHASE-2.md) for resource bounds and evidence limits.
+
+For arrays through the explicit Python API:
+
+```python
+import torch
+from trinite.model import CaptureSpec, Decoder
+from trinite.tokenizer import ByteTokenizer
+
+encoding = ByteTokenizer().encode('1+1=2')
+model = Decoder(lane='ternary', seed=0)
+ids = torch.tensor([encoding.input_ids], dtype=torch.int64)
+mask = torch.tensor([encoding.attention_mask], dtype=torch.bool)
+with torch.no_grad():
+    output = model(ids, mask, capture=CaptureSpec(('final',), (0, 1)))
+print(output.logits.shape, output.captures['final'].shape)
+```
 
 ## Existing checkouts with newline conversion
 

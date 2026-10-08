@@ -1,12 +1,14 @@
 # CPU inference, export, and inspection
 
-Status: planned execution and measurement contract.
+Status: Phase 2 implements CPU eager forward execution, named tensor/quantizer inspection, and bounded detached hidden-state capture. Generation, checkpoints/loading, packed export/import, and edge benchmarks remain planned.
 
 ## Reference execution
 
-Start with explicit PyTorch CPU eager inference using the same tokenizer, causal mask, operations, quantizer, and checkpoint identity as evaluation. No CUDA import requirement, network fetch, remote code, or hidden fallback in the baseline lane. Reference generation is greedy with declared BOS/EOS handling, max-new-token limit, context limit, and token tie rule (lowest token ID for equal logits).
+Start with explicit PyTorch CPU eager inference using the same tokenizer, causal mask, operations, quantizer, and checkpoint identity as evaluation. No CUDA import requirement, network fetch, remote code, or hidden fallback in the baseline lane. Future reference generation is greedy with declared BOS/EOS handling, max-new-token limit, context limit, and token tie rule (lowest token ID for equal logits).
 
 The first lane recomputes the full context with no KV cache. Stop generation with an explicit length-limit outcome before exceeding 256 context tokens; never silently drop the prefix. Later caching or sliding-window behavior requires a contract and parity study. Capture mode is explicit and bounded.
+
+Inspection APIs and resource bounds are documented in [PHASE-2.md](PHASE-2.md). The CLI reports model/tensor/code identities and selected capture metadata; it does not load a checkpoint or generate text.
 
 ## Export v0 candidate
 

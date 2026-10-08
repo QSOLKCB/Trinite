@@ -1,12 +1,12 @@
 # Tech stack
 
-Status: Phase 1 runtime/tests use only Python's standard library. requirements.lock records the empty runtime dependency set; optional packaging uses setuptools==84.0.0, pinned in pyproject.toml. Python 3.11 is the reference minor; CPU CI also checks 3.12 and 3.13. Exact interpreter/platform details belong in each execution receipt, not an assertion that all environments are identical. PyTorch, NumPy, safetensors, and the external adapters below remain future dependencies and will be locked when introduced.
+Status: foundation commands/tests remain standard-library only. Phase 2 model commands use optional torch==2.8.0+cpu and numpy==2.3.5; requirements.lock pins the full CPU dependency closure and wheel SHA-256 hashes for Linux x86_64 CPython 3.11/3.12/3.13. This is the demonstrated acquisition/CI scope, not a Windows/ARM package-support claim. Optional isolated project builds retain setuptools==84.0.0 in pyproject.toml; the CPU runtime lock separately pins the setuptools dependency supplied by the Torch index. Exact interpreter/platform details belong in each inventory. safetensors and external adapters remain future dependencies.
 
 | Concern | Choice | Reason / boundary |
 | --- | --- | --- |
 | Primary language | Python 3.11 reference environment | One language for model, experiments, inspection, and evidence integration |
 | Model and native training | PyTorch, explicit eager modules | Visible forward/gradient path; CPU reference and separate optional GPU lane |
-| Numerical analysis | NumPy when vector analysis needs it | Detached arrays; no silent dtype conversion |
+| Numerical analysis | NumPy when vector analysis needs it | Pinned NumPy supports the PyTorch environment; detached inspection stays in Torch and hashes bytes without NumPy conversions |
 | Tokenization | Small in-project byte tokenizer | Fully auditable mapping and no inherited tokenizer corpus |
 | Tensor artifacts | safetensors plus versioned JSON manifests | Explicit tensor inventory; no arbitrary pickle execution for model loading |
 | Tests and CLI | unittest and argparse initially | Standard-library harness and entrypoints with minimal dependencies |
@@ -34,5 +34,7 @@ A fine-tuned upstream pretrained model may be an explicitly labelled comparator.
 | [BitNet b1.58 paper, arXiv:2402.17764](https://arxiv.org/abs/2402.17764) | Ternary-weight prior art; no transfer of its performance claims to Trinite |
 | [CPU BitNet infrastructure, arXiv:2410.16144](https://arxiv.org/abs/2410.16144) | Specialized CPU kernels as a later candidate, subject to compatibility |
 | [QSOL-GEO-REASON at reviewed revision](https://github.com/QSOLKCB/QSOL-GEO-REASON/tree/e770f585bf3136b47a657772156116d5f02b1e77) | Geometry contracts and evidence limits |
+
+The CPU dependency was acquired from the [official PyTorch CPU index](https://download.pytorch.org/whl/cpu) using the [2.8 installation instructions](https://pytorch.org/get-started/previous-versions/). The wheel/backend and rounding behavior were checked during Phase 2 conformance. Version selection is a pinned reference, not a claim to use the latest upstream release.
 
 Sources are prior art and engineering references, not Trinite results. API/version claims must be rechecked when the corresponding implementation dependency is introduced. No model/training dependency is imported or installed by Phase 1 CPU conformance.

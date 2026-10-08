@@ -1,12 +1,12 @@
 # Training contract
 
-Status: native quantization-aware training design. No training has run.
+Status: Phase 2 implements the quantizer and surrogate gradient; native training remains planned. No training has run.
 
 ## Quantizer v0
 
-For each attention/feed-forward weight matrix W, require finite float32 values and compute a detached scalar alpha = max(mean(abs(W)), 1e-8). Define U = W / alpha and T = clip(round_ties_to_even(U), -1, +1). The forward weight is alpha × T. Threshold ties at U=±0.5 map to zero. Non-finite values and invalid shapes/scales fail before producing a checkpoint or export.
+For each attention/feed-forward weight matrix W, require finite float32 values and compute detached absmean in float64 to avoid reduction overflow on extreme finite inputs, apply the 1e-8 floor, then round the scalar alpha to float32. All division, rounding, codes-to-weight multiplication, and forward weights use float32. Define U = W / alpha and T = clip(round_ties_to_even(U), -1, +1). The forward weight is alpha × T. Threshold ties at U=±0.5 map to zero. Non-finite values and invalid shapes/scales fail before producing a checkpoint or export.
 
-The reference surrogate gradient through the quantized weight with respect to W is 1 when abs(U) < 1 and 0 otherwise; alpha receives no gradient through its calculation. This is a chosen straight-through estimator, not the derivative of rounding. Unit tests must include ties, saturation, all-zero matrices, extreme finite inputs, non-finite failures, and gradient boundaries. Any change to scale, threshold, precision, or surrogate is a versioned quantizer change.
+The reference surrogate gradient through the quantized weight with respect to W is 1 when abs(U) < 1 and 0 otherwise; alpha receives no gradient through its calculation. This is a chosen straight-through estimator, not the derivative of rounding. Phase 2 tests cover ties, saturation, all-zero/subnormal matrices, extreme finite inputs, non-finite failures, and gradient boundaries against explicit expected masks and a separate scalar oracle. This revision freezes the overflow-safe float64 reduction and subsequent float32 scale rounding as v0 semantics before native training. Later changes to scale, threshold, precision, or surrogate require a versioned quantizer change. The custom autograd forward returns the actual scaled codes directly; a subtract/add STE expression could lose small values through cancellation and is not used.
 
 Embeddings, positional weights, RMSNorm gains, activations, optimizer state, and latent training matrices remain floating point. Do not describe the entire system as integer-only or every parameter as ternary. Export must encode the same codes/scales used by the final evaluation forward pass, without an intervening lower-precision cast that changes threshold decisions.
 

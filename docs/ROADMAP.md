@@ -1,6 +1,6 @@
 # Roadmap
 
-Phase 0 is merged. Phase 1 foundation implementation and local conformance are complete in the current PR; merge and the PR's remote CPU CI results remain review gates. Phases 2–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md) for evidence and limits.
+Phases 0–1 are merged. Phase 2 reference-model implementation and local conformance are complete in the current PR; merge and the PR's remote CPU CI results remain review gates. Phases 3–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md) and [PHASE-2.md](PHASE-2.md) for evidence and limits.
 
 | Phase | Deliverable | Completion gate |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ The Phase 3 observer gate uses the exact revision and acceptance checks in [PROV
 
 ## Next PR
 
-Implement Phase 2 only: the dense/ternary reference decoder, quantizer and surrogate-gradient checks, causal/padding masks, configuration-to-tensor inventory, and bounded detached inspection. Introduce and lock the CPU PyTorch dependencies at that point. Verify the declared 1,247,232-parameter reference architecture against actual tensors. Do not begin long training, geometric losses, or PROVENANCE integration during model-conformance work.
+Implement Phase 3 only: tiny supervised dense/ternary runs with frozen settings and matched initialization/data order, explicit safe tensor checkpoints and JSON metadata, interrupted/resumed replay, and the pinned PROVENANCE observer adapter. Preserve the acquisition/conformance gate in PROVENANCE.md. Geometric loss remains zero. Curriculum intake requires separate source admission and evaluation/exposure records; no wholesale repository import. Long training and geometry interventions remain later work.
 
 Each phase should be a reviewable increment with stated requirements, completed checks, and unresolved gates. A software fixture does not close an empirical milestone. “Implemented” and “measured” are separate statuses.
 
@@ -27,7 +27,7 @@ Scaling is conditional: first prove the data, semantics, and measurement procedu
 
 ## Planned training corpus and curriculum
 
-Status: curriculum approved by Trent Slade on 2026-10-09; corpus preparation, admission, and training remain pending. Teach short, verified basics first, then introduce curated first-party material and scale only after measured results. This section does not import data or extend the current Phase 1 implementation task.
+Status: curriculum approved by Trent Slade on 2026-10-09; corpus preparation, admission, and training remain pending. Teach short, verified basics first, then introduce curated first-party material and scale only after measured results. This section does not import data or extend the current Phase 2 model-conformance task.
 
 | Tier | Source | Training target | Admission / evaluation gate |
 | --- | --- | --- | --- |

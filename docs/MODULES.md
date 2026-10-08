@@ -1,13 +1,13 @@
 # Modules
 
-Status: Phase 1 implements flat contracts.py, tokenizer.py, data.py, and cli.py within src/trinite/. The remaining namespaces below are planned. Separate distributions, plugin registries, services, and native extensions must earn their complexity through a measured need.
+Status: Phases 1–2 implement flat contracts.py, tokenizer.py, data.py, cli.py, model.py, quantizer.py, and inspection.py within src/trinite/. The table describes responsibility boundaries; remaining namespaces are planned. Separate distributions, plugin registries, services, and native extensions must earn their complexity through a measured need.
 
 | Planned path | Owns | Interface / artifact | Permitted internal dependencies |
 | --- | --- | --- | --- |
 | src/trinite/contracts/ | Configuration, schema versions, identity and validation types | Validated configs and content identities | None |
 | src/trinite/data/ | Admission, generators, curation, deduplication, family splits | Examples and split manifests | contracts, tokenizer (bound example encodings) |
 | src/trinite/tokenizer/ | Byte/special-token mapping and span alignment | Token IDs, masks, source spans | contracts |
-| src/trinite/model/ | Decoder blocks, dense/ternary layers, quantizer | Explicit forward outputs and named tensors | contracts |
+| src/trinite/model/ | Decoder blocks, dense/ternary layers, quantizer | Explicit forward outputs and named tensors | contracts; quantizer.py implements the model quantizer boundary |
 | src/trinite/training/ | Loss, optimizer, batches, checkpoints, resume | Training result and checkpoint receipts | contracts, data, tokenizer, model |
 | src/trinite/inspection/ | Bounded, detached hidden-state and tensor capture | Capture arrays and manifests | contracts, tokenizer, model |
 | src/trinite/geometry/ | Geometry metrics and optional pinned reference adapter | Native-space metrics and protocol receipts | contracts; inspection artifact types only |
@@ -22,6 +22,8 @@ These names are design boundaries, not an instruction to create a directory per 
 ## Dependency rules
 
 Core model/tokenizer modules cannot import observation, geometry analysis, evaluation, or CLI. Inference cannot import training or require Unsloth. Data cannot query a model or observer to select its examples. Geometry consumes detached capture artifacts and cannot mutate the model. The first geometry training intervention is orchestrated explicitly by training and may add a reviewed dependency on geometry after its differentiable contract is specified.
+
+The model returns logits and only explicitly selected detached hidden states. CaptureSpec lives in model.py so the model does not import inspection.py. Inspection imports model/quantizer and cannot choose data or mutate model tensors. CLI imports the PyTorch/model path lazily; foundation imports remain standard-library only.
 
 Observation is injected by orchestration through a narrow record(event, artifact identities) interface. Internal modules emit structured facts or callbacks; they do not reach into global observer state. The adapter must not use a model RNG or execute model code. No circular imports or hidden downloads.
 
