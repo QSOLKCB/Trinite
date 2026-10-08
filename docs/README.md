@@ -44,6 +44,3 @@ Keep the root limited to the short project README, LICENSE, and eventually neces
 Tail-end reproduction, formal verification and distribution plans are in
 [ROADMAP.md](ROADMAP.md#tail-end-reproduction-verification-and-distribution).
 The initial pre-launch agent handoff is [QBRAID.md](QBRAID.md).
-
-The next training-only diagnostic is [CONVERGENCE.md](CONVERGENCE.md), with
-its frozen [protocol](CONVERGENCE-PROTOCOL.md).

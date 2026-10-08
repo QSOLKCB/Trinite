@@ -78,11 +78,3 @@ authoritative summarizer on a disposable copy and compares the retained summary.
 They do not choose examples, rescore outputs or alter the scientific protocol.
 The public archive stores duplicate artifacts once to reduce repository and CI
 checkout transfer without changing original evidence bytes.
-
-## Implemented convergence development
-
-`convergence.py` composes foundations admission/scoring, the authoritative native
-numerical loop, shared safe checkpoints and closed observation. Its elected
-training-only data view uses train examples for every numerical diagnostic.
-`scripts/run_convergence.py` owns freeze, fixed fresh workers and read-only review;
-there is no held-out stage. The original modules and protocols remain unchanged.

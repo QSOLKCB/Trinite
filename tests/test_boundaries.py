@@ -31,8 +31,6 @@ ALLOWED = {
     "foundations_checkpoint": {"contracts", "comparison_checkpoint", "foundations_training", "foundations_data", "foundations_plan", "training"},
     "foundations": {"contracts", "foundations_data", "foundations_training", "foundations_plan",
                     "foundations_checkpoint", "comparison", "training", "tokenizer", "observation"},
-    "convergence": {"contracts", "foundations_training", "foundations_plan", "foundations_data",
-                    "foundations_checkpoint", "foundations", "training", "observation"},
     "__main__": {"cli"}, "__init__": set(),
 }
 

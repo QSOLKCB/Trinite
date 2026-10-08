@@ -131,10 +131,3 @@ Sources: [Colab FAQ](https://research.google.com/colaboratory/faq.html),
 [Hub terms](https://huggingface.co/terms-of-service),
 [Lean theorem proving](https://lean-lang.org/theorem_proving_in_lean4/) and
 [Isabelle overview](https://isabelle.in.tum.de/overview.html).
-
-## Training convergence development
-
-The next training-only diagnostic is implemented in [CONVERGENCE.md](CONVERGENCE.md),
-with a separately frozen [protocol](CONVERGENCE-PROTOCOL.md). It retains all
-dense learning-rate candidates and never selects a new learning protocol or
-unlocks held-out scoring automatically. Phase 5 remains conditional.
