@@ -9,7 +9,8 @@ permissions:
 jobs:
   comparison:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Up to 54 sequential workers at 180 seconds each, plus retention overhead.
+    timeout-minutes: 180
     env:
       PYTHONPATH: src
       OMP_NUM_THREADS: '1'

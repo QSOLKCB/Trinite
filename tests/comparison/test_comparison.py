@@ -171,7 +171,8 @@ class ComparisonTests(unittest.TestCase):
             training = {k: 'same' for k in ('initialization_identity', 'dataset_identity',
                 'manifest_identity', 'plan_identity', 'schedule_identity')}
             training.update(workload=workload, lane=lane, seed=seed, parameter_count=10,
-                            target_tokens=20, steps=4, training_wall_seconds_hex=(1.).hex())
+                            target_tokens=20, steps=4, latent_float32_bytes=40,
+                            training_wall_seconds_hex=(1.).hex())
             evaluation = {'scores': {'test': {'family_macro_accuracy_hex':
                 (.5 if lane == 'dense' else .4).hex()}}}
             return {'outcome': 'completed', 'training': training, 'evaluation': evaluation}
@@ -191,7 +192,12 @@ class ComparisonTests(unittest.TestCase):
                 if args[2] == 'four-state': result['training']['initialization_identity'] = 'different'
                 return result
             with patch('trinite.comparison.verified_cell', side_effect=mismatch):
-                with self.assertRaises(ContractError): summarize(root, request, frozen['request_identity'], {})
+                result = summarize(root, request, frozen['request_identity'], {})
+            self.assertEqual(result['outcome'], 'failed')
+            self.assertEqual(result['groups'], {})
+            self.assertEqual(len(result['cells']), 27)
+            self.assertIn('unmatched comparison initialization_identity', result['aggregate_errors'][0])
+            self.assertEqual(parse_json((root/'summary.json').read_bytes(), canonical=True), result)
 
 
 if __name__ == '__main__': unittest.main()

@@ -22,6 +22,8 @@ def _hex(value):
 
 
 def progress(state):
+    if state.model.config != state.config.model or state.model.lane != state.lane:
+        raise ContractError('comparison state model/plan/lane mismatch')
     integer(state.step, 'comparison step', 0, state.config.steps)
     if (type(state.cursor) is not int or state.cursor != state.step*state.config.batch_size
             or type(state.history) is not list or len(state.history) != state.step

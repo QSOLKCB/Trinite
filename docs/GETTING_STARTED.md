@@ -115,6 +115,20 @@ PYTHONPATH=src python3 -m trinite audit-fixture fixtures/formal-v1
 
 The refresh command replaces those working files with indexed content using the current attributes; do not run it over unsaved edits. git add --renormalize alone changes the index and does not guarantee that stale working-tree bytes are refreshed. Keep the retained fixtures intact: regenerating them to match a converted checkout would replace the evidence rather than repair the checkout.
 
+The comparison dependency also pins the exact bytes of
+`src/trinite/QEC-LICENSE.txt`. Its LF attribute protects fresh checkouts. If an
+existing checkout retained CRLF after the attribute was introduced and QEC pin
+verification fails, preserve local edits and confirm this file is clean before
+refreshing it from the current index:
+
+```bash
+git checkout-index --force -- src/trinite/QEC-LICENSE.txt
+PYTHONPATH=src python -c 'from trinite.qec_source import verify_pin; print(verify_pin())'
+```
+
+Do not edit the pin or normalize the license in the verifier to conceal a
+checkout-byte mismatch.
+
 ## Detached geometry observation
 
 Use newly trained final checkpoints from the current source tree, the same process environment and the exact tiny training plan above. Different workflow workers may have different strict environment fingerprints; the manual geometry workflow trains both lanes and measures them on one worker. Each output below must be a new directory.

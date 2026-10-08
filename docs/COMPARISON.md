@@ -55,9 +55,40 @@ Each cell ran 60 updates. Actual scored training labels were 480 for formal; 1,0
 
 All 27 native training-only geometry contrasts were negative. Both one-sided permutation and Rademacher controls, every per-item prediction, code occupancy/error, timings, RSS, captures, snapshots, update histories and closed verification reports remain retained. Earlier Phase 4 observations and limitations are unchanged. No setting was altered after these target outcomes.
 
-[Evidence inventory](../fixtures/comparison-v1/inventory.json) binds the summary and complete 9.14 MB archive supplied with the PR handoff. The archive includes all 27 cells and logs, numerical artifacts, snapshots, verified bundles, source/configuration/test/fixture files and an internal SHA-256 member inventory. It is a local complete-evidence handoff, not a public release or independent replication. Archive SHA-256: `722acbf6023c989c7470d506786d366bb82f31dc2a0e375ed84a76db60a17c1e`. The archive's implementation documentation is the pre-outcome version; this section records the subsequent outcome interpretation.
+[Evidence inventory](../fixtures/comparison-v1/inventory.json) binds the summary and complete 9.14 MB archive. Reviewers can download the unchanged [Trinite-comparison-v1.zip](../fixtures/comparison-v1/Trinite-comparison-v1.zip) directly from this PR's tree. The archive includes all 27 cells and logs, numerical artifacts, snapshots, verified bundles, source/configuration/test/fixture files and an internal SHA-256 member inventory. The inventory's original handoff-availability statement is historical; the same archive bytes are now available here. This is retained exploratory evidence, not a published release or independent replication. Archive SHA-256: `722acbf6023c989c7470d506786d366bb82f31dc2a0e375ed84a76db60a17c1e`. The archive's implementation documentation is the pre-outcome version; this section records the subsequent outcome interpretation.
 
 Software validation passed: 71 standard-library checks, 44 existing CPU checks, 13 comparison checks, and upstream conformance. The six hosted Python 3.11/3.12/3.13 jobs each ran their required suites without skips; upstream conformance ran all 51 cases. Local root execution skipped one upstream permissions case. The complete manual hosted matrix remains available after merge and has not been independently run.
 
 Before a later comparison can select a format, freeze a separate basics-first learning-adequacy protocol with explicit train and held-out exact-answer/EOS gates, appropriate matched training budgets, and failure criteria. Preserve this run as the initial null result. New curriculum topics and budget decisions belong to that later reviewed increment.
+
+## Correctness pass after the first run
+
+The review of head `f9c5f8a` identified four aggregation/workflow/checkout defects
+and a comparison-checkpoint state agreement gap. The corrected implementation
+retains all 27 cell records and writes a failed summary with `aggregate_errors`
+and no groups if any pairing constraint or aggregate metric is invalid. Groups
+are published only after all checks succeed. Resource diagnostics now include
+paired latent-byte ratios and each seed's frozen `<= 1` margin. Equal float32
+storage passing that margin does not establish packed savings.
+
+The manual workflow permits 180 minutes: the conservative 54-worker bound is
+162 minutes, leaving 18 minutes for setup, aggregation and upload. Always-run
+upload remains enabled; runner loss or cancellation can still prevent retention.
+QEC license bytes are LF-pinned, with an existing-checkout refresh procedure in
+[GETTING_STARTED.md](GETTING_STARTED.md). Snapshots reject model/plan/lane
+disagreement before tensor serialization.
+
+Regression coverage exercises success, a late pairing mismatch, malformed
+metrics, both training and evaluation worker timeouts, snapshot rejection before
+serialization, and an actual autocrlf checkout plus stale-license refresh. The
+real-cell conformance test freezes a fresh request for corrected sources and
+checks the resulting upstream evidence bundle. These checks are software
+validation, not an independently repeated 27-cell capability experiment.
+
+The original protocol, request, summary, inventory and archive are unchanged.
+Their producer is `d18ac4e`, not this correctness pass. Replaying historical
+snapshots requires that original source tree or the archived implementation;
+current-source execution must freeze a new request. `scripts/run_comparison.py`
+is unchanged, so its `RUNNER_IDENTITY` remains unchanged. No model setting,
+learning budget or scientific outcome was tuned during these fixes.
 

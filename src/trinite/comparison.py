@@ -340,9 +340,56 @@ def verified_cell(directory, workload, lane, seed, request_identity):
             'verification': verification, 'outcome': 'completed'}
 
 
+def _comparison_groups(cells):
+    """Build aggregates locally; publish only after all pairs and metrics validate."""
+    by_key = {(c['training']['workload'], c['training']['seed'], c['training']['lane']): c for c in cells}
+    for workload, seed in itertools.product(WORKLOADS, SEEDS):
+        runs = [by_key[workload, seed, lane]['training'] for lane in LANES]
+        for name in ('initialization_identity', 'dataset_identity', 'manifest_identity', 'plan_identity',
+                     'parameter_count', 'target_tokens', 'schedule_identity', 'steps'):
+            if len({r[name] for r in runs}) != 1:
+                raise ContractError(f'unmatched comparison {name}: {workload}, seed {seed}')
+    groups = {}
+    for workload in WORKLOADS:
+        groups[workload] = {}
+        for lane in LANES:
+            values, diffs, wall_ratios, latent_ratios = [], [], [], []
+            for seed in SEEDS:
+                cell, dense = by_key[workload, seed, lane], by_key[workload, seed, 'dense']
+                value = float.fromhex(cell['evaluation']['scores']['test']['family_macro_accuracy_hex'])
+                baseline = float.fromhex(dense['evaluation']['scores']['test']['family_macro_accuracy_hex'])
+                wall = float.fromhex(cell['training']['training_wall_seconds_hex'])
+                dense_wall = float.fromhex(dense['training']['training_wall_seconds_hex'])
+                latent = cell['training']['latent_float32_bytes']
+                dense_latent = dense['training']['latent_float32_bytes']
+                if (not math.isfinite(value) or not 0 <= value <= 1
+                        or not math.isfinite(baseline) or not 0 <= baseline <= 1
+                        or not math.isfinite(wall) or wall <= 0
+                        or not math.isfinite(dense_wall) or dense_wall <= 0
+                        or type(latent) is not int or latent <= 0
+                        or type(dense_latent) is not int or dense_latent <= 0):
+                    raise ContractError(f'invalid comparison metrics: {workload}, seed {seed}, {lane}')
+                wall_ratio, latent_ratio = wall / dense_wall, latent / dense_latent
+                if not math.isfinite(wall_ratio) or not math.isfinite(latent_ratio):
+                    raise ContractError('nonfinite comparison resource ratio')
+                values.append(value); diffs.append(value-baseline)
+                wall_ratios.append(wall_ratio); latent_ratios.append(latent_ratio)
+            groups[workload][lane] = {'seed_accuracy_hex': [v.hex() for v in values],
+                'mean_hex': (math.fsum(values)/len(SEEDS)).hex(),
+                'min_hex': min(values).hex(), 'max_hex': max(values).hex(),
+                'paired_accuracy_difference_hex': [v.hex() for v in diffs],
+                'paired_training_wall_ratio_hex': [v.hex() for v in wall_ratios],
+                'paired_latent_byte_ratio_hex': [v.hex() for v in latent_ratios],
+                'quality_margin_each_seed': [v >= -.05 for v in diffs],
+                'wall_margin_each_seed': [v <= 1.25 for v in wall_ratios],
+                'latent_byte_margin_each_seed': [v <= 1 for v in latent_ratios],
+                'interpretation': 'descriptive only; small visible tasks and three seeds; no significance or superiority claim'}
+    return groups
+
+
 def summarize(root, request, request_identity, worker_outcomes):
     read_request(request, request_identity)
-    root = Path(root); cells = []; groups = {}
+    root = Path(root); cells = []; groups = {}; aggregate_errors = []
     for workload, seed, lane in itertools.product(WORKLOADS, SEEDS, LANES):
         directory = root/f'{workload}-{seed}-{lane}'
         failure = worker_outcomes.get(directory.name)
@@ -356,32 +403,15 @@ def summarize(root, request, request_identity, worker_outcomes):
             cells.append({'workload': workload, 'seed': seed, 'lane': lane, 'outcome': 'failed',
                           'errors': type(error).__name__+': '+str(error)})
     if not worker_outcomes and all(c['outcome'] == 'completed' for c in cells):
-        by_key = {(c['training']['workload'], c['training']['seed'], c['training']['lane']): c for c in cells}
-        for workload in WORKLOADS:
-            groups[workload] = {}
-            for seed in SEEDS:
-                runs = [by_key[workload, seed, lane]['training'] for lane in LANES]
-                for name in ('initialization_identity', 'dataset_identity', 'manifest_identity', 'plan_identity',
-                             'parameter_count', 'target_tokens', 'schedule_identity', 'steps'):
-                    if len({r[name] for r in runs}) != 1:
-                        raise ContractError('unmatched comparison '+name)
-            for lane in LANES:
-                values = [float.fromhex(by_key[workload, seed, lane]['evaluation']['scores']['test']['family_macro_accuracy_hex']) for seed in SEEDS]
-                diffs = [v-float.fromhex(by_key[workload, seed, 'dense']['evaluation']['scores']['test']['family_macro_accuracy_hex'])
-                         for seed, v in zip(SEEDS, values)]
-                ratios = [float.fromhex(by_key[workload, seed, lane]['training']['training_wall_seconds_hex']) /
-                          float.fromhex(by_key[workload, seed, 'dense']['training']['training_wall_seconds_hex']) for seed in SEEDS]
-                groups[workload][lane] = {'seed_accuracy_hex': [v.hex() for v in values],
-                    'mean_hex': (math.fsum(values)/3).hex(), 'min_hex': min(values).hex(), 'max_hex': max(values).hex(),
-                    'paired_accuracy_difference_hex': [v.hex() for v in diffs],
-                    'paired_training_wall_ratio_hex': [v.hex() for v in ratios],
-                    'quality_margin_each_seed': [v >= -.05 for v in diffs],
-                    'wall_margin_each_seed': [v <= 1.25 for v in ratios],
-                    'interpretation': 'descriptive only; small visible tasks and three seeds; no significance or superiority claim'}
+        try:
+            groups = _comparison_groups(cells)
+        except (ContractError, KeyError, TypeError, ValueError, ZeroDivisionError, OverflowError) as error:
+            # Assignment occurs only on success; no partial groups escape.
+            aggregate_errors.append(type(error).__name__+': '+str(error))
     result = {'schema': 'trinite.comparison-summary.v1', 'request_identity': request_identity,
         'protocol_identity': PROTOCOL_IDENTITY, 'protocol_commit': PROTOCOL_COMMIT,
         'outcome': 'completed' if groups else 'failed', 'cells': cells, 'groups': groups,
-        'worker_errors': worker_outcomes,
+        'worker_errors': worker_outcomes, 'aggregate_errors': aggregate_errors,
         'result_status': 'inconclusive', 'phase4_negative_result_preserved': True,
         'scope': protocol()['evidence_scope'], 'release_ready': False}
     _write(root, 'summary.json', result)

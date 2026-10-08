@@ -53,3 +53,29 @@ At the initial roughly 1.25M parameter tier, target narrow completion, classific
 Suggested by Trent on 2026-10-09: [Codecademy linear-algebra cheatsheet](https://www.codecademy.com/learn/dsml-math-for-machine-learning/modules/math-ds-linear-algebra/cheatsheet) and [quanghuy0497/Cheatsheet-collection](https://github.com/quanghuy0497/Cheatsheet-collection/tree/19a000df986efad76cefabdd7544b00dee21baad). These are curriculum-planning references, not admitted training data or changes to the completed comparison protocol. The collection is an index of material from multiple authors; inspect each original source and its rights separately.
 
 Use the topic map to design our own short numeric examples: vector addition/scaling, dot products, matrix shapes/products, identity/permutation operations, and small exact linear systems. Build labels with independent bounded integer/rational oracles, retain generation/admission evidence, and group related examples and transformations into the same split family. Keep ordinary integer/rational algebra distinct from GF(3) and packed-ququart algebra. Probability and optimisation topics can follow after the basic exact-answer/EOS gates succeed. Third-party explanations, sheets and bundled examples require separate file-level admission before any training use.
+
+## Repository-informed learning-adequacy increment
+
+Trent requested intake of the QSOLKCB scan on 2026-10-09. Candidate revisions,
+concrete tasks, source boundaries and evaluation limits are recorded in
+[RESEARCH.md](RESEARCH.md#qsolkcb-repository-intake-research). This is a planned
+increment before Phase 5, with corpus admission, implementation and measurement
+pending. It does not change the frozen comparison experiment or admit a
+repository wholesale.
+
+| Order | Proposed addition | Completion gate |
+| --- | --- | --- |
+| 1 — Short foundations | HERESY-API arithmetic/fraction normalization; CONSTRAINT-SHIFT count/sum/squares; LATTICE address parsing, role mapping and traversal | File-level admission; new bounded examples; independently checked labels; semantic-family splits; frozen train and held-out exact-answer/EOS learning gates |
+| 2 — Structure and errors | QSOL-MACH typed-contract classification and the generated YAML stress corpus; RUNE rounding/overflow tasks | Frozen error precedence, parser/numeric rules and limits; invalid-input coverage; related valid/invalid/repair examples grouped |
+| 3 — Exact linear algebra | Small vector/matrix operations, E8 finite integer transformations and a narrow SONIFICATION rational/polynomial subset; TFT as a topic reference | Independent exact oracles; orbit/transformation grouping; measured learning before increasing task length or model size; approximate float diagnostics kept separate |
+| 4 — Epistemic/context assessment | Fresh synthetic QSOL-ARK and QSOL-SEMANTIC-RELAY task families alongside QSOL-SUBSTRATE; later WHOAMI Gauntlet-style assessment | Evaluation answer keys excluded from training; real/absent/corrupt-context controls; unknown/contradictory evidence scored explicitly; visible donor fixtures remain conformance references |
+| Separate engineering gate | Pinned PROVENANCE research-manifest integration; RUNE CPU export/resource patterns in Phase 6 | Upstream canonical/schema conformance and retained source/adaptation evidence; exported numerical parity and measured resources; no inferred truth, rights certification or speedup |
+
+First establish useful learning on the short pack with an explicit preregistered
+budget and thresholds. Then compare dense, ternary and four-state lanes using
+matched inputs, initialization and training budgets, retaining all failures.
+The thresholds and budget are not selected by this documentation update.
+Preserve the initial null/inconclusive comparison and freeze a new request for
+changed sources; changed tasks or scientific settings require a separately frozen
+protocol. Keep Phase 5 intervention and larger-tier expansion conditional on
+these measured gates.
