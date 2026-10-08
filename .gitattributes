@@ -1,0 +1,13 @@
+# Working-tree bytes participate in source/fixture identities: always use LF.
+*.py text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+# Keep workflow/config/contract text predictable across checkout platforms.
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.lock text eol=lf
+*.md text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.jpeg binary

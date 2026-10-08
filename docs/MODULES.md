@@ -1,11 +1,11 @@
 # Modules
 
-Status: planned Python package boundaries. Use ordinary modules in one package first. Separate distributions, plugin registries, services, and native extensions must earn their complexity through a measured need.
+Status: Phase 1 implements flat contracts.py, tokenizer.py, data.py, and cli.py within src/trinite/. The remaining namespaces below are planned. Separate distributions, plugin registries, services, and native extensions must earn their complexity through a measured need.
 
 | Planned path | Owns | Interface / artifact | Permitted internal dependencies |
 | --- | --- | --- | --- |
 | src/trinite/contracts/ | Configuration, schema versions, identity and validation types | Validated configs and content identities | None |
-| src/trinite/data/ | Admission, generators, curation, deduplication, family splits | Examples and split manifests | contracts |
+| src/trinite/data/ | Admission, generators, curation, deduplication, family splits | Examples and split manifests | contracts, tokenizer (bound example encodings) |
 | src/trinite/tokenizer/ | Byte/special-token mapping and span alignment | Token IDs, masks, source spans | contracts |
 | src/trinite/model/ | Decoder blocks, dense/ternary layers, quantizer | Explicit forward outputs and named tensors | contracts |
 | src/trinite/training/ | Loss, optimizer, batches, checkpoints, resume | Training result and checkpoint receipts | contracts, data, tokenizer, model |

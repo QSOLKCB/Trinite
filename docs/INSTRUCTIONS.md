@@ -18,7 +18,11 @@ Treat geometry as a hypothesis with controls. Keep simulation, software conforma
 
 ## Verification and reporting
 
-For each change, name the affected contract IDs and run meaningful checks appropriate to those boundaries. Once implemented, the baseline suite is intended to use python -m unittest discover -s tests -v; that command is **not runnable in the documentation-only repository**. No install/train/serve command is advertised as working before its implementation exists.
+For each change, name the affected contract IDs and run meaningful checks appropriate to those boundaries. The Phase 1 suite is runnable with PYTHONPATH=src python -m unittest discover -s tests -v, or python -m unittest discover -s tests -v after package installation. Follow [GETTING_STARTED.md](GETTING_STARTED.md) for offline commands. No train/serve command is advertised before its implementation exists.
+
+The frozen formal fixture binds contracts.py, tokenizer.py, and data.py source bytes. A semantic change to those files requires deliberate fixture regeneration into a new directory, comparison, and a reviewed update of the retained fixture. Do not automatically regenerate fixtures in tests or CI to make them pass.
+
+.gitattributes pins LF working-tree bytes for byte-bound Python and JSON/JSONL artifacts, including the retained fixtures. Preserve these rules; core.autocrlf or a platform's default newline must not change a source/fixture identity.
 
 Documentation changes require relative-link and moved-asset checks plus review for conflicting contracts/status claims. Model changes require forward/gradient/capture checks; exports require importer rejection and parity; data changes require rights, generator correctness, deduplication, and family-split checks. Required numerical tolerances must be frozen before comparing outcomes.
 
