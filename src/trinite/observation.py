@@ -56,6 +56,10 @@ class BundleObserver:
             raise ContractError("observer actor requires a bounded nonempty string")
         self.path.mkdir(parents=True, exist_ok=False)
         self.artifacts, self.events, self.names = {}, {}, {}
+        # OBS-REUSE-001: one collector, fixed record policy, exact immutable bytes.
+        # Keep one strong bytes reference per unique retained artifact; aliases
+        # add no payload copies. The existing 64-item/64-MiB limits bound this.
+        self._content = {}
         self.total_bytes = 0
         self.closed = False
 
@@ -68,6 +72,11 @@ class BundleObserver:
             raise ContractError("invalid observer artifact name or closed bundle")
         if type(content) is not bytes or len(content) > MAX_ARTIFACT_BYTES:
             raise ContractError("observer artifact exceeds byte limit")
+        prior = self.names.get(name)
+        if prior is not None:
+            if content != self._content[prior]:
+                raise ContractError("observer artifact name already binds different bytes")
+            return prior
         record = self.ArtifactRecord.from_bytes(content, retention=self.RetentionState.CONTENT_RETAINED,
                                                 media_type="application/octet-stream")
         key = record.content_identity
@@ -82,6 +91,7 @@ class BundleObserver:
             self._json(self.path/"artifact_records/sha256"/(record.record_identity.split(":")[1]+".json"),
                        record.to_dict())
             self.artifacts[key] = record
+            self._content[key] = content
             self.total_bytes += len(content)
         self.names[name] = key
         return key
@@ -112,6 +122,9 @@ class BundleObserver:
             artifacts=list(self.artifacts.values()), events=list(self.events), scope="closed"))
         self._json(self.path/"manifest.json", manifest.to_dict())
         self.closed = True
+        # Reuse is construction-only: release snapshots and read every retained
+        # disk byte through the unchanged upstream verifier, including tampering.
+        self._content.clear()
         report = self.verify(self.path).to_dict()
         # The report stays outside the frozen bundle to preserve exact membership.
         return report

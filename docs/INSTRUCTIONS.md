@@ -29,3 +29,5 @@ The retained model-v0 forward fixture is produced by the independent scalar orac
 Documentation changes require relative-link and moved-asset checks plus review for conflicting contracts/status claims. Model changes require forward/gradient/capture checks; exports require importer rejection and parity; data changes require rights, generator correctness, deduplication, and family-split checks. Required numerical tolerances must be frozen before comparing outcomes.
 
 PR descriptions state the concrete behavior, scope, checks actually run, and remaining gates. Update the roadmap only for demonstrated completion. Do not add a green CI badge before that workflow exists. Open reviewable PRs; release/tag/archive actions follow an explicit release task and retained evidence.
+
+The combined CPU runner python scripts/check_cpu.py executes the same required suite IDs/order; explicit subprocess isolation remains. Performance work follows the target contract, equivalence gates and paired measurements in [OPTIMIZATION.md](OPTIMIZATION.md). Never cache verifier outcomes, source-audit success, or test results in place of executing current checks.

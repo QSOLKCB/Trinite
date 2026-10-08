@@ -135,3 +135,13 @@ PYTHONPATH=src python -m trinite verify-observation /tmp/trinite-geometry/proven
 Source/input/environment/request changes reject; an observation never updates a model or optimizer. The mandatory pinned observer is the default. --observer off retains explicit unintegrated computation with false evidence eligibility. Required observer failure returns nonzero while preserving completed computational artifacts. Read [GEOMETRY.md](GEOMETRY.md) for schemas, bounds and the frozen control limitation, and [PHASE-4.md](PHASE-4.md) for descriptive results.
 
 The manual geometry workflow uses the frozen plan/dataset identities from PHASE-3, trains both lanes on hosted CPU, freezes the request, measures, verifies and uploads 14-day review artifacts. Download them before expiry when retaining a run; this is not a durable release archive or an edge-device benchmark.
+
+## Combined CPU conformance and performance characterization
+
+CI runs the same required model/training/geometry cases in one process to amortize imports:
+
+```bash
+PYTHONPATH=src python scripts/check_cpu.py
+```
+
+Standalone suite commands above remain supported. Foundation and pinned upstream conformance remain separate standard-library runs. Dependency-consuming workflows cache downloads, install fresh with required hashes, run pip check and execute every current test on all three Python versions. [OPTIMIZATION.md](OPTIMIZATION.md) defines the exact reuse gates and opt-in benchmark commands.
