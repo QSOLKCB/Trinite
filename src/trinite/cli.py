@@ -47,6 +47,17 @@ def main(argv: list[str] | None = None) -> int:
     verify.add_argument("directory", type=Path)
     freeze_compare = commands.add_parser('freeze-comparison')
     freeze_compare.add_argument('output', type=Path)
+    freeze_foundations = commands.add_parser('freeze-foundations')
+    freeze_foundations.add_argument('output', type=Path)
+    foundations = commands.add_parser('foundations-cell')
+    foundations.add_argument('output', type=Path)
+    foundations.add_argument('--stage', choices=('train', 'test'), required=True)
+    foundations.add_argument('--workload', choices=('arithmetic', 'fold', 'lattice'), required=True)
+    foundations.add_argument('--lane', choices=('dense', 'ternary', 'four-state'), required=True)
+    foundations.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
+    foundations.add_argument('--request', type=Path, required=True)
+    foundations.add_argument('--request-identity', required=True)
+    foundations.add_argument('--decision-identity', required=True)
     cell = commands.add_parser('comparison-cell')
     cell.add_argument('output', type=Path)
     cell.add_argument('--stage', choices=('train', 'evaluate'), required=True)
@@ -84,6 +95,22 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "verify-observation":
             from .observation import verify_observation
             result = verify_observation(args.directory)
+        elif args.command in ('freeze-foundations', 'foundations-cell'):
+            try:
+                import torch
+                from .foundations import freeze_request, train_cell, test_cell
+            except ImportError as error:
+                raise ContractError('foundations requires the hash-locked CPU dependencies') from error
+            torch.set_num_threads(1)
+            torch.use_deterministic_algorithms(True)
+            if args.command == 'freeze-foundations':
+                result = freeze_request(args.output)
+            elif args.stage == 'train':
+                result = train_cell(args.output, args.workload, args.lane, args.seed,
+                                    args.request, args.request_identity)
+            else:
+                result = test_cell(args.output, args.workload, args.lane, args.seed,
+                                   args.request, args.request_identity, args.decision_identity)
         elif args.command in ('freeze-comparison', 'comparison-cell'):
             try:
                 import torch

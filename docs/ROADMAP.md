@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 0–4 are merged. The merged OPT detour applies exact reuse and CI orchestration improvements, with independent equivalence checks and scoped timing evidence in [OPTIMIZATION.md](OPTIMIZATION.md). The following three-lane/QEC detour is implemented and measured in [COMPARISON.md](COMPARISON.md). Phase 5 remains the next research phase; fresh confirmatory evaluation and independent replication remain empirical gates. Phases 5–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md), [PHASE-2.md](PHASE-2.md), [PHASE-3.md](PHASE-3.md), and [PHASE-4.md](PHASE-4.md) for evidence and limits.
+Phases 0–4 are merged. The merged OPT detour applies exact reuse and CI orchestration improvements, with independent equivalence checks and scoped timing evidence in [OPTIMIZATION.md](OPTIMIZATION.md). The following three-lane/QEC detour is implemented and measured in [COMPARISON.md](COMPARISON.md). Phase 5 remains the next geometry phase; the foundations learning-adequacy gate precedes it; fresh confirmatory evaluation and independent replication remain empirical gates. Phases 5–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md), [PHASE-2.md](PHASE-2.md), [PHASE-3.md](PHASE-3.md), and [PHASE-4.md](PHASE-4.md) for evidence and limits.
 
 | Phase | Deliverable | Completion gate |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ Authorised by Trent Slade on 2026-10-09 after OPT: defer Phase 5 again to implem
 
 ## Next roadmap phase
 
-After this comparison detour merges and a separately reviewed learning-adequacy gate is established, scope Phase 5's controlled intervention: freeze the differentiable objective and acceptable quality/cost margins, then evaluate matched dense/ternary geometry-off/on lanes and auxiliary-loss controls. The first Phase 4 contrasts are negative, and reversal of both paths is an orientation-invariance diagnostic; neither supplies evidence of a reasoning benefit. Any revised order-scrambling or confirmatory observation needs a new protocol frozen before its target outcomes. Geometric loss remains zero until that reviewed increment. Curriculum intake still requires a separate source-admission and evaluation/exposure increment; no wholesale repository import.
+After the foundations learning-adequacy gate is measured and passes under a separately frozen protocol, scope Phase 5's controlled intervention: freeze the differentiable objective and acceptable quality/cost margins, then evaluate matched dense/ternary geometry-off/on lanes and auxiliary-loss controls. The first Phase 4 contrasts are negative, and reversal of both paths is an orientation-invariance diagnostic; neither supplies evidence of a reasoning benefit. Any revised order-scrambling or confirmatory observation needs a new protocol frozen before its target outcomes. Geometric loss remains zero until that reviewed increment. Curriculum intake still requires a separate source-admission and evaluation/exposure increment; no wholesale repository import.
 
 Each phase should be a reviewable increment with stated requirements, completed checks, and unresolved gates. A software fixture does not close an empirical milestone. “Implemented” and “measured” are separate statuses.
 
@@ -31,7 +31,7 @@ Scaling is conditional: first prove the data, semantics, and measurement procedu
 
 ## Planned training corpus and curriculum
 
-Status: curriculum approved by Trent Slade on 2026-10-09; corpus preparation, admission, and training remain pending. Teach short, verified basics first, then introduce curated first-party material and scale only after measured results. This section does not import data or extend the current Phase 3 training-conformance task.
+Status: curriculum approved by Trent Slade on 2026-10-09. The first short generated pack is implemented and measured in FOUNDATIONS; its dense-learning gate failed. Broader corpus preparation, admission and training remain pending. Teach short, verified basics first, then introduce curated first-party material and scale only after measured results. This section does not import data or extend the current Phase 3 training-conformance task.
 
 | Tier | Source | Training target | Admission / evaluation gate |
 | --- | --- | --- | --- |
@@ -59,8 +59,8 @@ Use the topic map to design our own short numeric examples: vector addition/scal
 Trent requested intake of the QSOLKCB scan on 2026-10-09. Candidate revisions,
 concrete tasks, source boundaries and evaluation limits are recorded in
 [RESEARCH.md](RESEARCH.md#qsolkcb-repository-intake-research). This is a planned
-increment before Phase 5, with corpus admission, implementation and measurement
-pending. It does not change the frozen comparison experiment or admit a
+increment before Phase 5, implemented in [FOUNDATIONS.md](FOUNDATIONS.md), with scoped numeric admission
+and a separately frozen protocol. Its empirical gate is reported there. It does not change the frozen comparison experiment or admit a
 repository wholesale.
 
 | Order | Proposed addition | Completion gate |
@@ -74,8 +74,22 @@ repository wholesale.
 First establish useful learning on the short pack with an explicit preregistered
 budget and thresholds. Then compare dense, ternary and four-state lanes using
 matched inputs, initialization and training budgets, retaining all failures.
-The thresholds and budget are not selected by this documentation update.
+The thresholds and budget are frozen in [FOUNDATIONS-PROTOCOL.md](FOUNDATIONS-PROTOCOL.md). The measured 27-cell foundations run retained a blocked dense-learning gate; no held-out scoring was unlocked.
 Preserve the initial null/inconclusive comparison and freeze a new request for
 changed sources; changed tasks or scientific settings require a separately frozen
 protocol. Keep Phase 5 intervention and larger-tier expansion conditional on
 these measured gates.
+
+The foundations implementation shares the native update loop, independently
+checks new finite labels and prompt carriers, retains a source-bound training
+decision and prevents held-out evaluation if dense learning fails. Software
+conformance does not close the empirical gate; see [FOUNDATIONS.md](FOUNDATIONS.md).
+YAML, typed contracts, linear algebra and geometry intervention remain later work.
+
+The first foundations run is measured and integrity-verified, but **not
+learning-adequate**. All nine dense cells fail at least one training task.
+Held-out evaluation and format selection remain blocked. The next increment
+is training-only convergence/stability development followed by a separately
+frozen learning protocol; Phase 5, structure/algebra expansion and scaling
+remain conditional. Preserve this blocked result alongside the earlier null
+comparison. [FOUNDATIONS.md](FOUNDATIONS.md) retains the counts and evidence.

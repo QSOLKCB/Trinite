@@ -41,3 +41,16 @@ Group by underlying formal problem/generator family before assigning train, vali
 Test labels must not enter training, geometry-objective construction, prompt tuning, early stopping, or selection of layers/metrics. Validation selects models under the frozen protocol; test is evaluated only after selection. Repeated test use requires a new held-out confirmatory set or an explicit exploratory label.
 
 Publish admitted inputs and generators wherever the rights basis permits. A hash of unavailable data is not complete openness. Releases must disclose any missing inputs and cannot satisfy the full-open gate while required native training inputs are unavailable.
+
+## Foundations admission
+
+[FOUNDATIONS.md](FOUNDATIONS.md) implements the next narrowly admitted generated
+formal pack: arithmetic/fractions, signed-list folds and symbolic lattice tasks.
+Each source-specific record retains commissioned authorship, complete formal
+items, generation/independent-oracle/parser steps, immutable supporting source
+references, numeric rights basis, reviewer/date and exposure limitations.
+`validate_admission()` independently regenerates the frozen expected record; a
+nonempty contradictory field or changed evidence fails. Both carriers and all
+related transformations remain in the same family. This admits no donor prose,
+software text, benchmark questions or third-party sheets. The earlier fixtures
+and data policy remain unchanged.
