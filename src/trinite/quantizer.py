@@ -54,3 +54,24 @@ def quantize(weight: torch.Tensor) -> QuantizedWeight:
         effective = codes.float() * scale
         inside = unit.abs() < 1
     return QuantizedWeight(codes, scale, _Surrogate.apply(weight, effective, inside))
+
+
+def quantize_four(weight: torch.Tensor) -> QuantizedWeight:
+    """Classical odd four-level codebook; frozen comparison protocol v1.
+
+    Zero maps to +1, +/-2 unit ties map inward, +/-3 STE boundaries stop.
+    Scale is detached. Reject effective overflow rather than emitting infinity.
+    """
+    if (not isinstance(weight, torch.Tensor) or weight.ndim != 2
+            or not 1 <= weight.numel() <= MAX_MATRIX_ELEMENTS):
+        raise ContractError("four-state quantizer requires a bounded weight matrix")
+    require_float_tensor(weight, "four-state weight")
+    with torch.no_grad():
+        scale = (weight.detach().double().abs().mean()/2).clamp_min(1e-8).float()
+        unit = weight.detach()/scale
+        magnitude = torch.where(unit.abs() > 2, 3, 1)
+        codes = (magnitude*torch.where(unit < 0, -1, 1)).to(torch.int8)
+        effective = codes.float()*scale
+        require_float_tensor(effective, "four-state effective weight")
+        inside = unit.abs() < 3
+    return QuantizedWeight(codes, scale, _Surrogate.apply(weight, effective, inside))

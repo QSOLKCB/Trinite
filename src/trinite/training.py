@@ -217,13 +217,17 @@ def create_state(config: RunConfig, lane: str, dataset: bytes, manifest: bytes) 
     require_environment()
     data = admitted_data(dataset, manifest, config)
     model = Decoder(config.model, lane=lane, seed=config.seed)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=float(config.learning_rate),
+    optimizer = create_optimizer(model, config)
+    return TrainingState(config, lane, model, optimizer, data, identity(dataset), identity(manifest),
+                         model_identity(model), evaluate(model, data["train"], config.batch_size))
+
+
+def create_optimizer(model: Decoder, config: RunConfig) -> torch.optim.AdamW:
+    return torch.optim.AdamW(model.parameters(), lr=float(config.learning_rate),
                                  betas=(float(config.beta1), float(config.beta2)),
                                  eps=float(config.optimizer_epsilon), weight_decay=float(config.weight_decay),
                                  foreach=False, fused=False, capturable=False, amsgrad=False,
                                  maximize=False, differentiable=False)
-    return TrainingState(config, lane, model, optimizer, data, identity(dataset), identity(manifest),
-                         model_identity(model), evaluate(model, data["train"], config.batch_size))
 
 
 def require_optimizer(state: TrainingState) -> None:
@@ -248,9 +252,12 @@ def run_steps(state: TrainingState, *, stop_after: int | None = None) -> None:
     while state.step < end:
         if time.monotonic() > deadline:
             raise ContractError("training invocation exceeded its time budget")
-        examples = [state.data["train"][(state.cursor+i) % 36] for i in range(state.config.batch_size)]
+        examples = [state.data["train"][(state.cursor+i) % len(state.data["train"])]
+                    for i in range(state.config.batch_size)]
         state.optimizer.zero_grad(set_to_none=True)
         loss, targets = target_loss(state.model, examples)
+        if state.target_tokens + targets > state.config.max_target_tokens:
+            raise ContractError("training exceeds its scored-target budget")
         loss.backward()
         norm = torch.nn.utils.clip_grad_norm_(state.model.parameters(), float(state.config.gradient_clip),
                                              error_if_nonfinite=True, foreach=False)

@@ -17,7 +17,11 @@ Phases 0–4 are merged. The current detour applies OPT-guided exact reuse and C
 
 The Phase 3 observer gate uses the exact revision and acceptance checks in [PROVENANCE.md](PROVENANCE.md). An unavailable or incompatible upstream contract blocks that integration and Phase 3 completion; it must not be replaced with an unverified local schema. Native training performed while the observer gate is blocked remains explicitly unintegrated.
 
-## Next PR
+## Three-lane / QEC detour
+
+Authorised by Trent Slade on 2026-10-09 after OPT: defer Phase 5 again to implement the dense/ternary/four-state comparison matrix and independently verified QEC task lane. The protocol is frozen at 3bc49f478ce0997b0ab46d36c79b9eb7ba7319cd, with 27 paired cells, native geometry loss zero, all failures retained and exact answer generation as primary evidence. See [COMPARISON.md](COMPARISON.md) and [COMPARISON-PROTOCOL.md](COMPARISON-PROTOCOL.md). This introduces classical quantization and generated numeric tasks, without quantum hardware or packed inference. Full matrix characterization and CI are pending. Original Phase 4 negative results remain unchanged.
+
+## Next roadmap phase
 
 After this optimization detour merges, scope Phase 5's controlled intervention: freeze the differentiable objective and acceptable quality/cost margins, then evaluate matched dense/ternary geometry-off/on lanes and auxiliary-loss controls. The first Phase 4 contrasts are negative, and reversal of both paths is an orientation-invariance diagnostic; neither supplies evidence of a reasoning benefit. Any revised order-scrambling or confirmatory observation needs a new protocol frozen before its target outcomes. Geometric loss remains zero until that reviewed increment. Curriculum intake still requires a separate source-admission and evaluation/exposure increment; no wholesale repository import.
 

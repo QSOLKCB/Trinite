@@ -145,3 +145,13 @@ PYTHONPATH=src python scripts/check_cpu.py
 ```
 
 Standalone suite commands above remain supported. Foundation and pinned upstream conformance remain separate standard-library runs. Dependency-consuming workflows cache downloads, install fresh with required hashes, run pip check and execute every current test on all three Python versions. [OPTIMIZATION.md](OPTIMIZATION.md) defines the exact reuse gates and opt-in benchmark commands.
+
+## Three-lane research comparison
+
+[COMPARISON.md](COMPARISON.md) gives frozen dense/ternary/four-state and exact QEC task matrix commands. Run comparison conformance after acquiring the CPU lock:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests/comparison -v
+PYTHONPATH=src python -m trinite inspect-model --lane four-state --text "1+1=2"
+```
+

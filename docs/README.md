@@ -28,6 +28,8 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [GEOMETRY.md](GEOMETRY.md) | Capture, numerical adapter, request binding, and artifact contracts |
 | [PHASE-4.md](PHASE-4.md) | Geometry conformance, observed contrasts, and control limitations |
 | [OPTIMIZATION.md](OPTIMIZATION.md) | Exact reuse, CI coverage, local timing evidence and rollback contracts |
+| [COMPARISON-PROTOCOL.md](COMPARISON-PROTOCOL.md) | Frozen three-lane / exact QEC task experiment |
+| [COMPARISON.md](COMPARISON.md) | Matrix commands, task admission, results and scientific limits |
 
 ## Source and contract precedence
 

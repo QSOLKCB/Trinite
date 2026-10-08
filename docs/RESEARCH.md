@@ -4,6 +4,8 @@ Status: Phase 4 has a frozen prompt-capture protocol and first descriptive obser
 
 ## Questions and falsification
 
+The [comparison detour](COMPARISON.md) precedes Phase 5 under a [new frozen protocol](COMPARISON-PROTOCOL.md). Its dense/ternary/four-state matrix separates quantization quality from the earlier geometry finding and adds exact QEC tasks. Both original lanes learned the Phase 3 fixture; negative geometry in both does not establish general ternary learning failure. Primary answer quality, paired seed ranges and all geometry controls remain visible if the new lane fails. No geometry objective or quantum execution is added.
+
 | Hypothesis | Test | Outcome against it |
 | --- | --- | --- |
 | A small ternary model learns the selected formal tasks with acceptable quality/cost. | Dense versus ternary lanes on family-held-out tasks, matched data/token budget | Quality loss or cost outweighs the preregistered acceptable margin |
