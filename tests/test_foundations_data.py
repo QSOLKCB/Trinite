@@ -69,7 +69,7 @@ class FoundationsDataTests(unittest.TestCase):
     def test_separate_plan_limits_do_not_relax_native_limits(self):
         plan=FoundationsPlan()
         for fields in ({'steps':1025},{'batch_size':9},{'max_target_tokens':True},
-                       {'learning_rate':'nan'},{'schema':'trinite.training-plan.v1'}):
+                       {'learning_rate':'nan'},{'schema':'trinite.training-plan.v1'},{'max_target_tokens':1}):
             with self.assertRaises(ContractError):replace(plan,**fields)
         self.assertEqual(FoundationsPlan.from_dict(plan.to_dict()),plan)
 

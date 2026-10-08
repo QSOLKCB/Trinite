@@ -16,6 +16,7 @@ from trinite.foundations_training import state_for, protocol, sources, LANES, WO
 from trinite.foundations_plan import FoundationsPlan
 from trinite.foundations_checkpoint import snapshot, restore
 from trinite.training import run_steps, model_identity, RunConfig
+from trinite.tokenizer import EOS
 from trinite import foundations as f
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -45,6 +46,30 @@ class FoundationsTests(unittest.TestCase):
             self.assertEqual(verified['report'],report)
             self.assertEqual(report['steps'],1024)
             self.assertFalse((cell/'test-predictions.json').exists())
+            with patch.object(f,'score') as scorer:
+                with self.assertRaises(ContractError):
+                    f.test_cell(cell,'arithmetic','dense',0,request,frozen['request_identity'],REQUEST)
+                scorer.assert_not_called()
+            # Exercise the test-stage bundle with explicitly synthetic outputs;
+            # this is conformance, not held-out measurement of the real model.
+            examples=parse_json(dataset('arithmetic')[0])['examples']
+            baseline=f.majority_answers(examples);rows=[]
+            for item in examples:
+                if item['split']!='test':continue
+                expected=[*item['answer'].encode(),EOS]
+                constant=[*baseline[item['task']].encode(),EOS]
+                rows.append({'example_identity':item['example_identity'],'family_id':item['family_id'],
+                    'task':item['task'],'split':'test','expected_tokens':expected,'generated_tokens':expected,
+                    'correct':True,'baseline_tokens':constant,'baseline_correct':constant==expected})
+            synthetic_decision=json_bytes({'test':'synthetic conformance authorization'})
+            with (patch.object(f,'validate_decision',return_value=synthetic_decision),
+                  patch.object(f,'score',return_value=(f.metrics(rows),rows))):
+                tested=f.test_cell(cell,'arithmetic','dense',0,request,frozen['request_identity'],identity(synthetic_decision))
+            self.assertEqual(f.verified_stage(cell,'arithmetic','dense',0,frozen['request_identity'],'test')['report'],tested)
+            original_test=(cell/'evaluation.json').read_bytes()
+            (cell/'evaluation.json').write_bytes(original_test+b' ')
+            with self.assertRaises(ContractError):
+                f.verified_stage(cell,'arithmetic','dense',0,frozen['request_identity'],'test')
             original=(cell/'training-predictions.json').read_bytes()
             (cell/'training-predictions.json').write_bytes(original+b' ')
             with self.assertRaisesRegex(ContractError,'differs from verified retained evidence'):
