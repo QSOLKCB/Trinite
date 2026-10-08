@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -51,6 +52,28 @@ class ArchiveTests(unittest.TestCase):
                 root=Path(directory);archive,key=self.make(root,files)
                 with self.assertRaises(ValueError):a.restore(archive,root/'dest',key)
                 self.assertFalse((root/'dest').exists())
+
+    def test_casefolded_file_ancestors_reject_in_both_index_orders_before_staging(self):
+        for ancestor,descendant in (('run/A','run/a/b'),
+                                    ('run/Parent/FILE','run/parent/file/deep/child'),
+                                    ('run/Straße','run/STRASSE/b')):
+            for names in ((ancestor,descendant),(descendant,ancestor)):
+                with self.subTest(names=names),tempfile.TemporaryDirectory() as directory:
+                    root=Path(directory);archive,key=self.make(root,{name:b'x' for name in names})
+                    dest=root/'uncreated-parent'/'dest'
+                    with patch.object(a.tempfile,'TemporaryDirectory') as staging:
+                        with self.assertRaisesRegex(ValueError,'unsafe/colliding restore path'):
+                            a.restore(archive,dest,key)
+                        staging.assert_not_called()
+                    self.assertFalse(dest.parent.exists())
+
+    def test_casefolded_ancestor_check_keeps_distinct_path_components_valid(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);files={'run/A':b'file','run/ab/b':b'child',
+                                      'producer/parent/left':b'left','producer/parent/right':b'right'}
+            archive,key=self.make(root,files);dest=root/'restored'
+            self.assertEqual(a.restore(archive,dest,key)['restored_files'],len(files))
+            for name,raw in files.items():self.assertEqual((dest/name).read_bytes(),raw)
 
 
 if __name__=='__main__':unittest.main()

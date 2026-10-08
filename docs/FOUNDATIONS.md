@@ -198,6 +198,12 @@ inventory, payload hashes/sizes and safe paths before publishing a new directory
 Existing destinations, changed/missing/extra payloads and path/case collisions
 reject. Restore never executes archived code.
 
+Restore compares every file ancestor against the complete case-folded file
+inventory, independent of index order. A file `run/A` and descendant `run/a/b`
+reject before staging on every platform. Use the current repository restore
+tool in the commands above; the immutable archive retains its historical review
+helper. This guard does not change archived evidence or scientific settings.
+
 CI exercises real
 training/bundle verification plus explicitly synthetic test-stage conformance;
 those test fixtures are not empirical held-out model results.

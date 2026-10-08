@@ -38,13 +38,14 @@ def restore(archive,destination,expected_identity):
             raise ValueError('invalid restore index')
         files=index['files']
         if type(files) is not dict or not files or len(files)>4096:raise ValueError('invalid file inventory')
+        folded_files={name.casefold() for name in files}
         objects={};folded=set();total=0
         for name,record in files.items():
             p=PurePosixPath(name)
             if ('\\' in name or '\0' in name or p.is_absolute() or '..' in p.parts
                     or p.as_posix()!=name or not (name=='members.json' or name.startswith(('run/','producer/')))
                     or name.casefold() in folded or len(name)>2048
-                    or any(str(parent) in files for parent in p.parents)):
+                    or any(str(parent).casefold() in folded_files for parent in p.parents)):
                 raise ValueError('unsafe/colliding restore path')
             folded.add(name.casefold())
             if (type(record) is not dict or set(record)!={'bytes','identity'}
