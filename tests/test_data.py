@@ -44,6 +44,32 @@ class DataTests(unittest.TestCase):
             with self.assertRaises(ContractError):
                 audit_bytes(json_bytes(data), json_bytes(manifest))
 
+    def test_contradictory_admission_policy_fails_standalone(self):
+        original = admission()
+        changes = [("outcome", "rejected"), ("outcome", "pending"),
+                   ("rights_basis", "copied copyrighted prose"),
+                   ("scope", "all future internet text"),
+                   ("reviewed_on", "not-a-date"), ("reviewed_on", "2026-02-30"),
+                   ("reviewed_on", "20261009"), ("reviewed_on", "2026-10-10"),
+                   ("reviewer", "unreviewed"), ("author", "unknown"),
+                   ("origin", "downloaded prose"), ("limitations", "no limitations")]
+        for field, value in changes:
+            with self.subTest(field=field, value=value):
+                record = deepcopy(original)
+                record[field] = value
+                with self.assertRaises(ContractError):
+                    validate_admission(record)
+        for field in original["generation_procedure"]:
+            with self.subTest(procedure=field):
+                record = deepcopy(original)
+                record["generation_procedure"][field] = "downloaded internet text"
+                with self.assertRaises(ContractError):
+                    validate_admission(record)
+        record = deepcopy(original)
+        record["rights_evidence"]["review_basis"] = "all future data is admitted"
+        with self.assertRaises(ContractError):
+            validate_admission(record)
+
     def test_independent_solver_exhaustive_small_domain(self):
         for m in range(2, 10):
             for a in range(m):

@@ -6,6 +6,7 @@ model is accessed. This is software-conformance data, not a capability test.
 from __future__ import annotations
 
 import hashlib
+from datetime import date
 from pathlib import Path
 import re
 
@@ -31,8 +32,15 @@ def generator_identity() -> str:
 
 def implementation_receipt() -> dict:
     package = Path(__file__).resolve().parent
-    return {name: identity((package/name).read_bytes())
-            for name in ("contracts.py", "data.py", "tokenizer.py")}
+    receipt = {}
+    for name in ("contracts.py", "data.py", "tokenizer.py"):
+        content = (package/name).read_bytes()
+        if b"\r" in content:
+            raise ContractError(f"byte-bound source {name} requires LF; preserve local edits, "
+                                "then refresh tracked source/fixture files as described in "
+                                "docs/GETTING_STARTED.md")
+        receipt[name] = identity(content)
+    return receipt
 
 
 def _spec(modulus: int, left: int, right: int) -> dict:
@@ -154,7 +162,7 @@ def admission() -> dict:
 
 
 def validate_admission(record: object) -> None:
-    """Check required evidence against source/content, not a bare rights label.
+    """Validate only the frozen Phase 1 symbolic-source admission policy.
 
     These checks verify the documented admission evidence and narrow scope;
     they do not automate a legal opinion or certify future corpora.
@@ -168,11 +176,24 @@ def validate_admission(record: object) -> None:
                  "reviewed_on", "outcome", "limitations"):
         if type(record[name]) is not str or not record[name].strip():
             raise ContractError(f"source admission requires non-empty {name}")
+    if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", record["reviewed_on"]):
+        raise ContractError("source admission review date must be ISO YYYY-MM-DD")
+    try:
+        date.fromisoformat(record["reviewed_on"])
+    except ValueError as error:
+        raise ContractError("source admission review date must be a real calendar date") from error
+    policy = admission()
+    for name in ("origin", "author", "rights_basis", "scope", "reviewer",
+                 "reviewed_on", "outcome", "limitations"):
+        if record[name] != policy[name]:
+            raise ContractError(f"source admission {name} contradicts the frozen Phase 1 policy")
     procedure = exact_keys(record["generation_procedure"],
                            {"formal_source", "answer_generation", "answer_verification",
                             "rendering", "acquisition"}, "generation procedure")
     if any(type(v) is not str or not v.strip() for v in procedure.values()):
         raise ContractError("generation procedure must identify every step")
+    if procedure != policy["generation_procedure"]:
+        raise ContractError("generation procedure contradicts the frozen Phase 1 policy")
     reference = exact_keys(record["supporting_reference"],
                            {"path", "content_identity", "symbols"}, "supporting reference")
     if (reference["path"] != "src/trinite/data.py"
@@ -192,7 +213,7 @@ def validate_admission(record: object) -> None:
             or json_bytes(evidence["formal_source"]) != json_bytes(formal)
             or evidence["rendered_payload"] != payload
             or evidence["payload_identity"] != identity(json_bytes(payload))
-            or type(evidence["review_basis"]) is not str or not evidence["review_basis"].strip()):
+            or evidence["review_basis"] != policy["rights_evidence"]["review_basis"]):
         raise ContractError("source admission evidence does not match the numeric source/payload")
 
 

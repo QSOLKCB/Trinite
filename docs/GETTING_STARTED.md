@@ -40,3 +40,16 @@ python -m unittest discover -s tests -v
 Backend acquisition needs network access or a pre-provisioned wheel. The runtime and source-tree workflow remain offline. requirements.lock has no runtime/test dependencies. The package version 0.0.0 denotes unreleased foundation code; this PR creates no tag or release.
 
 CPU CI runs the standard-library suite, config validation, frozen fixture audit, and exact replay under Python 3.11/3.12/3.13. Actions are pinned to full commit identities; hosted jobs have read-only repository access and a five-minute limit. CI installs no model packages and uses no privileged/self-hosted runner.
+
+## Existing checkouts with newline conversion
+
+Source and fixture identities use raw bytes. The LF attributes protect fresh checkouts, but Git can retain CRLF in unchanged files when upgrading an existing checkout. This correction changes all three byte-bound source blobs and both retained fixture blobs so the transition from the initial Phase 1 revision refreshes them. The regression suite exercises a pre-attributes CRLF checkout and a normal two-tree upgrade, including the exact original contracts.py and tokenizer.py blobs.
+
+The source receipt rejects CRLF explicitly and points here instead of hashing converted bytes. If an older working tree still reports this error, first commit or otherwise preserve local edits and confirm that the affected files have no staged or unstaged changes with git status. Then refresh just the tracked byte-bound files from the current index:
+
+```bash
+git checkout-index --force -- src/trinite/contracts.py src/trinite/data.py src/trinite/tokenizer.py fixtures/formal-v1/dataset.json fixtures/formal-v1/manifest.json
+PYTHONPATH=src python3 -m trinite audit-fixture fixtures/formal-v1
+```
+
+The refresh command replaces those working files with indexed content using the current attributes; do not run it over unsaved edits. git add --renormalize alone changes the index and does not guarantee that stale working-tree bytes are refreshed. Keep the retained fixtures intact: regenerating them to match a converted checkout would replace the evidence rather than repair the checkout.

@@ -2,6 +2,7 @@
 
 This is Trinite's own JSON artifact format, not a PROVENANCE serializer.
 """
+# Byte-bound source receipt requires LF; this revision refreshes legacy CRLF checkouts.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass

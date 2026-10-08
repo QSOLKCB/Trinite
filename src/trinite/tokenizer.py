@@ -1,4 +1,5 @@
 """UTF-8 byte tokens, source byte spans, and explicit padding/loss masks."""
+# Byte-bound source receipt requires LF; this revision refreshes legacy CRLF checkouts.
 from __future__ import annotations
 
 from dataclasses import dataclass

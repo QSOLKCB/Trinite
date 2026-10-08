@@ -14,6 +14,8 @@ Families are whole moduli, including every selected operand pair and both carrie
 
 This fixture is fully visible and used for software checks, so its test split must not be treated as a fresh confirmatory reasoning benchmark. Later model evaluation needs its own frozen held-out families and exposure/tuning controls. Changing source code or split seed produces a new generator/dataset/manifest identity rather than preserving old evidence.
 
+validate_admission validates only this frozen Phase 1 source policy, not arbitrary future source records. It requires the admitted outcome, exact numeric rights basis and scope, declared origin/author/reviewer/limitations, the frozen generation procedure and evidence review basis, and the pinned review date in valid ISO calendar form. Nonempty contradictory labels such as rejected or all future internet text fail even when the validator is called independently. New sources or review decisions need a separate reviewed policy change.
+
 ## Strict admission
 
 The original “No Copyrighted Data” requirement remains strict. A permissive license permits use but does not remove copyright, so a permissively licensed copyrighted corpus is not admitted under this plan. Any relaxation would be an explicit project-contract change.
