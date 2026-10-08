@@ -1,9 +1,6 @@
 """Source-bound foundations replay using shared named tensor/progress checks."""
-import torch
-from safetensors.torch import load
-
 from .contracts import ContractError, exact_keys, identity, json_bytes, parse_json, require_identity
-from .comparison_checkpoint import tensor_payload, progress, _slot
+from .comparison_checkpoint import tensor_payload, progress, restore_tensors
 from .foundations_training import state_for, sources
 from .foundations_data import dataset
 from .foundations_plan import FoundationsPlan
@@ -49,24 +46,4 @@ def restore(payload,metadata,workload,lane,seed,request_identity,expected_identi
         raise ContractError('foundations snapshot context mismatch')
     state.step,state.cursor,state.target_tokens=r['step'],r['cursor'],r['target_tokens']
     state.history,state.validation=r['history'],r['validation'];progress(state)
-    try:tensors=load(payload)
-    except Exception as error:raise ContractError('invalid foundations safetensors') from error
-    names={'model.'+n for n,_ in state.model.named_parameters()}
-    if state.step:names|={'optimizer.'+n+'.'+slot for n,_ in state.model.named_parameters()
-                         for slot in ('step','exp_avg','exp_avg_sq')}
-    if set(tensors)!=names:raise ContractError('foundations tensor inventory mismatch')
-    with torch.no_grad():
-        for name,p in state.model.named_parameters():
-            value=tensors['model.'+name]
-            if value.shape!=p.shape or value.dtype!=p.dtype or not bool(torch.isfinite(value).all()):
-                raise ContractError('invalid foundations model tensor')
-            p.copy_(value)
-            if state.step:
-                slots={}
-                for slot in ('step','exp_avg','exp_avg_sq'):
-                    value=tensors['optimizer.'+name+'.'+slot];_slot(value,p,slot,state.step)
-                    slots[slot]=value.clone()
-                state.optimizer.state[p]=slots
-    progress(state)
-    if model_identity(state.model)!=r['model_identity']:raise ContractError('foundations model identity mismatch')
-    return state
+    return restore_tensors(state,payload,r['model_identity'])

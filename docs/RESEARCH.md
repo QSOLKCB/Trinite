@@ -137,3 +137,42 @@ sources/tool versions, assumptions and the correspondence to the executable
 implementation; a proof of an abstract model cannot be labelled a proof of the
 whole Python/PyTorch system. Proof completion, independent stress evidence and
 empirical evaluation remain distinct release gates.
+
+
+## QEC geometry, ETQ and UFT-ID intake
+
+Requested by Trent during budget development, alongside [game theory](GAME-THEORY.md).
+These research directions do not change the frozen comparison, foundations,
+convergence or budget experiments, and do not admit external text for training.
+
+The reviewed QEC source remains [v170.1.0](https://github.com/QSOLKCB/QEC/tree/32fdf9c88f4ac1b873c8acc4d3d54c50f87d6e0a).
+Its [qutrit contract](https://github.com/QSOLKCB/QEC/blob/32fdf9c88f4ac1b873c8acc4d3d54c50f87d6e0a/docs/QUTRIT_HARMONIC_QEC.md)
+defines errors/stabilizers over GF(3), symplectic syndrome products, exact
+bounded correction, harmonic H1/H2 redundant state reads and state-dark H3.
+ETQ-303 maps a check and syndrome symbol to a typed address. E8 is explicitly
+outside that correction path until algebra preservation or a scoped held-out
+decoder benefit is demonstrated. Existing Trinite QEC labels are numeric
+syndrome/correction tasks; they do not implement all harmonic/ETQ contracts.
+
+| Direction | Proposed useful increment | Required boundary / control |
+| --- | --- | --- |
+| Exact QEC algebra | Small syndrome, commutation, correction-radius and logical-equivalence tasks | Independently enumerate finite labels; distinguish qudit algebra from neural weight codes; preserve error/code families |
+| Harmonic/ETQ observation | Exact symbol-to-phase-index and check/syndrome-to-address tasks; reject disagreeing reads and dark-channel misuse | Pin the actual ETQ record and mappings; preserve exact algebra, ambiguity and failure behavior; no physical protection claim |
+| Geometric decoder features | Compare exact reference decoder, frozen geometric-feature adapter and shuffled-feature adapter | Preregister noise/errors, baseline, accuracy, failures, costs and held-out families; no automatic E8 correction benefit |
+| Representation analysis | Detached neural captures on exact algebra tasks after learning gates pass | Pair task correctness with native geometry and shuffled/Rademacher controls; separate quantum-state geometry from hidden-state coordinates |
+| Finite adversarial game | Decoder actions versus a bounded error/noise adversary with exact payoff costs | Independent small-game equilibrium/minimax baseline; fixed information and budgets; assess robustness rather than assume game-theory advantage |
+| UFT-ID formal contracts | Inspect the Lean observation specification, then select a narrow invariant/receipt correspondence target | Re-run pinned proof build, list axioms/trusted base and unresolved holes, map exact claims to implementation; no transfer of proofs to model reasoning |
+
+Requested archival references:
+
+- ETQ record: [DOI 10.5281/zenodo.21404223](https://doi.org/10.5281/zenodo.21404223).
+- Slade, T. (2026). *UFT-ID 3.0: Lean 4 Observation Formalization and Reproducible Scholarly Archive*
+  (Version 3.0.0) [Computer software]. [DOI 10.5281/zenodo.22108865](https://doi.org/10.5281/zenodo.22108865).
+
+The UFT-ID citation/title above is supplied by Trent. Both requested Zenodo
+landing/API records were unavailable through research retrieval in this pass;
+artifact contents, licenses, checksums and proof-build outcomes remain **unreviewed**.
+They are recorded for follow-on acquisition, not imported, pinned implementations
+or admitted training data. Do not substitute QEC's older ETQ/UFT-ID references
+for these requested records. Before adaptation, retrieve these exact versions,
+bind their files/license/toolchain and inspect the actual mappings/specifications.

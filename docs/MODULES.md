@@ -86,3 +86,18 @@ numerical loop, shared safe checkpoints and closed observation. Its elected
 training-only data view uses train examples for every numerical diagnostic.
 `scripts/run_convergence.py` owns freeze, fixed fresh workers and read-only review;
 there is no held-out stage. The original modules and protocols remain unchanged.
+
+
+## Implemented budget development and game corpus
+
+`budget_plan.py` owns the explicit larger development resource bounds;
+`budget_checkpoint.py` owns its source/request/train-only checkpoint profile;
+`budget.py` composes admitted foundations data, native updates, milestone scoring
+and closed observation. The existing comparison checkpoint module owns the
+shared closed tensor reader, used by comparison, foundations and budget profiles.
+No numerical model/update implementation is duplicated.
+
+`game_data.py` and `game_oracle.py` are standard-library numeric admission/oracle
+modules. Neither can import a model, observer or network code. The game corpus
+is prepared for a later frozen training increment and is absent from budget
+requests/inputs. Boundary tests declare these dependencies explicitly.

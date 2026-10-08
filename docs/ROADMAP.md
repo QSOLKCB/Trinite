@@ -146,3 +146,26 @@ fold gate. The next increment needs a separately frozen training budget/schedule
 or curriculum decision before another learning/evaluation protocol. Complete
 counts, failures and retrieval instructions are in [CONVERGENCE.md](CONVERGENCE.md).
 Held-out scoring and Phase 5 remain blocked.
+
+
+## Training budget development and game-theory curriculum
+
+The next training-only budget increment is implemented in [BUDGET.md](BUDGET.md)
+under its separately frozen [protocol](BUDGET-PROTOCOL.md): nine dense cells,
+constant 0.001 and four times the prior updates, with replayable checkpoints at
+every milestone. Held-out evaluation, format selection and Phase 5 remain gated.
+
+Trent also requested game theory. The introductory [exact numeric pack](GAME-THEORY.md)
+and independent oracle are implemented; teaching/training is a separate pending
+curriculum protocol. Progress from payoff comparison and best responses through
+strict dominance and pure Nash equilibria, then independently checked rational
+mixed-strategy/minimax tasks and bounded repeated games. Keep symmetry-related
+games in one split family and retain ties/no-pure-equilibrium cases. A claim of
+strategic advantage requires scoped, fresh evaluation and comparator evidence.
+
+QEC geometry, ETQ and UFT-ID 3.0 are recorded in [RESEARCH.md](RESEARCH.md#qec-geometry-etq-and-uft-id-intake).
+Exact algebra/invariant tasks can precede a geometry-feature experiment after
+learning succeeds. E8 features, harmonic observation, neural representations,
+finite decoder games and physical quantum behavior require separate contracts
+and evidence. Lean proofs of an observation specification do not verify a neural
+model or the Python implementation automatically.

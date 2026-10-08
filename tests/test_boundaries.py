@@ -33,6 +33,12 @@ ALLOWED = {
                     "foundations_checkpoint", "comparison", "training", "tokenizer", "observation"},
     "convergence": {"contracts", "foundations_training", "foundations_plan", "foundations_data",
                     "foundations_checkpoint", "foundations", "training", "observation"},
+    "game_oracle": {"contracts"},
+    "game_data": {"contracts", "game_oracle", "tokenizer"},
+    "budget_plan": {"contracts", "foundations_plan"},
+    "budget_checkpoint": {"contracts", "comparison_checkpoint", "training", "budget_plan", "budget", "foundations_data"},
+    "budget": {"contracts", "foundations_training", "budget_plan", "foundations_data",
+               "budget_checkpoint", "convergence", "foundations", "training", "observation"},
     "__main__": {"cli"}, "__init__": set(),
 }
 
