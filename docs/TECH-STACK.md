@@ -1,6 +1,6 @@
 # Tech stack
 
-Status: selected design; exact package versions and a compatible lock are a Phase 1 implementation gate.
+Status: Phase 1 runtime/tests use only Python's standard library. requirements.lock records the empty runtime dependency set; optional packaging uses setuptools==84.0.0, pinned in pyproject.toml. Python 3.11 is the reference minor; CPU CI also checks 3.12 and 3.13. Exact interpreter/platform details belong in each execution receipt, not an assertion that all environments are identical. PyTorch, NumPy, safetensors, and the external adapters below remain future dependencies and will be locked when introduced.
 
 | Concern | Choice | Reason / boundary |
 | --- | --- | --- |
@@ -35,4 +35,4 @@ A fine-tuned upstream pretrained model may be an explicitly labelled comparator.
 | [CPU BitNet infrastructure, arXiv:2410.16144](https://arxiv.org/abs/2410.16144) | Specialized CPU kernels as a later candidate, subject to compatibility |
 | [QSOL-GEO-REASON at reviewed revision](https://github.com/QSOLKCB/QSOL-GEO-REASON/tree/e770f585bf3136b47a657772156116d5f02b1e77) | Geometry contracts and evidence limits |
 
-Sources are prior art and engineering references, not Trinite results. API/version claims must be rechecked when the first dependency lock is produced. No dependency is installed or introduced by this PR.
+Sources are prior art and engineering references, not Trinite results. API/version claims must be rechecked when the corresponding implementation dependency is introduced. No model/training dependency is imported or installed by Phase 1 CPU conformance.

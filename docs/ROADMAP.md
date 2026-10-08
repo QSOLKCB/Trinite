@@ -1,6 +1,6 @@
 # Roadmap
 
-All executable phases are pending. Phase 0 is delivered by the documentation foundation PR and completes only after review/merge. Phase numbers describe work order, not published version tags.
+Phase 0 is merged. Phase 1 foundation implementation and local conformance are complete in the current PR; merge and the PR's remote CPU CI results remain review gates. Phases 2–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md) for evidence and limits.
 
 | Phase | Deliverable | Completion gate |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ The Phase 3 observer gate uses the exact revision and acceptance checks in [PROV
 
 ## Next PR
 
-Implement Phase 1 only: package/configuration contracts, byte tokenizer with special tokens/spans, a tiny independently verified formal generator, deterministic family-level splits, and CPU conformance CI. Keep all fixtures within DATA admission and all modules within MODULES boundaries. Do not begin long training or a geometry loss during foundation work.
+Implement Phase 2 only: the dense/ternary reference decoder, quantizer and surrogate-gradient checks, causal/padding masks, configuration-to-tensor inventory, and bounded detached inspection. Introduce and lock the CPU PyTorch dependencies at that point. Verify the declared 1,247,232-parameter reference architecture against actual tensors. Do not begin long training, geometric losses, or PROVENANCE integration during model-conformance work.
 
 Each phase should be a reviewable increment with stated requirements, completed checks, and unresolved gates. A software fixture does not close an empirical milestone. “Implemented” and “measured” are separate statuses.
 

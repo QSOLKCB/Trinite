@@ -1,6 +1,18 @@
 # Data contract
 
-Status: admission and curation plan. No dataset is admitted by this PR.
+Status: Phase 1 implements a narrow admission policy for numeric modular-addition facts and two minimal symbolic carriers. The 48 retained examples are software-conformance fixtures only; broader datasets still require their own admission evidence.
+
+## Phase 1 admitted fixture
+
+The source is 24 numeric triples over moduli 2–9: (0, 0), (0, modulus-1), and (1, 1) for each modulus. The generator renders each triple as infix or labelled symbols and emits a numeric answer. No scraped text, prose corpus, teacher output, or external file is consumed.
+
+The built-in admission record identifies the exact formal source, symbolic scope, rights basis (numeric mathematical facts with minimal symbolic rendering), automated policy audit, review date, and limitation. This is not a human legal certification or a blanket exemption for synthetic data. Generator software retains the repository's MPL-2.0 license; the numerical fixture is not admitted merely because that software is licensed.
+
+The cyclic-counter generator and independent modulo-based verifier use different procedures. A separate prompt parser checks that the rendered operands/modulus match the formal item. The audit recomputes these checks, tokenization, source receipts, admission, and split membership; self-reported hashes and a passed label alone cannot certify a modified item.
+
+Families are whole moduli, including every selected operand pair and both carriers. A SHA-256 rank over policy/seed/family identity assigns six families to train, one to validation, and one to test: 36/6/6 examples. No item- or carrier-level random split is used. Formal problems are deduplicated once, then deliberately retained as labelled carrier variants in the same family. Exact text duplicates are forbidden.
+
+This fixture is fully visible and used for software checks, so its test split must not be treated as a fresh confirmatory reasoning benchmark. Later model evaluation needs its own frozen held-out families and exposure/tuning controls. Changing source code or split seed produces a new generator/dataset/manifest identity rather than preserving old evidence.
 
 ## Strict admission
 

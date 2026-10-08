@@ -2,7 +2,7 @@
 
 Trinite investigates whether a small, fully inspectable model can combine ternary linear weights with controlled geometric reasoning experiments and practical CPU inference.
 
-The current repository contains the plan and these contracts. All modules, commands, manifests, and release artifacts described below are **planned** unless explicitly marked implemented. This documentation PR adds no executable code, dependencies, workflows, model weights, or training data.
+Phase 1 implements the contracts/configuration, tokenizer, data, and CLI foundation modules, a frozen 48-example symbolic conformance fixture, and bounded CPU CI. Model, training, inference, geometry, and PROVENANCE integration remain planned. The fixture validates software; it is not a held-out capability benchmark or a training result.
 
 ## Reading map
 
@@ -20,6 +20,8 @@ The current repository contains the plan and these contracts. All modules, comma
 | [PROVENANCE.md](PROVENANCE.md) | Observation boundary and evidence requirements |
 | [ROADMAP.md](ROADMAP.md) | Ordered implementation phases and completion gates |
 | [INSTRUCTIONS.md](INSTRUCTIONS.md) | Contributor and implementing-agent workflow |
+| [GETTING_STARTED.md](GETTING_STARTED.md) | Runnable offline Phase 1 commands and artifacts |
+| [PHASE-1.md](PHASE-1.md) | Implemented contracts, conformance evidence, and remaining gates |
 
 ## Source and contract precedence
 

@@ -1,0 +1,3 @@
+# Phase 1 runtime and test dependency lock: empty (Python standard library only).
+# Optional wheel/editable builds use the exact backend pinned in pyproject.toml.
+# Model/training dependencies are introduced and locked in Phase 2.
