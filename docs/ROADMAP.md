@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 0–4 are merged. The current detour applies OPT-guided exact reuse and CI orchestration improvements, with independent equivalence checks and scoped timing evidence in [OPTIMIZATION.md](OPTIMIZATION.md). Phase 5 remains the next research phase; fresh confirmatory evaluation and independent replication remain empirical gates. Phases 5–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md), [PHASE-2.md](PHASE-2.md), [PHASE-3.md](PHASE-3.md), and [PHASE-4.md](PHASE-4.md) for evidence and limits.
+Phases 0–4 are merged. The merged OPT detour applies OPT-guided exact reuse and CI orchestration improvements, with independent equivalence checks and scoped timing evidence in [OPTIMIZATION.md](OPTIMIZATION.md). The [three-lane/QEC detour in PR #7](https://github.com/QSOLKCB/Trinite/pull/7) is under review. A separately frozen learning-adequacy increment precedes Phase 5; fresh confirmatory evaluation and independent replication remain empirical gates. Phases 5–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md), [PHASE-2.md](PHASE-2.md), [PHASE-3.md](PHASE-3.md), and [PHASE-4.md](PHASE-4.md) for evidence and limits.
 
 | Phase | Deliverable | Completion gate |
 | --- | --- | --- |
@@ -17,9 +17,9 @@ Phases 0–4 are merged. The current detour applies OPT-guided exact reuse and C
 
 The Phase 3 observer gate uses the exact revision and acceptance checks in [PROVENANCE.md](PROVENANCE.md). An unavailable or incompatible upstream contract blocks that integration and Phase 3 completion; it must not be replaced with an unverified local schema. Native training performed while the observer gate is blocked remains explicitly unintegrated.
 
-## Next PR
+## Next increments
 
-After this optimization detour merges, scope Phase 5's controlled intervention: freeze the differentiable objective and acceptable quality/cost margins, then evaluate matched dense/ternary geometry-off/on lanes and auxiliary-loss controls. The first Phase 4 contrasts are negative, and reversal of both paths is an orientation-invariance diagnostic; neither supplies evidence of a reasoning benefit. Any revised order-scrambling or confirmatory observation needs a new protocol frozen before its target outcomes. Geometric loss remains zero until that reviewed increment. Curriculum intake still requires a separate source-admission and evaluation/exposure increment; no wholesale repository import.
+Finish the comparison detour's correctness and evidence gates, then implement the separately frozen learning-adequacy increment below. Once that gate succeeds, scope Phase 5's controlled intervention: freeze the differentiable objective and acceptable quality/cost margins, then evaluate matched dense/ternary geometry-off/on lanes and auxiliary-loss controls. The first Phase 4 contrasts are negative, and reversal of both paths is an orientation-invariance diagnostic; neither supplies evidence of a reasoning benefit. Any revised order-scrambling or confirmatory observation needs a new protocol frozen before its target outcomes. Geometric loss remains zero until that reviewed increment. Curriculum intake still requires a separate source-admission and evaluation/exposure increment; no wholesale repository import.
 
 Each phase should be a reviewable increment with stated requirements, completed checks, and unresolved gates. A software fixture does not close an empirical milestone. “Implemented” and “measured” are separate statuses.
 
@@ -43,3 +43,29 @@ The authorised data-policy addition is **Trent's own material explicitly approve
 Each source must be selected at file/record level rather than dumped wholesale. Maintain separate training, validation, and fresh confirmatory evaluation families; benchmarks used for training or tuning cannot also support an uncontaminated generalisation claim. QSOL-SUBSTRATE mutable facts should retain source/date context rather than becoming timeless memorised assertions.
 
 At the initial roughly 1.25M parameter tier, target narrow completion, classification, and transformation tasks. Establish reproducible learning and held-out behavior before broader language training, larger parameter tiers, or the conditional 0.5B goal. Curriculum acquisition requires a separately reviewed training/data increment after this Phase 3 conformance gate; expansion remains conditional in Phase 8.
+
+## Repository-informed learning-adequacy increment
+
+Trent requested intake of the QSOLKCB scan on 2026-10-09. Candidate revisions,
+concrete tasks, source boundaries and evaluation limits are recorded in
+[RESEARCH.md](RESEARCH.md#qsolkcb-repository-intake-research). This is a planned
+increment before Phase 5, with corpus admission, implementation and measurement
+pending. It does not change the frozen comparison experiment or admit a
+repository wholesale.
+
+| Order | Proposed addition | Completion gate |
+| --- | --- | --- |
+| 1 — Short foundations | HERESY-API arithmetic/fraction normalization; CONSTRAINT-SHIFT count/sum/squares; LATTICE address parsing, role mapping and traversal | File-level admission; new bounded examples; independently checked labels; semantic-family splits; frozen train and held-out exact-answer/EOS learning gates |
+| 2 — Structure and errors | QSOL-MACH typed-contract classification and the generated YAML stress corpus; RUNE rounding/overflow tasks | Frozen error precedence, parser/numeric rules and limits; invalid-input coverage; related valid/invalid/repair examples grouped |
+| 3 — Exact linear algebra | Small vector/matrix operations, E8 finite integer transformations and a narrow SONIFICATION rational/polynomial subset; TFT as a topic reference | Independent exact oracles; orbit/transformation grouping; measured learning before increasing task length or model size; approximate float diagnostics kept separate |
+| 4 — Epistemic/context assessment | Fresh synthetic QSOL-ARK and QSOL-SEMANTIC-RELAY task families alongside QSOL-SUBSTRATE; later WHOAMI Gauntlet-style assessment | Evaluation answer keys excluded from training; real/absent/corrupt-context controls; unknown/contradictory evidence scored explicitly; visible donor fixtures remain conformance references |
+| Separate engineering gate | Pinned PROVENANCE research-manifest integration; RUNE CPU export/resource patterns in Phase 6 | Upstream canonical/schema conformance and retained source/adaptation evidence; exported numerical parity and measured resources; no inferred truth, rights certification or speedup |
+
+First establish useful learning on the short pack with an explicit preregistered
+budget and thresholds. Then compare dense, ternary and four-state lanes using
+matched inputs, initialization and training budgets, retaining all failures.
+The thresholds and budget are not selected by this documentation update.
+Preserve the initial null/inconclusive comparison and freeze a new request for
+changed sources; changed tasks or scientific settings require a separately frozen
+protocol. Keep Phase 5 intervention and larger-tier expansion conditional on
+these measured gates.
