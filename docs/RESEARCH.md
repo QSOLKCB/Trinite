@@ -120,3 +120,20 @@ training-only counts and evidence. Some quantized training successes neither
 resolve the original ternary conclusion nor establish a comparative advantage.
 A new training-only convergence/stability increment precedes any fresh frozen
 evaluation or geometry intervention.
+
+## Stable-candidate verification and access
+
+Trent's post-PR #8 additions are scheduled at the tail end of
+[ROADMAP.md](ROADMAP.md#tail-end-reproduction-verification-and-distribution):
+CPU notebooks for Colab Free and Kaggle, a qBraid stress-test handoff,
+Hugging Face distribution after stability, and formal software verification
+before launch. [QBRAID.md](QBRAID.md) defines the initial execution/evidence
+boundaries. None changes the blocked learning result or admits additional data.
+
+Use Lean and Isabelle/HOL to formalize narrow, exact software obligations on a
+stationary candidate. Specify tokenizer, split, quantizer, checkpoint, archive
+and gate properties independently of empirical learning claims. Publish proof
+sources/tool versions, assumptions and the correspondence to the executable
+implementation; a proof of an abstract model cannot be labelled a proof of the
+whole Python/PyTorch system. Proof completion, independent stress evidence and
+empirical evaluation remain distinct release gates.

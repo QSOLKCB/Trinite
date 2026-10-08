@@ -40,3 +40,7 @@ The current user instruction controls task scope. Within this plan, INVARIANTS d
 The phrase “fully open” is a release goal covering source, configuration, tokenizer, data lineage and admissible data, training procedure, weights, inspection, and evaluation evidence. Publication of weights alone cannot satisfy it. Inspecting activations does not guarantee a complete explanation of the learned computation.
 
 Keep the root limited to the short project README, LICENSE, and eventually necessary build/configuration entrypoints. All narrative documentation belongs in docs/; the logo is a documentation asset in docs/assets/. Planned source layout is described in MODULES; no empty module scaffolding is introduced now.
+
+Tail-end reproduction, formal verification and distribution plans are in
+[ROADMAP.md](ROADMAP.md#tail-end-reproduction-verification-and-distribution).
+The initial pre-launch agent handoff is [QBRAID.md](QBRAID.md).

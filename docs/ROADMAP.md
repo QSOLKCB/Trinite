@@ -13,7 +13,7 @@ Phases 0–4 are merged. The merged OPT detour applies exact reuse and CI orches
 | 6 — CPU export | Packed format and offline importer/inference/inspection | Invalid-input rejection; code/logit/token/capture parity; measured CPU resources |
 | 7 — Reproduction and edge evidence | Repeated runs, at least one measured laptop and one capable SBC lane | Scoped device reports and replay outcomes; no universal hardware claim |
 | 8 — Conditional expansion | Larger tier and optional Unsloth/native-backend experiments | Earlier results justify resource spend; compatibility, exposure, budgets, and parity frozen |
-| 9 — Release and optional formal layer | Full source/data/weights/protocol/evidence inventory, archive; focused exact proofs if useful | Full-open checklist satisfied; artifact verification; stationary release target before formalization |
+| 9 — Release readiness and formal verification | Full source/data/weights/protocol/evidence inventory; multi-prover verification of a stable candidate; distribution and archive | Full-open checklist; scoped Lean and Isabelle/HOL proofs with implementation correspondence; pre-launch stress reports; verified publication inventory |
 
 The Phase 3 observer gate uses the exact revision and acceptance checks in [PROVENANCE.md](PROVENANCE.md). An unavailable or incompatible upstream contract blocks that integration and Phase 3 completion; it must not be replaced with an unverified local schema. Native training performed while the observer gate is blocked remains explicitly unintegrated.
 
@@ -27,7 +27,7 @@ After the foundations learning-adequacy gate is measured and passes under a sepa
 
 Each phase should be a reviewable increment with stated requirements, completed checks, and unresolved gates. A software fixture does not close an empirical milestone. “Implemented” and “measured” are separate statuses.
 
-Scaling is conditional: first prove the data, semantics, and measurement procedure, then decide whether a larger parameter tier is worth training. The initial 0.5B target is not a prerequisite or an automatic promise. Optional formal verification comes after a stable implementation target; it cannot prove language-model reasoning or substitute for empirical evaluation.
+Scaling is conditional: first prove the data, semantics, and measurement procedure, then decide whether a larger parameter tier is worth training. The initial 0.5B target is not a prerequisite or an automatic promise. Formal verification comes after a stable implementation target and before launch; it cannot prove language-model reasoning or substitute for empirical evaluation.
 
 ## Planned training corpus and curriculum
 
@@ -93,3 +93,41 @@ is training-only convergence/stability development followed by a separately
 frozen learning protocol; Phase 5, structure/algebra expansion and scaling
 remain conditional. Preserve this blocked result alongside the earlier null
 comparison. [FOUNDATIONS.md](FOUNDATIONS.md) retains the counts and evidence.
+
+## Tail-end reproduction, verification and distribution
+
+Requested by Trent after merging PR #8. These are planned deliverables, not
+completed integrations or evidence that the failed learning gate passed.
+
+| Placement | Deliverable | Completion gate |
+| --- | --- | --- |
+| Phase 7 — Accessible reproduction | Google Colab Free and Kaggle CPU notebooks; no GPU requirement | Commit-pinned source and hash-locked CPU dependencies; small inspect/audit/replay examples; clean-session execution on both providers; explicit environment differences, resource limits and downloadable evidence |
+| Phase 7 / pre-launch — Independent stress | qBraid agent handoff in [QBRAID.md](QBRAID.md), updated for the stable candidate | Bounded CPU jobs, pinned agent/runtime/source, negative cases, complete failure retention and independent reproduction; human review of findings |
+| Phase 9 — Formal software verification | Lean plus Isabelle/HOL for selected exact software contracts | Fixed release-candidate revision, explicit specifications/assumptions/trusted bases, checked proofs without unresolved proof holes, and tests or translation connecting specifications to implementation |
+| Phase 9 — Hugging Face | Stable weights and model card, with optional permitted promotion | Owner chooses namespace/visibility; rights and current platform terms reviewed; safe tensors, model/config/tokenizer/source identities, reproduction instructions and honest limitations; verified download parity before public announcement |
+| Phase 9 — README access | Centered notebook links and real version, CI and DOI badges directly below the logo | Targets actually exist and resolve; CI describes the named workflow, version names a real release, DOI names its deposited immutable archive; no placeholder success or DOI badges |
+
+The notebooks use existing modules and bounded commands, rather than a second
+training implementation. Keep interactive CPU demos small enough to recover
+from interrupted sessions; full experimental matrices are explicit separate
+runs. Colab's free resources are variable and not guaranteed. Check current
+Kaggle settings/quotas at execution; record what actually ran. Do not use free
+notebook hosts as persistent model-serving or background agent infrastructure.
+
+Formal scope starts with tokenizer round trips, family split separation,
+quantizer code/threshold laws, checkpoint consistency, archive path collision
+rejection and evidence-gate state transitions. Lean and Isabelle/HOL provide two
+proof environments; agreement on a specification alone does not verify Python,
+PyTorch, filesystem behavior or floating-point kernels. Require a concrete
+implementation correspondence argument and disclose those remaining trusted
+components. TLA+ may supplement the gate/orchestration state machine if useful;
+Rocq, F* and Why3 remain alternatives if a specific implementation boundary
+justifies them. Avoid multiplying tools without a proof obligation.
+
+Sources: [Colab FAQ](https://research.google.com/colaboratory/faq.html),
+[Kaggle notebooks](https://www.kaggle.com/docs/notebooks),
+[qBraid Lab](https://qbraid.com/lab),
+[Hugging Face model cards](https://huggingface.co/docs/hub/model-cards),
+[Hub terms](https://huggingface.co/terms-of-service),
+[Lean theorem proving](https://lean-lang.org/theorem_proving_in_lean4/) and
+[Isabelle overview](https://isabelle.in.tum.de/overview.html).
