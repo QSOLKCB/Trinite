@@ -55,3 +55,7 @@ Pull requests run bounded CPU contract, upstream, model and tiny training suites
 GPU training requires an explicitly provisioned compatible runner; a workflow file does not supply a GPU. Hosted CPU CI must not be presented as a full model-training farm. Untrusted pull-request code must not run with secrets or unrestricted access on a privileged/self-hosted GPU runner. No automatic long training on each push.
 
 Retain logs, configs, environment, admitted-data receipts, final/elected checkpoints, and failure/timeout records. GitHub artifact expiration is not archival retention; release evidence must be exported to the chosen durable destination and hash-verified. Selection rules and discarded-run counts remain visible.
+
+## Separate comparison detour
+
+The [frozen three-lane protocol](COMPARISON-PROTOCOL.md) adds the opt-in four-state codebook and exact numeric QEC tasks. The original ternary algorithm and native 36/6 fixture contract are preserved. Both paths use one authoritative optimiser/update loop; comparison has admitted variable-length schedules and its own safe snapshot schema. Native/checkpoint source fingerprints remain strict, so older native checkpoints replay with their original tree. No geometry loss or quantum execution is introduced.

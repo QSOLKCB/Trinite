@@ -35,6 +35,8 @@ The first ternary path materializes scaled floating-point weights in PyTorch. Th
 
 ## System boundaries
 
+An opt-in classical four-state lane is implemented in the [comparison detour](COMPARISON.md), preserving dense/ternary numerical paths. Inspection identifies its actual quantizer and {-3,-1,+1,+3} occupancy. ModelConfig's historical quantizer field remains the ternary identifier; the explicit lane selects the additional frozen codebook. Four-state has the same matrix scope/floating-point exceptions and establishes no packed savings.
+
 Data admission and generation produce hash-bound examples and split manifests. The tokenizer produces IDs and source spans. Model/training consume these immutable artifacts. Inspection emits selected tensors and activations. Geometry analyzes capture artifacts; evaluation scores outputs. Artifact exports supply CPU inference. The observer records identities and evidence at each boundary.
 
 Geometric losses default to disabled. The first geometry work measures controlled trajectories. A training intervention needs a separate frozen protocol and ablations. QSOL-GEO-REASON is the measurement reference; its current state does not establish that geometry training improves this model.

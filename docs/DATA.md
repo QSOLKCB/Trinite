@@ -18,6 +18,8 @@ validate_admission validates only this frozen Phase 1 source policy, not arbitra
 
 ## Strict admission
 
+The separately authorised [comparison detour](COMPARISON.md) adds numeric QEC syndrome/correction fixtures through comparison_data.py. Source-specific admissions record commissioned generator authorship, generation/independent-verification procedures, exact source/QEC pins, supporting numeric evidence, dataset identities, symbolic scope, reviewer/date, outcome and limits. This uses the existing generated-formal-facts category; it does not relax the policy or import QEC prose. All tasks/carriers and local error variants stay in support-site families. Oracle software retains its own attributed license. Full regeneration rejects contradictory admissions, changed evidence, labels, prompts and splits.
+
 The original “No Copyrighted Data” requirement remains strict. A permissive license permits use but does not remove copyright, so a permissively licensed copyrighted corpus is not admitted under this plan. Any relaxation would be an explicit project-contract change.
 
 Start with generator-defined formal facts, arithmetic, truth tables, graph relations, and templated deductions whose content and provenance can be audited. Independently generated data still needs a rights assessment; “synthetic” is not an exemption. Public-domain material needs an evidenced public-domain basis for the applicable use/jurisdiction. An explicit dedication is evaluated and recorded rather than treated as a global guarantee.

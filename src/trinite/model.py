@@ -7,7 +7,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from .contracts import ContractError, ModelConfig, integer
-from .quantizer import quantize, require_float_tensor
+from .quantizer import quantize, quantize_four, require_float_tensor
 
 MODEL_ID = "trinite.decoder.v0"
 MAX_PARAMETERS = 5_000_000
@@ -59,7 +59,8 @@ class Linear(nn.Module):
         self.lane = lane
 
     def forward(self, value: torch.Tensor) -> torch.Tensor:
-        weight = quantize(self.weight).weight if self.lane == "ternary" else self.weight
+        weight = (quantize(self.weight).weight if self.lane == "ternary" else
+                  quantize_four(self.weight).weight if self.lane == "four-state" else self.weight)
         return F.linear(value, weight)
 
 
@@ -109,8 +110,8 @@ class Decoder(nn.Module):
         super().__init__()
         if not isinstance(config, ModelConfig):
             raise ContractError("decoder requires a validated ModelConfig")
-        if type(lane) is not str or lane not in ("dense", "ternary"):
-            raise ContractError("decoder lane must be dense or ternary")
+        if type(lane) is not str or lane not in ("dense", "ternary", "four-state"):
+            raise ContractError("decoder lane must be dense, ternary or four-state")
         integer(seed, "initialization seed", 0, 2**32-1)
         integer(parameter_budget, "parameter budget", 1, MAX_PARAMETERS)
         if config.parameter_count > parameter_budget:
@@ -132,7 +133,7 @@ class Decoder(nn.Module):
     def validate_state(self) -> None:
         if self.config != self._construction_config:
             raise ContractError("decoder config must match its constructed tensors/operations")
-        if self.lane not in ("dense", "ternary"):
+        if self.lane not in ("dense", "ternary", "four-state"):
             raise ContractError("unsupported decoder lane")
         parameters = dict(self.named_parameters())
         if set(parameters) != set(self._parameter_shapes):

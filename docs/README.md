@@ -2,7 +2,7 @@
 
 Trinite investigates whether a small, fully inspectable model can combine ternary linear weights with controlled geometric reasoning experiments and practical CPU inference.
 
-Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/ternary CPU models, inspection, native training, safe replay, detached prompt capture, pinned geometry analysis, and a pinned PROVENANCE observer. Tiny visible-fixture learning and geometry observations are conformance/descriptive evidence. Generation/export, geometry intervention, and fresh capability evaluation remain planned.
+Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/ternary CPU models, inspection, native training, safe replay, detached prompt capture, pinned geometry analysis, and a pinned PROVENANCE observer. Tiny visible-fixture learning and geometry observations are conformance/descriptive evidence. The three-lane/QEC detour adds bounded greedy generation and a complete initial comparison; all lanes scored zero held-out complete answers, leaving format selection inconclusive. General generation/export, geometry intervention, and fresh capability evaluation remain planned.
 
 ## Reading map
 
@@ -28,6 +28,8 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [GEOMETRY.md](GEOMETRY.md) | Capture, numerical adapter, request binding, and artifact contracts |
 | [PHASE-4.md](PHASE-4.md) | Geometry conformance, observed contrasts, and control limitations |
 | [OPTIMIZATION.md](OPTIMIZATION.md) | Exact reuse, CI coverage, local timing evidence and rollback contracts |
+| [COMPARISON-PROTOCOL.md](COMPARISON-PROTOCOL.md) | Frozen three-lane / exact QEC task experiment |
+| [COMPARISON.md](COMPARISON.md) | Matrix commands, task admission, results and scientific limits |
 
 ## Source and contract precedence
 

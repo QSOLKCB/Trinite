@@ -28,7 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     audit.add_argument("directory", type=Path)
     inspect = commands.add_parser("inspect-model")
     inspect.add_argument("--config", type=Path)
-    inspect.add_argument("--lane", choices=("dense", "ternary"), default="ternary")
+    inspect.add_argument("--lane", choices=("dense", "ternary", "four-state"), default="ternary")
     inspect.add_argument("--seed", type=int, default=0)
     inspect.add_argument("--text")
     inspect.add_argument("--capture-layer", action="append")
@@ -45,6 +45,16 @@ def main(argv: list[str] | None = None) -> int:
     train.add_argument("--source-revision", default="unreported")
     verify = commands.add_parser("verify-observation")
     verify.add_argument("directory", type=Path)
+    freeze_compare = commands.add_parser('freeze-comparison')
+    freeze_compare.add_argument('output', type=Path)
+    cell = commands.add_parser('comparison-cell')
+    cell.add_argument('output', type=Path)
+    cell.add_argument('--stage', choices=('train', 'evaluate'), required=True)
+    cell.add_argument('--request', type=Path, required=True)
+    cell.add_argument('--request-identity', required=True)
+    cell.add_argument('--workload', choices=('formal', 'qutrit', 'ququart'), required=True)
+    cell.add_argument('--lane', choices=('dense', 'ternary', 'four-state'), required=True)
+    cell.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
     for command in ('freeze-observation', 'measure-observation'):
         geometry = commands.add_parser(command)
         geometry.add_argument('output', type=Path)
@@ -74,6 +84,20 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "verify-observation":
             from .observation import verify_observation
             result = verify_observation(args.directory)
+        elif args.command in ('freeze-comparison', 'comparison-cell'):
+            try:
+                import torch
+                from .comparison import freeze_request, train_cell, evaluate_cell
+            except ImportError as error:
+                raise ContractError('comparison requires the hash-locked CPU dependencies') from error
+            torch.set_num_threads(1)
+            torch.use_deterministic_algorithms(True)
+            if args.command == 'freeze-comparison':
+                result = freeze_request(args.output)
+            else:
+                function = train_cell if args.stage == 'train' else evaluate_cell
+                result = function(args.output, args.workload, args.lane, args.seed,
+                                  args.request, args.request_identity)
         elif args.command in ('freeze-observation', 'measure-observation'):
             try:
                 import torch

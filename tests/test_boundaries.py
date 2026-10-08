@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
     "contracts": set(), "tokenizer": {"contracts"},
     "data": {"contracts", "tokenizer"},
-    "cli": {"contracts", "tokenizer", "data", "model", "inspection", "training", "experiment", "observation", "geometry_run"},
+    "cli": {"contracts", "tokenizer", "data", "model", "inspection", "training", "experiment", "observation", "geometry_run", "comparison"},
     "quantizer": {"contracts"}, "model": {"contracts", "quantizer"},
     "inspection": {"contracts", "model", "quantizer"},
     "training": {"contracts", "data", "inspection", "model", "tokenizer"},
@@ -17,6 +17,12 @@ ALLOWED = {
     "capture": {"contracts", "inspection", "model", "tokenizer"},
     "geometry": {"contracts", "_geo_reference"}, "_geo_reference": set(),
     "geometry_run": {"contracts", "data", "geometry", "observation", "training", "checkpoint", "capture", "inspection"},
+    "qec_source": {"contracts"},
+    "comparison_data": {"contracts", "qec_source", "tokenizer"},
+    "comparison": {"contracts", "comparison_training", "model", "quantizer",
+                   "tokenizer", "inspection", "training", "geometry", "observation", "comparison_checkpoint"},
+    "comparison_training": {"contracts", "data", "comparison_data", "qec_source", "model", "tokenizer", "training"},
+    "comparison_checkpoint": {"contracts", "training", "comparison_training"},
     "__main__": {"cli"}, "__init__": set(),
 }
 
@@ -37,8 +43,9 @@ class BoundaryTests(unittest.TestCase):
                     continue
                 for name in imports:
                     optional = ({"torch"} if path.stem in {
-                        "model", "quantizer", "inspection", "cli", "training", "checkpoint", "capture", "geometry_run"} else set())
+                        "model", "quantizer", "inspection", "cli", "training", "checkpoint", "capture", "geometry_run", "comparison", "comparison_training", "comparison_checkpoint"} else set())
                     if path.stem == "checkpoint": optional |= {"numpy", "safetensors"}
+                    if path.stem == "comparison_checkpoint": optional |= {"safetensors"}
                     if path.stem == "cli": optional |= {"numpy"}
                     if path.stem == "geometry_run": optional |= {"numpy"}
                     if path.stem == "observation": optional |= {"provenance_core", "provenance_verify"}

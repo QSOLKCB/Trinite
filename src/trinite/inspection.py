@@ -9,7 +9,7 @@ import torch
 
 from .contracts import ContractError, identity, integer, json_bytes
 from .model import Decoder, Linear, MODEL_ID
-from .quantizer import quantize, require_float_tensor
+from .quantizer import quantize, quantize_four, require_float_tensor
 
 MAX_INSPECTION_BYTES = 32 * 1024 * 1024
 
@@ -67,9 +67,16 @@ def inventory(model: Decoder, *, max_bytes: int = 8 * 1024 * 1024) -> dict:
                     entry.update(scale_hex=float(value.scale).hex(),
                                  code_identity=tensor_identity(value.codes),
                                  codes={str(i): int((value.codes == i).sum()) for i in (-1, 0, 1)})
+                elif module.lane == "four-state":
+                    value = quantize_four(module.weight)
+                    entry.update(scale_hex=float(value.scale).hex(),
+                                 quantizer="trinite.absmean-half-odd-ste.v1",
+                                 code_identity=tensor_identity(value.codes),
+                                 codes={str(i): int((value.codes == i).sum()) for i in (-3, -1, 1, 3)})
                 linears.append(entry)
     unique = sum(p.numel() for p in model.parameters())
     ternary = sum(e["elements"] for e in linears if e["lane"] == "ternary")
+    four = sum(e["elements"] for e in linears if e["lane"] == "four-state")
     package = Path(__file__).resolve().parent
     source = {name: identity((package/name).read_bytes())
               for name in ("contracts.py", "quantizer.py", "model.py", "inspection.py")}
@@ -80,12 +87,15 @@ def inventory(model: Decoder, *, max_bytes: int = 8 * 1024 * 1024) -> dict:
             "modules": [{"name": name, "type": type(module).__name__}
                         for name, module in model.named_modules()],
             "counts": {"unique_parameters": unique, "ternary_forward_elements": ternary,
-                       "floating_forward_elements": unique-ternary,
+                       "floating_forward_elements": unique-ternary-four,
                        "latent_float32_bytes": unique*4},
             "forward": {"dtype": "float32", "device": "cpu", "attention": "explicit-matmul-softmax",
                         "padding": "nonempty-right-padded-prefix; zero masked states/logits",
                         "gelu": "exact", "rms_epsilon": model.config.rms_epsilon,
                         "quantizer_absmean_reduction": "float64-then-float32-scale"}}
+    if four:
+        core["counts"]["four_state_forward_elements"] = four
+        core["forward"]["four_state_quantizer"] = "trinite.absmean-half-odd-ste.v1"
     return {**core, "inventory_identity": identity(json_bytes(core)),
             "environment": {"python": platform.python_version(), "torch": str(torch.__version__),
                             "platform": platform.platform(), "byte_order": sys.byteorder,

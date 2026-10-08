@@ -23,5 +23,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 trinite = ["provenance-pin.json", "PROVENANCE-LICENSE.txt", "cpu-dependencies.lock",
-           "geometry-pin.json", "geometry-protocol.json", "GEO-LICENSE.txt"]
+           "geometry-pin.json", "geometry-protocol.json", "GEO-LICENSE.txt",
+           "comparison-protocol.json", "qec-pin.json", "QEC-LICENSE.txt"]
 

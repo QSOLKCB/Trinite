@@ -9,7 +9,9 @@
 *.lock text eol=lf
 /src/trinite/PROVENANCE-LICENSE.txt text eol=lf
 /src/trinite/GEO-LICENSE.txt text eol=lf
+/src/trinite/QEC-LICENSE.txt text eol=lf
 *.md text eol=lf
 .gitattributes text eol=lf
 .gitignore text eol=lf
 *.jpeg binary
+*.zip binary
