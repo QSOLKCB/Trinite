@@ -1,0 +1,25 @@
+# Contributor and implementing-agent instructions
+
+Status: project operating plan. This is a documentation file, not a root AGENTS.md automatically applied to future source files. The root README directs contributors here explicitly.
+
+## Before implementing
+
+Read README, INVARIANTS, ARCHITECTURE, MODULES, ROADMAP, and the topic contracts relevant to the change. Inspect the current repository and any actual scoped AGENTS.md before editing. Follow the current user's scope; do not automatically implement later phases.
+
+All narrative documents stay under docs/. Keep the root README short and the repository LICENSE at root. Build/configuration entrypoints may be added when executable implementation needs them. Preserve IDEA verbatim as historical brainstorming; record decisions in the contracts.
+
+## Implementation rules
+
+Use small explicit modules and one authoritative implementation per operation. Honor the dependency direction in MODULES. No service, framework, GPU requirement, native runtime, or plugin registry without an explicit need. CPU execution is the canonical first lane.
+
+Never download or execute remote model code implicitly. Do not admit data because it is available online or permissively licensed. Follow DATA's actual rights policy. Do not seed native training with third-party pretrained weights while describing it as fully native.
+
+Treat geometry as a hypothesis with controls. Keep simulation, software conformance, empirical observation, intervention, proof, and custody verification distinct. Do not import performance claims from BitNet, QSOL-GEO-REASON, PROVENANCE, or upstream models into Trinite's README.
+
+## Verification and reporting
+
+For each change, name the affected contract IDs and run meaningful checks appropriate to those boundaries. Once implemented, the baseline suite is intended to use python -m unittest discover -s tests -v; that command is **not runnable in the documentation-only repository**. No install/train/serve command is advertised as working before its implementation exists.
+
+Documentation changes require relative-link and moved-asset checks plus review for conflicting contracts/status claims. Model changes require forward/gradient/capture checks; exports require importer rejection and parity; data changes require rights, generator correctness, deduplication, and family-split checks. Required numerical tolerances must be frozen before comparing outcomes.
+
+PR descriptions state the concrete behavior, scope, checks actually run, and remaining gates. Update the roadmap only for demonstrated completion. Do not add a green CI badge before that workflow exists. Open reviewable PRs; release/tag/archive actions follow an explicit release task and retained evidence.
