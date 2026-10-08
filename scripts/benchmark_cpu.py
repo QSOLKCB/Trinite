@@ -8,9 +8,23 @@ import sys
 import tempfile
 import time
 
-from trinite.contracts import json_bytes
+from trinite.contracts import identity, json_bytes
 
 ROOT=Path(__file__).resolve().parents[1]
+THREAD_ENV={'OMP_NUM_THREADS':'1','MKL_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1'}
+SCOPE='full required suites on current optimized sources; fresh process per invocation; explicit replay subprocesses retained; excludes dependency acquisition'
+
+
+def result_record(samples, tests, environment, runner_identity):
+    return {'schema':'trinite.cpu-benchmark.v1','repetitions':3,
+            'separate_seconds_hex':[x.hex() for x in samples['separate']],
+            'combined_seconds_hex':[x.hex() for x in samples['combined']],
+            'separate_median_seconds_hex':statistics.median(samples['separate']).hex(),
+            'combined_median_seconds_hex':statistics.median(samples['combined']).hex(),
+            'median_speedup_hex':(statistics.median(samples['separate'])/statistics.median(samples['combined'])).hex(),
+            'test_count':len(tests),'test_ids':tests,'scope':SCOPE,
+            'environment':environment,'runner_source_identity':runner_identity,
+            'process_thread_environment':dict(THREAD_ENV)}
 
 
 def main():
@@ -18,7 +32,8 @@ def main():
     parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
     if args.output.exists():raise ValueError('benchmark output already exists')
-    env=dict(os.environ,PYTHONPATH=str(ROOT/'src'),OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1')
+    env=dict(os.environ,PYTHONPATH=str(ROOT/'src'),**THREAD_ENV)
+    runner_identity=identity((ROOT/'scripts/check_cpu.py').read_bytes())
     samples={'separate':[],'combined':[]}
     with tempfile.TemporaryDirectory() as directory:
         for trial in range(3):
@@ -43,15 +58,9 @@ def main():
     from trinite.training import environment
     import torch
     torch.set_num_threads(1);torch.use_deterministic_algorithms(True)
-    result={'schema':'trinite.cpu-benchmark.v1','repetitions':3,
-            'separate_seconds_hex':[x.hex() for x in samples['separate']],
-            'combined_seconds_hex':[x.hex() for x in samples['combined']],
-            'separate_median_seconds_hex':statistics.median(samples['separate']).hex(),
-            'combined_median_seconds_hex':statistics.median(samples['combined']).hex(),
-            'median_speedup_hex':(statistics.median(samples['separate'])/statistics.median(samples['combined'])).hex(),
-            'test_count':len(tests),'test_ids':tests,
-            'scope':'full suites/current optimized sources; fresh invocation per mode; explicit replay subprocesses retained; acquisition excluded',
-            'environment':environment()}
+    if identity((ROOT/'scripts/check_cpu.py').read_bytes())!=runner_identity:
+        raise AssertionError('CPU runner source changed during characterization')
+    result=result_record(samples,tests,environment(),runner_identity)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     with args.output.open('xb') as out:out.write(json_bytes(result))
 

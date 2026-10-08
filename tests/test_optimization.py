@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from trinite.contracts import ContractError
+from trinite.contracts import ContractError, identity, json_bytes, parse_json
 from trinite.observation import BundleObserver, MAX_BUNDLE_BYTES
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +56,23 @@ class CollectorReuseTests(unittest.TestCase):
             self.assertEqual(b._content,{})
             self.assertEqual(b.retain('x',b'y'),next(iter(b.artifacts)))
             self.assertNotIn(key,b.artifacts)
+
+
+class BenchmarkRecordTests(unittest.TestCase):
+    def test_cpu_generator_reproduces_retained_record_and_runner_binding(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('cpu_benchmark',ROOT/'scripts/benchmark_cpu.py')
+        benchmark=importlib.util.module_from_spec(spec);spec.loader.exec_module(benchmark)
+        raw=(ROOT/'fixtures/performance/cpu-suites.json').read_bytes()
+        retained=parse_json(raw,canonical=True)
+        samples={name:[float.fromhex(x) for x in retained[name+'_seconds_hex']]
+                 for name in ('separate','combined')}
+        generated=benchmark.result_record(samples,retained['test_ids'],retained['environment'],
+                                          identity((ROOT/'scripts/check_cpu.py').read_bytes()))
+        self.assertEqual(json_bytes(generated),raw)
+        changed=benchmark.result_record(samples,retained['test_ids'],retained['environment'],identity(b'changed runner'))
+        self.assertNotEqual(changed['runner_source_identity'],generated['runner_source_identity'])
+        self.assertEqual(changed['process_thread_environment'],retained['process_thread_environment'])
 
 
 if __name__=='__main__':unittest.main()
