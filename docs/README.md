@@ -2,7 +2,7 @@
 
 Trinite investigates whether a small, fully inspectable model can combine ternary linear weights with controlled geometric reasoning experiments and practical CPU inference.
 
-Phases 1–2 implement the offline foundation, a frozen 48-example symbolic fixture, dense/ternary CPU reference decoders, explicit quantization, tensor inspection, detached hidden-state capture, and bounded CPU CI. Training, generation/export, geometry, and PROVENANCE integration remain planned. The fixture validates software; it is not a held-out capability benchmark or a training result.
+Phases 1–3 implement the offline foundation, a frozen symbolic fixture, dense/ternary CPU models, inspection, bounded native training, safe replay, and a pinned PROVENANCE observer. Tiny visible-fixture runs demonstrate learning conformance. Generation/export, geometry, and fresh capability evaluation remain planned.
 
 ## Reading map
 
@@ -23,6 +23,7 @@ Phases 1–2 implement the offline foundation, a frozen 48-example symbolic fixt
 | [GETTING_STARTED.md](GETTING_STARTED.md) | Runnable foundation/model commands, dependency acquisition, and artifacts |
 | [PHASE-1.md](PHASE-1.md) | Foundation conformance evidence and limits |
 | [PHASE-2.md](PHASE-2.md) | Reference-model interfaces, numerical checks, and limits |
+| [PHASE-3.md](PHASE-3.md) | Native-training protocol, replay/observer evidence, and limits |
 
 ## Source and contract precedence
 

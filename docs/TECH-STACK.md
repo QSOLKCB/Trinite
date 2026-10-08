@@ -1,6 +1,6 @@
 # Tech stack
 
-Status: foundation commands/tests remain standard-library only. Phase 2 model commands use optional torch==2.8.0+cpu and numpy==2.3.5; requirements.lock pins the full CPU dependency closure and wheel SHA-256 hashes for Linux x86_64 CPython 3.11/3.12/3.13. This is the demonstrated acquisition/CI scope, not a Windows/ARM package-support claim. Optional isolated project builds retain setuptools==84.0.0 in pyproject.toml; the CPU runtime lock separately pins the setuptools dependency supplied by the Torch index. Exact interpreter/platform details belong in each inventory. safetensors and external adapters remain future dependencies.
+Status: foundation commands/tests remain standard-library only. Phase 2 model commands use optional torch==2.8.0+cpu and numpy==2.3.5; requirements.lock pins the full CPU dependency closure and wheel SHA-256 hashes for Linux x86_64 CPython 3.11/3.12/3.13. This is the demonstrated acquisition/CI scope, not a Windows/ARM package-support claim. Optional isolated project builds retain setuptools==84.0.0 in pyproject.toml; the CPU runtime lock separately pins the setuptools dependency supplied by the Torch index. Exact interpreter/platform details belong in each inventory. Phase 3 adds safetensors==0.6.2, its packaging==25.0 dependency, and a frozen standard-library PROVENANCE source dependency. All acquisition hashes are pinned; [PROVENANCE.md](PROVENANCE.md) names the source/license receipt.
 
 | Concern | Choice | Reason / boundary |
 | --- | --- | --- |

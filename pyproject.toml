@@ -13,10 +13,14 @@ dependencies = []
 
 [project.optional-dependencies]
 model = ["torch==2.8.0+cpu", "numpy==2.3.5"]
+training = ["torch==2.8.0+cpu", "numpy==2.3.5", "safetensors==0.6.2", "packaging==25.0"]
 
 [project.scripts]
 trinite = "trinite.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+trinite = ["provenance-pin.json", "PROVENANCE-LICENSE.txt", "cpu-dependencies.lock"]
 

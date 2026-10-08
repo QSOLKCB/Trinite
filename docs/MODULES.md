@@ -1,6 +1,6 @@
 # Modules
 
-Status: Phases 1–2 implement flat contracts.py, tokenizer.py, data.py, cli.py, model.py, quantizer.py, and inspection.py within src/trinite/. The table describes responsibility boundaries; remaining namespaces are planned. Separate distributions, plugin registries, services, and native extensions must earn their complexity through a measured need.
+Status: Phases 1–3 implement flat contracts.py, tokenizer.py, data.py, cli.py, model.py, quantizer.py, inspection.py, training.py, checkpoint.py, observation.py, and experiment.py within src/trinite/. The table describes responsibility boundaries; remaining namespaces are planned. Separate distributions, plugin registries, services, and native extensions must earn their complexity through a measured need.
 
 | Planned path | Owns | Interface / artifact | Permitted internal dependencies |
 | --- | --- | --- | --- |
@@ -41,3 +41,9 @@ Observation is injected by orchestration through a narrow record(event, artifact
 | .github/workflows/ | Later validation and explicit training orchestration |
 
 Large datasets, captures, checkpoints, and exports belong outside the source tree in explicitly selected artifact locations. Each retained artifact requires an identity and retrieval record; location alone is not identity.
+
+## Implemented Phase 3 composition
+
+training.py owns the pure numerical plan, admitted batches, target loss, AdamW and update loop. checkpoint.py composes that state with bounded safetensors/JSON serialization and validation; it imports training, never observation. experiment.py owns explicit filesystem operations and stage-level observation, including recovery/reporting. observation.py consumes detached byte artifacts and imports the frozen upstream record/verifier packages after checking their source pin; it cannot import Torch, NumPy, RNG modules or model code. CLI selection remains lazy, preserving the standard-library foundation. AST tests enforce these directions.
+
+The unmodified upstream runtime dependency closure lives in src/provenance_core, src/provenance_verify, src/provenance_trust, src/provenance_privacy and src/provenance_transfer. These top-level names preserve upstream imports; they are a frozen dependency, not parallel Trinite implementations. Source identities, acquisition paths and license are listed in [PROVENANCE.md](PROVENANCE.md).

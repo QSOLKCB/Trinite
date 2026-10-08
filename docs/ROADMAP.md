@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 0–1 are merged. Phase 2 reference-model implementation and local conformance are complete in the current PR; merge and the PR's remote CPU CI results remain review gates. Phases 3–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md) and [PHASE-2.md](PHASE-2.md) for evidence and limits.
+Phases 0–2 are merged. Phase 3 native training, safe replay, and the pinned observer are implemented in this PR with local conformance; merge and remote CPU CI remain review gates. Phases 4–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md), [PHASE-2.md](PHASE-2.md), and [PHASE-3.md](PHASE-3.md) for evidence and limits.
 
 | Phase | Deliverable | Completion gate |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ The Phase 3 observer gate uses the exact revision and acceptance checks in [PROV
 
 ## Next PR
 
-Implement Phase 3 only: tiny supervised dense/ternary runs with frozen settings and matched initialization/data order, explicit safe tensor checkpoints and JSON metadata, interrupted/resumed replay, and the pinned PROVENANCE observer adapter. Preserve the acquisition/conformance gate in PROVENANCE.md. Geometric loss remains zero. Curriculum intake requires separate source admission and evaluation/exposure records; no wholesale repository import. Long training and geometry interventions remain later work.
+After Phase 3 merges, implement Phase 4 geometry measurement: capture identities and token spans, synthetic geometric conformance, and a pinned QSOL-GEO-REASON cross-check. Freeze the observational protocol and controls before interpreting model captures. Geometric loss remains zero until Phase 5's reviewed intervention. Curriculum intake requires a separate source-admission and evaluation/exposure increment; no wholesale repository import.
 
 Each phase should be a reviewable increment with stated requirements, completed checks, and unresolved gates. A software fixture does not close an empirical milestone. “Implemented” and “measured” are separate statuses.
 
@@ -27,7 +27,7 @@ Scaling is conditional: first prove the data, semantics, and measurement procedu
 
 ## Planned training corpus and curriculum
 
-Status: curriculum approved by Trent Slade on 2026-10-09; corpus preparation, admission, and training remain pending. Teach short, verified basics first, then introduce curated first-party material and scale only after measured results. This section does not import data or extend the current Phase 2 model-conformance task.
+Status: curriculum approved by Trent Slade on 2026-10-09; corpus preparation, admission, and training remain pending. Teach short, verified basics first, then introduce curated first-party material and scale only after measured results. This section does not import data or extend the current Phase 3 training-conformance task.
 
 | Tier | Source | Training target | Admission / evaluation gate |
 | --- | --- | --- | --- |
@@ -42,4 +42,4 @@ The authorised data-policy addition is **Trent's own material explicitly approve
 
 Each source must be selected at file/record level rather than dumped wholesale. Maintain separate training, validation, and fresh confirmatory evaluation families; benchmarks used for training or tuning cannot also support an uncontaminated generalisation claim. QSOL-SUBSTRATE mutable facts should retain source/date context rather than becoming timeless memorised assertions.
 
-At the initial roughly 1.25M parameter tier, target narrow completion, classification, and transformation tasks. Establish reproducible learning and held-out behavior before broader language training, larger parameter tiers, or the conditional 0.5B goal. Curriculum acquisition begins within reviewed Phase 3 training/data work after the model-conformance gate; expansion remains conditional in Phase 8.
+At the initial roughly 1.25M parameter tier, target narrow completion, classification, and transformation tasks. Establish reproducible learning and held-out behavior before broader language training, larger parameter tiers, or the conditional 0.5B goal. Curriculum acquisition requires a separately reviewed training/data increment after this Phase 3 conformance gate; expansion remains conditional in Phase 8.

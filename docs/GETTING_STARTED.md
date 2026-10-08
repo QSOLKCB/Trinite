@@ -1,6 +1,6 @@
 # Getting started
 
-Foundation commands require Python 3.11 or newer and no runtime/test packages. Phase 2 adds an optional CPU reference model; training and serving remain future work.
+Foundation commands require Python 3.11 or newer and no runtime/test packages. Phase 3 adds optional CPU model/training commands and standard-library evidence verification. Serving remains future work.
 
 From the repository root, run without installing anything:
 
@@ -37,7 +37,7 @@ trinite validate-config configs/reference.json
 python -m unittest discover -s tests -v
 ```
 
-Backend acquisition needs network access or a pre-provisioned wheel. The runtime and source-tree workflow remain offline. requirements.lock has no runtime/test dependencies. The package version 0.0.0 denotes unreleased foundation code; this PR creates no tag or release.
+Backend acquisition needs network access or a pre-provisioned wheel. The runtime and source-tree workflow remain offline. The foundation itself has no runtime/test dependencies; requirements.lock is the optional CPU model/training acquisition lane. The package version 0.0.0 denotes unreleased foundation code; this PR creates no tag or release.
 
 CPU CI runs the standard-library suite, config validation, frozen fixture audit, and exact replay under Python 3.11/3.12/3.13. Actions are pinned to full commit identities; hosted jobs have read-only repository access and a five-minute limit. The separate Phase 2 model jobs acquire hash-locked CPU packages before their offline conformance steps and have a ten-minute limit. All jobs use hosted runners with read-only access, without secrets or self-hosted execution.
 
@@ -74,6 +74,33 @@ with torch.no_grad():
     output = model(ids, mask, capture=CaptureSpec(('final',), (0, 1)))
 print(output.logits.shape, output.captures['final'].shape)
 ```
+
+## Tiny native training and safe resume
+
+After installing the complete CPU lock, run the separate required training and upstream suites explicitly:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests/upstream -v
+PYTHONPATH=src python -m unittest discover -s tests/training -v
+PYTHONPATH=src python -m trinite train /tmp/trinite-dense --config configs/tiny-training.json --dataset fixtures/formal-v1 --lane dense
+PYTHONPATH=src python -m trinite train /tmp/trinite-ternary --config configs/tiny-training.json --dataset fixtures/formal-v1 --lane ternary
+PYTHONPATH=src python -m trinite verify-observation /tmp/trinite-ternary/provenance
+```
+
+Each run uses a new output directory. The default observer is mandatory and pinned; --observer off records explicit unintegrated computation. A successful pause also returns zero; it has compute_outcome=paused. Resume requires the same frozen plan, source, inputs and environment:
+
+```bash
+PYTHONPATH=src python -m trinite train /tmp/trinite-paused --config configs/tiny-training.json --dataset fixtures/formal-v1 --stop-after 23
+PYTHONPATH=src python -m trinite train /tmp/trinite-resumed --config configs/tiny-training.json --dataset fixtures/formal-v1 --resume /tmp/trinite-paused/checkpoint
+cmp /tmp/trinite-ternary/checkpoint/tensors.safetensors /tmp/trinite-resumed/checkpoint/tensors.safetensors
+cmp /tmp/trinite-ternary/checkpoint/metadata.json /tmp/trinite-resumed/checkpoint/metadata.json
+```
+
+--stop-after is an absolute completed-step number, not an additional-step count. There is no mid-update checkpoint. --source-revision accepts a caller-declared full commit SHA; otherwise the revision is marked unreported. Exact installed procedure files are independently hashed in every checkpoint/context; dirty Git state is explicitly not inspected by the API. Run context/report timestamps and observer overhead differ between invocations; result/history/inventory and final checkpoint bytes replay exactly within the demonstrated scope. See [TRAINING.md](TRAINING.md) for the complete protocol, validation bounds and eligibility distinction.
+
+verify-observation checks a stable frozen bundle with the actual upstream verifier and returns its complete report. It rejects open/missing evidence even if upstream integrity alone passes. It verifies byte integrity and references, not training correctness or custody. A required observation failure returns nonzero while retaining completed computation and a false eligibility flag. report.json includes outcome, errors, complete verification, wall/observer time and Linux process-lifetime peak RSS.
+
+Manual tiny training becomes available after the workflow merges to main. Enter the exact plan and dataset identities printed/recorded by the procedure; [PHASE-3.md](PHASE-3.md) lists the frozen values. The two-lane workflow uses hosted CPU, new temporary directories and 14-day review artifacts. It does not archive a release or acquire the future curriculum.
 
 ## Existing checkouts with newline conversion
 
