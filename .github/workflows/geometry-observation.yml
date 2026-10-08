@@ -1,0 +1,74 @@
+name: Manual geometry observation
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan_identity:
+        description: 'Exact configs/tiny-training.json SHA-256 identity'
+        required: true
+        type: string
+      dataset_identity:
+        description: 'Exact fixtures/formal-v1/dataset.json SHA-256 identity'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  geometry-observation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: src
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PLAN_IDENTITY: ${{ inputs.plan_identity }}
+      DATASET_IDENTITY: ${{ inputs.dataset_identity }}
+      SOURCE_REVISION: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Acquire hash-locked CPU dependencies
+        run: |
+          python -m pip install --no-deps -r requirements.lock
+          python -m pip check
+      - name: Check caller-supplied immutable inputs
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from trinite.contracts import identity
+          from trinite.training import RunConfig
+          plan = RunConfig.load('configs/tiny-training.json')
+          if plan.content_identity != os.environ['PLAN_IDENTITY']:
+              raise SystemExit('plan identity differs from dispatch')
+          if identity(Path('fixtures/formal-v1/dataset.json').read_bytes()) != os.environ['DATASET_IDENTITY']:
+              raise SystemExit('dataset identity differs from dispatch')
+          PY
+      - name: Offline paired training, frozen request and geometry measurement
+        run: |
+          python -m trinite train "$RUNNER_TEMP/dense" --config configs/tiny-training.json --dataset fixtures/formal-v1 --lane dense --source-revision "$SOURCE_REVISION"
+          python -m trinite train "$RUNNER_TEMP/ternary" --config configs/tiny-training.json --dataset fixtures/formal-v1 --lane ternary --source-revision "$SOURCE_REVISION"
+          python -m trinite freeze-observation "$RUNNER_TEMP/geometry-request" --training-config configs/tiny-training.json --dataset fixtures/formal-v1 --dense-checkpoint "$RUNNER_TEMP/dense/checkpoint" --ternary-checkpoint "$RUNNER_TEMP/ternary/checkpoint" > "$RUNNER_TEMP/freeze-summary.json"
+          REQUEST_ID=$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/freeze-summary.json"))["request_identity"])')
+          python -m trinite measure-observation "$RUNNER_TEMP/geometry-observation" --request "$RUNNER_TEMP/geometry-request/request.json" --request-identity "$REQUEST_ID" --training-config configs/tiny-training.json --dataset fixtures/formal-v1 --dense-checkpoint "$RUNNER_TEMP/dense/checkpoint" --ternary-checkpoint "$RUNNER_TEMP/ternary/checkpoint"
+          python -m trinite verify-observation "$RUNNER_TEMP/geometry-observation/provenance"
+      - name: Retain completed or failed run files for review
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: geometry-observation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/dense
+            ${{ runner.temp }}/ternary
+            ${{ runner.temp }}/geometry-request
+            ${{ runner.temp }}/geometry-observation
+            ${{ runner.temp }}/freeze-summary.json
+          if-no-files-found: warn
+          retention-days: 14

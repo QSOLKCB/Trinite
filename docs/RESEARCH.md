@@ -1,6 +1,6 @@
 # Research and evaluation
 
-Status: hypotheses and planned protocols. Trinite has no model observations or capability results.
+Status: Phase 4 has a frozen prompt-capture protocol and first descriptive observations on the exposed tiny training fixture. The final-layer item-minus-carrier contrasts are negative in both lanes; no reasoning benefit, independent replication, or fresh capability result is established. See [PHASE-4.md](PHASE-4.md), [GEOMETRY.md](GEOMETRY.md), and the unchanged [frozen protocol](GEOMETRY-PROTOCOL.md). Logical operation type is fixed in this fixture. Reversing both paths is orientation-invariant for the primary alignment score and cannot serve as an independent order-scrambling null.
 
 ## Questions and falsification
 

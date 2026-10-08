@@ -114,3 +114,24 @@ PYTHONPATH=src python3 -m trinite audit-fixture fixtures/formal-v1
 ```
 
 The refresh command replaces those working files with indexed content using the current attributes; do not run it over unsaved edits. git add --renormalize alone changes the index and does not guarantee that stale working-tree bytes are refreshed. Keep the retained fixtures intact: regenerating them to match a converted checkout would replace the evidence rather than repair the checkout.
+
+## Detached geometry observation
+
+Use newly trained final checkpoints from the current source tree, the same process environment and the exact tiny training plan above. Different workflow workers may have different strict environment fingerprints; the manual geometry workflow trains both lanes and measures them on one worker. Each output below must be a new directory.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests/geometry -v
+PYTHONPATH=src python -m trinite freeze-observation /tmp/trinite-geometry-request --dataset fixtures/formal-v1 --training-config configs/tiny-training.json --dense-checkpoint /tmp/trinite-dense/checkpoint --ternary-checkpoint /tmp/trinite-ternary/checkpoint
+```
+
+Freeze prints request_file and request_identity. Copy the exact returned identity into REQUEST_ID, then measure that unchanged request:
+
+```bash
+REQUEST_ID='sha256:<paste the returned 64 hex digits>'
+PYTHONPATH=src python -m trinite measure-observation /tmp/trinite-geometry --request /tmp/trinite-geometry-request/request.json --request-identity "$REQUEST_ID" --dataset fixtures/formal-v1 --training-config configs/tiny-training.json --dense-checkpoint /tmp/trinite-dense/checkpoint --ternary-checkpoint /tmp/trinite-ternary/checkpoint
+PYTHONPATH=src python -m trinite verify-observation /tmp/trinite-geometry/provenance
+```
+
+Source/input/environment/request changes reject; an observation never updates a model or optimizer. The mandatory pinned observer is the default. --observer off retains explicit unintegrated computation with false evidence eligibility. Required observer failure returns nonzero while preserving completed computational artifacts. Read [GEOMETRY.md](GEOMETRY.md) for schemas, bounds and the frozen control limitation, and [PHASE-4.md](PHASE-4.md) for descriptive results.
+
+The manual geometry workflow uses the frozen plan/dataset identities from PHASE-3, trains both lanes on hosted CPU, freezes the request, measures, verifies and uploads 14-day review artifacts. Download them before expiry when retaining a run; this is not a durable release archive or an edge-device benchmark.
