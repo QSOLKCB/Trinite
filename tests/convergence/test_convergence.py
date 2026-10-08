@@ -2,6 +2,7 @@ from dataclasses import replace
 import importlib.util
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ from trinite import convergence as c
 from trinite.contracts import ContractError, identity, json_bytes, parse_json
 from trinite.foundations_checkpoint import snapshot
 from trinite.training import model_identity, run_steps
+from trinite.observation import BundleObserver
 
 ROOT = Path(__file__).resolve().parents[2]
 REQUEST = 'sha256:'+'0'*64
@@ -86,6 +88,37 @@ class ConvergenceTests(unittest.TestCase):
                     c.verified_cell(root, 'arithmetic', 0, 'high', frozen['request_identity'])
                 with self.assertRaises(ContractError):
                     c.verified_cell(root, 'arithmetic', 0, 'reference', REQUEST)
+
+    def test_closed_evidence_with_wrong_admitted_inputs_is_rejected(self):
+        plan = replace(c.plan_for(0, 'reference'), steps=4, validation_every=2)
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory); request = base/'request.json'
+            frozen = c.freeze_request(request); good = base/'good'; bad = base/'bad'
+            with patch.object(c, 'MILESTONES', (2, 4)), patch.object(c, 'plan_for', return_value=plan):
+                c.train_cell(good, 'arithmetic', 0, 'reference', request, frozen['request_identity'])
+                bad.mkdir()
+                for path in good.iterdir():
+                    if path.is_file(): shutil.copy2(path, bad/path.name)
+                outputs = {p.name:p.read_bytes() for p in bad.iterdir() if p.name != 'verification.json'}
+                observer = BundleObserver(bad/'provenance')
+                # Custody-valid artifacts alone do not establish admitted input agreement.
+                observer.record('training-convergence', inputs={'request.json':request.read_bytes(),
+                                'dataset.json':b'{}', 'dataset-manifest.json':b'{}'}, outputs=outputs)
+                self.assertTrue(observer.finalize()['integrity_verified'])
+                with self.assertRaisesRegex(ContractError, 'admitted input mismatch'):
+                    c.verified_cell(bad, 'arithmetic', 0, 'reference', frozen['request_identity'])
+
+    def test_changed_runner_bytes_reject_source_receipt(self):
+        original = c.sources()
+        original_read = Path.read_bytes
+        runner = ROOT/'scripts/run_convergence.py'
+        def changed(path):
+            if path == runner: return original_read(path)+b'\n# changed after startup\n'
+            return original_read(path)
+        with patch.object(Path, 'read_bytes', changed):
+            with self.assertRaisesRegex(ContractError, 'runner source mismatch'):
+                c.sources()
+        self.assertEqual(c.sources(), original)
 
     def test_success_and_late_mismatch_summary_paths(self):
         with tempfile.TemporaryDirectory() as directory:

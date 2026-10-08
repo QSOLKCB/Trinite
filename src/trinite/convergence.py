@@ -17,7 +17,7 @@ from .observation import BundleObserver, verify_observation
 
 PROTOCOL_IDENTITY = 'sha256:1c55d1834ad712f3a4ba14c00a486c221d540d093ed959fd1cbfc29ad21c1faf'
 PROTOCOL_COMMIT = '696b251f13d2e5dc82478f7b02d7e346605f5264'
-RUNNER_IDENTITY = 'sha256:8b793b007a2abfda35a8ef566b7cdc027b8f1ed93df8da2d12f7f97f4f205173'
+RUNNER_IDENTITY = 'sha256:bc964184ee04e95ae78ebbdf6ed2d547bc952f76b6576d80cabed0b0e599df45'
 WORKLOADS = ('arithmetic', 'fold', 'lattice')
 SEEDS = (0, 1, 2)
 CANDIDATES = ('low', 'reference', 'high')
@@ -33,6 +33,8 @@ def protocol():
 
 def sources():
     package = Path(__file__).resolve().parent
+    if identity((package.parent.parent/'scripts/run_convergence.py').read_bytes()) != RUNNER_IDENTITY:
+        raise ContractError('convergence runner source mismatch')
     return {**foundations_sources(), 'convergence.py': identity((package/'convergence.py').read_bytes()),
             'convergence-protocol.json': PROTOCOL_IDENTITY, 'scripts/run_convergence.py': RUNNER_IDENTITY}
 
@@ -187,8 +189,11 @@ def verified_cell(root, workload, seed, candidate, request_identity):
     if len(indexes) != 1:
         raise ContractError('convergence evidence requires one name index')
     names = indexes[0]['artifacts']
-    if names.get('request.json') != request_identity:
-        raise ContractError('convergence evidence/request mismatch')
+    raw, admitted = dataset(workload)
+    inputs = {'request.json': request_identity, 'dataset.json': identity(raw),
+              'dataset-manifest.json': identity(admitted)}
+    if any(names.get(name) != key or key not in members for name, key in inputs.items()):
+        raise ContractError('convergence evidence/request or admitted input mismatch')
     def bound(name):
         raw = read_bytes(root/name)
         if identity(raw) != names.get(name) or names[name] not in members:

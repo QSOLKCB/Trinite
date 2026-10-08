@@ -74,3 +74,12 @@ candidate/budget decision before any held-out evaluation. Training memorization
 cannot establish held-out accuracy, reasoning, a superior weight format or
 Phase 5 readiness. More data, longer runs, parameter scaling and geometry loss
 are separate conditional increments.
+
+The retained measured producer is `067aa254d1d30aaa32abfae75083ea4dbd36f2a2`.
+Subsequent verifier/runner hardening checks actual runner bytes on every source
+receipt and requires all named admitted/request inputs to be closed retained
+members. It also documents the audited fixed subprocess boundary. Those changes
+do not alter the numerical loop; the original producer/request/evidence remains
+immutable. Future runs on the hardened implementation require a newly frozen
+request. Review the historical run using its archived producer, rather than
+claiming the hardened source produced the original results.

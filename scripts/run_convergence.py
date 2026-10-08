@@ -12,8 +12,11 @@ sys.path.insert(0, str(ROOT/'src'))
 def launch(workload, seed, candidate, request, request_identity, output, log):
     # Executable and module/script are fixed; only validated cell names and data
     # paths reach argv. No shell, arbitrary executable or user-supplied command.
-    if workload not in ('arithmetic', 'fold', 'lattice') or seed not in (0, 1, 2) or candidate not in ('low', 'reference', 'high'):
+    if (workload not in ('arithmetic', 'fold', 'lattice') or type(seed) is not int
+            or seed not in (0, 1, 2) or candidate not in ('low', 'reference', 'high')):
         raise ValueError('invalid worker cell')
+    # Audited fixed interpreter/script, closed selectors and separate argv data.
+    # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit, dangerous-subprocess-use-audit
     return subprocess.run([sys.executable, str(ROOT/'scripts/run_convergence.py'), '--worker',
                            '--workload', workload, '--seed', str(seed), '--candidate', candidate,
                            '--request', str(request), '--request-identity', request_identity,
