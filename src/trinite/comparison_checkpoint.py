@@ -62,7 +62,8 @@ def _slot(value, parameter, slot, step):
         raise ContractError('invalid comparison optimizer tensor')
 
 
-def snapshot(state, workload, request_identity):
+def tensor_payload(state):
+    """Shared variable-length progress and named model/AdamW serialization."""
     progress(state)
     tensors = {}
     for name, p in state.model.named_parameters():
@@ -80,6 +81,11 @@ def snapshot(state, workload, request_identity):
     payload = save(tensors)
     if len(payload) > 32*1024*1024:
         raise ContractError('comparison snapshot exceeds tensor budget')
+    return payload
+
+
+def snapshot(state, workload, request_identity):
+    payload = tensor_payload(state)
     metadata = {'schema': SCHEMA, 'workload': workload, 'lane': state.lane, 'seed': state.config.seed,
         'request_identity': request_identity, 'plan': state.config.to_dict(), 'source': sources(),
         'environment': require_environment(), 'dataset_identity': state.dataset_identity,

@@ -169,3 +169,18 @@ PYTHONPATH=src python -m unittest discover -s tests/comparison -v
 PYTHONPATH=src python -m trinite inspect-model --lane four-state --text "1+1=2"
 ```
 
+
+## Foundations learning gate
+
+The next increment before Phase 5 is runnable through
+[FOUNDATIONS.md](FOUNDATIONS.md). Its data/oracle/admission checks are included in
+root standard-library discovery; after acquiring the CPU lock also run:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests/foundations -v
+```
+
+The manual foundations matrix freezes a new request, trains all 27 cells and
+retains a verified dense-learning decision before any held-out scoring. Blocked
+or failed runs retain their records and exit nonzero. Never copy a request from
+another source/environment or modify historical evidence to make it pass.

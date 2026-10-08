@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
     "contracts": set(), "tokenizer": {"contracts"},
     "data": {"contracts", "tokenizer"},
-    "cli": {"contracts", "tokenizer", "data", "model", "inspection", "training", "experiment", "observation", "geometry_run", "comparison"},
+    "cli": {"contracts", "tokenizer", "data", "model", "inspection", "training", "experiment", "observation", "geometry_run", "comparison", "foundations"},
     "quantizer": {"contracts"}, "model": {"contracts", "quantizer"},
     "inspection": {"contracts", "model", "quantizer"},
     "training": {"contracts", "data", "inspection", "model", "tokenizer"},
@@ -23,6 +23,14 @@ ALLOWED = {
                    "tokenizer", "inspection", "training", "geometry", "observation", "comparison_checkpoint"},
     "comparison_training": {"contracts", "data", "comparison_data", "qec_source", "model", "tokenizer", "training"},
     "comparison_checkpoint": {"contracts", "training", "comparison_training"},
+    "foundations_oracle": {"contracts"},
+    "foundations_data": {"contracts", "tokenizer", "foundations_oracle"},
+    "foundations_plan": {"contracts"},
+    "foundations_training": {"contracts", "foundations_data", "foundations_plan", "foundations_oracle",
+                             "comparison_training", "model", "tokenizer", "training"},
+    "foundations_checkpoint": {"contracts", "comparison_checkpoint", "foundations_training", "foundations_data", "training"},
+    "foundations": {"contracts", "foundations_data", "foundations_training", "foundations_plan",
+                    "foundations_checkpoint", "comparison", "training", "tokenizer", "observation"},
     "__main__": {"cli"}, "__init__": set(),
 }
 
@@ -43,9 +51,11 @@ class BoundaryTests(unittest.TestCase):
                     continue
                 for name in imports:
                     optional = ({"torch"} if path.stem in {
-                        "model", "quantizer", "inspection", "cli", "training", "checkpoint", "capture", "geometry_run", "comparison", "comparison_training", "comparison_checkpoint"} else set())
+                        "model", "quantizer", "inspection", "cli", "training", "checkpoint", "capture", "geometry_run", "comparison", "comparison_training", "comparison_checkpoint",
+                        "foundations", "foundations_checkpoint"} else set())
                     if path.stem == "checkpoint": optional |= {"numpy", "safetensors"}
                     if path.stem == "comparison_checkpoint": optional |= {"safetensors"}
+                    if path.stem == "foundations_checkpoint": optional |= {"safetensors"}
                     if path.stem == "cli": optional |= {"numpy"}
                     if path.stem == "geometry_run": optional |= {"numpy"}
                     if path.stem == "observation": optional |= {"provenance_core", "provenance_verify"}

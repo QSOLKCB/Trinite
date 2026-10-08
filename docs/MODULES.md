@@ -53,3 +53,21 @@ The unmodified upstream runtime dependency closure lives in src/provenance_core,
 ## Implemented Phase 4 composition
 
 capture.py consumes the existing explicit model capture interface and tokenizer, returning detached, losslessly encoded prompt states with a strict reader. geometry.py consumes bounded coordinate lists and the unmodified frozen _geo_reference.py numerical kernel; it imports no Torch, NumPy, training or observation code. geometry_run.py is the explicit orchestration boundary: it composes capture, geometry, elected checkpoint loading and injected observation, preserving model/optimizer/progress and caller RNG. The model and numerical training loop acquire no geometry dependencies. Source pin, license and protocol are packaged artifacts; original upstream tests and contracts are retained separately. AST tests enforce these directions.
+
+## Implemented foundations composition
+
+`foundations_data.py` and `foundations_oracle.py` own newly generated formal
+items, independent labels/parser checks and source-specific admission.
+`foundations_plan.py` defines a separate bounded plan without increasing native
+`RunConfig` limits. `foundations_training.py` composes fixed inputs and model
+states using the authoritative native optimizer/update loop.
+`foundations_checkpoint.py` shares the comparison checkpoint tensor serializer
+and progress checks, adding foundations data/plan/workload binding.
+`foundations.py` owns prompt-only scoring, training-only baselines, verified
+learning decisions, explicit evidence retention and transactional aggregation.
+`scripts/run_foundations.py` launches fixed fresh workers; it cannot accept an
+arbitrary executable or shell command. CLI composition stays lazy. Boundary
+tests cover every new dependency; data/oracles cannot query models or observers.
+The complete historical comparison archive is retained in its original fixture
+location; any foundations archive is a separately identified review exception
+to the small-fixture convention, not an invitation to store evolving runs in git.

@@ -86,14 +86,15 @@ evaluation families before training, and retain exposure status.
 
 ### Learning-adequacy increment
 
-The first proposed pack combines HERESY arithmetic/fractions, short
+The first implemented pack combines topic references from HERESY arithmetic/fractions, short
 CONSTRAINT-SHIFT folds and LATTICE address/mapping tasks. Introduce typed
 contracts, YAML and exact vector/matrix work only after the basic gates succeed.
 The protocol must specify train and held-out complete-answer-plus-EOS thresholds,
 matched architecture/initialization, actual scored-target/update budgets, seed
 set, generation limits, stage ordering, failure criteria and permissible tuning
-scope before its target outcomes. Thresholds and budgets remain pending that
-freeze; this scan does not select them retrospectively.
+scope before its target outcomes. The budget and thresholds were frozen before outcomes in
+[FOUNDATIONS-PROTOCOL.md](FOUNDATIONS-PROTOCOL.md).
+[FOUNDATIONS.md](FOUNDATIONS.md) records the implementation and measured gate.
 
 Use training-only development to establish that a task can be learned, then
 freeze the dense/ternary/four-state comparison and keep final evaluation separate

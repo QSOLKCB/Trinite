@@ -59,8 +59,8 @@ Use the topic map to design our own short numeric examples: vector addition/scal
 Trent requested intake of the QSOLKCB scan on 2026-10-09. Candidate revisions,
 concrete tasks, source boundaries and evaluation limits are recorded in
 [RESEARCH.md](RESEARCH.md#qsolkcb-repository-intake-research). This is a planned
-increment before Phase 5, with corpus admission, implementation and measurement
-pending. It does not change the frozen comparison experiment or admit a
+increment before Phase 5, implemented in [FOUNDATIONS.md](FOUNDATIONS.md), with scoped numeric admission
+and a separately frozen protocol. Its empirical gate is reported there. It does not change the frozen comparison experiment or admit a
 repository wholesale.
 
 | Order | Proposed addition | Completion gate |
@@ -74,8 +74,14 @@ repository wholesale.
 First establish useful learning on the short pack with an explicit preregistered
 budget and thresholds. Then compare dense, ternary and four-state lanes using
 matched inputs, initialization and training budgets, retaining all failures.
-The thresholds and budget are not selected by this documentation update.
+The thresholds and budget are frozen in [FOUNDATIONS-PROTOCOL.md](FOUNDATIONS-PROTOCOL.md).
 Preserve the initial null/inconclusive comparison and freeze a new request for
 changed sources; changed tasks or scientific settings require a separately frozen
 protocol. Keep Phase 5 intervention and larger-tier expansion conditional on
 these measured gates.
+
+The foundations implementation shares the native update loop, independently
+checks new finite labels and prompt carriers, retains a source-bound training
+decision and prevents held-out evaluation if dense learning fails. Software
+conformance does not close the empirical gate; see [FOUNDATIONS.md](FOUNDATIONS.md).
+YAML, typed contracts, linear algebra and geometry intervention remain later work.

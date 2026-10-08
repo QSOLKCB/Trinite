@@ -30,6 +30,8 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [OPTIMIZATION.md](OPTIMIZATION.md) | Exact reuse, CI coverage, local timing evidence and rollback contracts |
 | [COMPARISON-PROTOCOL.md](COMPARISON-PROTOCOL.md) | Frozen three-lane / exact QEC task experiment |
 | [COMPARISON.md](COMPARISON.md) | Matrix commands, task admission, results and scientific limits |
+| [FOUNDATIONS-PROTOCOL.md](FOUNDATIONS-PROTOCOL.md) | Frozen basics curriculum and learning gates before Phase 5 |
+| [FOUNDATIONS.md](FOUNDATIONS.md) | Foundations admission, replay, scoring, evidence and measured gate |
 
 ## Source and contract precedence
 
