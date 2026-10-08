@@ -56,6 +56,10 @@ class FoundationsDataTests(unittest.TestCase):
     def test_admission_standalone_rejects_contradictory_fields_and_evidence(self):
         raw,manifest=dataset('arithmetic');record=parse_json(manifest)['admission']
         validate_admission(record,'arithmetic')
+        altered=parse_json(json_bytes(record))
+        item=next(x for x in altered['evidence']['formal_items'] if x['formal'].get('a')==1)
+        item['formal']['a']=True
+        with self.assertRaises(ContractError):validate_admission(altered,'arithmetic')
         for field,value in (('outcome','rejected'),('author',''),('reviewed_on','not-a-date'),
                             ('rights_basis','copied prose'),('scope','all internet text'),('supporting_reference',{})):
             changed={**record,field:value}

@@ -71,3 +71,10 @@ tests cover every new dependency; data/oracles cannot query models or observers.
 The complete historical comparison archive is retained in its original fixture
 location; any foundations archive is a separately identified review exception
 to the small-fixture convention, not an invitation to store evolving runs in git.
+
+Review-only `restore_foundations_archive.py` performs bounded standard-library
+lossless byte reconstruction; `verify_foundations_run.py` calls the existing
+authoritative summarizer on a disposable copy and compares the retained summary.
+They do not choose examples, rescore outputs or alter the scientific protocol.
+The public archive stores duplicate artifacts once to reduce repository and CI
+checkout transfer without changing original evidence bytes.

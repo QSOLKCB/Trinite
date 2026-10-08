@@ -108,7 +108,7 @@ def validate_admission(record,kind):
     if kind not in WORKLOADS:
         raise ContractError('unknown foundations admission')
     expected=parse_json(dataset(kind)[1],canonical=True)['admission']
-    if type(record) is not dict or record!=expected:
+    if type(record) is not dict or json_bytes(record)!=json_bytes(expected):
         raise ContractError('foundations admission contradicts the frozen source policy/evidence')
 
 

@@ -129,16 +129,34 @@ def task_failures(scores,stage):
     exact_keys(scores,{'examples','correct','tasks','families','family_macro_accuracy_hex'},'scores')
     if type(scores['tasks']) is not dict or not scores['tasks']:
         raise ContractError('learning gate requires nonempty task scores')
+    integer(scores['examples'],'total score count',1,2000)
+    integer(scores['correct'],'total correct count',0,scores['examples'])
+    if type(scores['families']) is not dict:
+        raise ContractError('learning gate requires family scores')
+    try:
+        values=[float.fromhex(v) for v in scores['families'].values()]
+        macro=float.fromhex(scores['family_macro_accuracy_hex'])
+        if (not math.isfinite(macro) or not 0<=macro<=1
+                or macro.hex()!=scores['family_macro_accuracy_hex']
+                or any(not math.isfinite(v) or not 0<=v<=1 or v.hex()!=raw
+                       for v,raw in zip(values,scores['families'].values()))
+                or macro!=(math.fsum(values)/len(values) if values else 0)):
+            raise ValueError('inconsistent family macro')
+    except (TypeError,ValueError,OverflowError) as error:
+        raise ContractError('learning gate requires canonical finite family metrics') from error
     threshold=protocol()['gates']['train_each_task' if stage=='train' else 'test_each_task']
-    failures=[]
+    failures=[];total=correct=0
     for task,value in scores['tasks'].items():
         exact_keys(value,{'examples','correct','baseline_correct'},'task score')
         n,c,b=value['examples'],value['correct'],value['baseline_correct']
         integer(n,'score count',1,2000);integer(c,'correct count',0,n);integer(b,'baseline count',0,n)
+        total+=n;correct+=c
         if c*threshold['denominator']<n*threshold['numerator']:failures.append(task+': accuracy below gate')
         if stage=='test':
             margin=protocol()['gates']['test_over_training_majority_each_task']
             if (c-b)*margin['denominator']<n*margin['numerator']:failures.append(task+': below baseline margin')
+    if (total,correct)!=(scores['examples'],scores['correct']):
+        raise ContractError('learning gate task totals contradict aggregate counts')
     return failures
 
 

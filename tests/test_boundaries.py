@@ -28,7 +28,7 @@ ALLOWED = {
     "foundations_plan": {"contracts"},
     "foundations_training": {"contracts", "foundations_data", "foundations_plan", "foundations_oracle",
                              "comparison_training", "model", "tokenizer", "training"},
-    "foundations_checkpoint": {"contracts", "comparison_checkpoint", "foundations_training", "foundations_data", "training"},
+    "foundations_checkpoint": {"contracts", "comparison_checkpoint", "foundations_training", "foundations_data", "foundations_plan", "training"},
     "foundations": {"contracts", "foundations_data", "foundations_training", "foundations_plan",
                     "foundations_checkpoint", "comparison", "training", "tokenizer", "observation"},
     "__main__": {"cli"}, "__init__": set(),

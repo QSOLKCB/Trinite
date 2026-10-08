@@ -6,12 +6,15 @@ from .contracts import ContractError, exact_keys, identity, json_bytes, parse_js
 from .comparison_checkpoint import tensor_payload, progress, _slot
 from .foundations_training import state_for, sources
 from .foundations_data import dataset
+from .foundations_plan import FoundationsPlan
 from .training import model_identity, require_environment
 
 SCHEMA='trinite.foundations-checkpoint.v1'
 
 
 def _context(state,workload,request_identity):
+    if not isinstance(state.config,FoundationsPlan):
+        raise ContractError('foundations snapshot requires its separate bounded plan')
     require_identity(request_identity)
     raw,manifest=dataset(workload)
     if (state.dataset_identity,state.manifest_identity)!=(identity(raw),identity(manifest)):

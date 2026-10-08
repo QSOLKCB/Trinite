@@ -112,3 +112,11 @@ are curriculum-planning references. Use them to choose topics for our own short
 examples, not to ingest third-party prose or bundled sheets. Ordinary
 integer/rational algebra, GF(3), and packed-ququart algebra retain distinct
 definitions and scorers.
+
+The first frozen foundations matrix completed and verified all 27 training
+cells, but all nine dense cells failed a per-task training floor. Held-out
+scoring was blocked for every lane. See [FOUNDATIONS.md](FOUNDATIONS.md) for
+training-only counts and evidence. Some quantized training successes neither
+resolve the original ternary conclusion nor establish a comparative advantage.
+A new training-only convergence/stability increment precedes any fresh frozen
+evaluation or geometry intervention.

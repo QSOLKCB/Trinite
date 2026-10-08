@@ -98,6 +98,12 @@ class FoundationsTests(unittest.TestCase):
 
     def test_snapshot_rejects_lane_model_workload_and_tensor_changes(self):
         state=state_for('arithmetic','four-state',0,PLAN)
+        state.config=RunConfig(model=PLAN.model,steps=4,batch_size=4,validation_every=2)
+        with patch('trinite.comparison_checkpoint.save') as serialize:
+            with self.assertRaisesRegex(ContractError,'separate bounded plan'):
+                snapshot(state,'arithmetic',REQUEST)
+            serialize.assert_not_called()
+        state.config=PLAN
         state.lane='dense'
         with self.assertRaises(ContractError):snapshot(state,'arithmetic',REQUEST)
         state.lane='four-state'
@@ -140,12 +146,15 @@ class FoundationsTests(unittest.TestCase):
         self.assertEqual(f.task_failures(scores(5,4),'test'),[])
         self.assertTrue(f.task_failures(scores(5,5),'test'))
         with self.assertRaises(ContractError):f.task_failures({**scores(9,0),'tasks':{}},'train')
+        for field,value in (('correct',10),('examples',11),('family_macro_accuracy_hex','nan')):
+            with self.assertRaises(ContractError):f.task_failures({**scores(9,0),field:value},'train')
 
     def test_dense_floor_blocks_every_lane_and_forged_decision_rejects(self):
         def deficient(*args):
             value=synthetic_stage(*args)
             if args[2]=='dense' and args[1]=='fold' and args[3]==2:
                 value['report']['scores']['tasks']['task']['correct']=8
+                value['report']['scores']['correct']=8
             return value
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
