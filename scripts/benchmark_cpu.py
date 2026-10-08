@@ -15,6 +15,23 @@ THREAD_ENV={'OMP_NUM_THREADS':'1','MKL_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'
 SCOPE='full required suites on current optimized sources; fresh process per invocation; explicit replay subprocesses retained; excludes dependency acquisition'
 
 
+def run_suite(suite, *, env, out):
+    # Only these fixed repo tasks may launch, using the current interpreter.
+    # CLI output paths, environment values and selectors never become argv text.
+    commands={
+        'model':[sys.executable,'-m','unittest','discover','-s','tests/model','-v'],
+        'training':[sys.executable,'-m','unittest','discover','-s','tests/training','-v'],
+        'geometry':[sys.executable,'-m','unittest','discover','-s','tests/geometry','-v'],
+        'combined':[sys.executable,'scripts/check_cpu.py'],
+    }
+    if type(suite) is not str or suite not in commands:
+        raise ValueError('unknown fixed CPU benchmark suite')
+    # Audited dynamic interpreter/closed argv lookup; no shell or external argv.
+    # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit, dangerous-subprocess-use-audit
+    return subprocess.run(commands[suite],shell=False,cwd=ROOT,env=env,stdout=out,
+                          stderr=subprocess.STDOUT,timeout=120)
+
+
 def result_record(samples, tests, environment, runner_identity):
     return {'schema':'trinite.cpu-benchmark.v1','repetitions':3,
             'separate_seconds_hex':[x.hex() for x in samples['separate']],
@@ -39,14 +56,12 @@ def main():
         for trial in range(3):
             inventories={}
             for mode in (('separate','combined') if trial%2==0 else ('combined','separate')):
-                commands=([[sys.executable,'-m','unittest','discover','-s','tests/'+d,'-v']
-                           for d in ('model','training','geometry')] if mode=='separate'
-                          else [[sys.executable,'scripts/check_cpu.py']])
+                suites=('model','training','geometry') if mode=='separate' else ('combined',)
                 start=time.perf_counter();tests=[]
-                for i,command in enumerate(commands):
+                for i,suite in enumerate(suites):
                     log=Path(directory)/f'{trial}-{mode}-{i}.log'
                     with log.open('w') as out:
-                        p=subprocess.run(command,cwd=ROOT,env=env,stdout=out,stderr=subprocess.STDOUT,timeout=120)
+                        p=run_suite(suite,env=env,out=out)
                     if p.returncode:raise RuntimeError('CPU benchmark failed: '+log.read_text())
                     for line in log.read_text().splitlines():
                         if line.startswith('test_') and ' ... ' in line:tests.append(line.split(' ... ')[0])

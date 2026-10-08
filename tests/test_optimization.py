@@ -59,6 +59,28 @@ class CollectorReuseTests(unittest.TestCase):
 
 
 class BenchmarkRecordTests(unittest.TestCase):
+    def test_cpu_dispatch_rejects_external_commands_and_never_uses_a_shell(self):
+        import importlib.util
+        import io
+        import sys
+        spec=importlib.util.spec_from_file_location('cpu_benchmark',ROOT/'scripts/benchmark_cpu.py')
+        benchmark=importlib.util.module_from_spec(spec);spec.loader.exec_module(benchmark)
+        env={'UNTRUSTED':'$(touch /tmp/injected); echo bad'};out=io.StringIO()
+        with patch.object(benchmark.subprocess,'run') as launch:
+            for selector in ('model; echo injected','../other','-c',"$(echo injected)",['model'],None):
+                with self.assertRaises(ValueError):benchmark.run_suite(selector,env=env,out=out)
+            launch.assert_not_called()
+            expected={
+                'model':[sys.executable,'-m','unittest','discover','-s','tests/model','-v'],
+                'training':[sys.executable,'-m','unittest','discover','-s','tests/training','-v'],
+                'geometry':[sys.executable,'-m','unittest','discover','-s','tests/geometry','-v'],
+                'combined':[sys.executable,'scripts/check_cpu.py'],
+            }
+            for selector,argv in expected.items():
+                benchmark.run_suite(selector,env=env,out=out)
+                launch.assert_called_with(argv,shell=False,cwd=ROOT,env=env,stdout=out,
+                                          stderr=benchmark.subprocess.STDOUT,timeout=120)
+
     def test_cpu_generator_reproduces_retained_record_and_runner_binding(self):
         import importlib.util
         spec=importlib.util.spec_from_file_location('cpu_benchmark',ROOT/'scripts/benchmark_cpu.py')
