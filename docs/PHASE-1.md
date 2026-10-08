@@ -17,7 +17,7 @@ The machine-readable contracts are the executable validators and shipped referen
 
 ## Validation
 
-The 25-test suite covers module dependency limits, configuration boundaries, Unicode/spans and context limits, answer/PAD masks, exact raw-byte decoding, formal-answer validation across the small arithmetic domain, frozen fixture replay, split isolation, changed-label/split/mask/source rejection, bounded artifact reads/membership/symlinks, and CLI failure behavior.
+The suite covers module dependency limits, configuration boundaries, Unicode/spans and context limits, answer/PAD masks, exact raw-byte decoding, formal-answer validation across the small arithmetic domain, frozen fixture replay, split isolation, complete admission evidence and substitution rejection, changed-label/split/mask/source rejection, bounded artifact reads/membership/symlinks, and CLI failure behavior. LF checkout semantics are pinned for every byte-bound source/fixture extension and exercised with core.autocrlf=true.
 
 Local checks used Python 3.12.14. The wheel was built with setuptools 84.0.0 without dependency downloads, installed into a clean virtual environment, and its CLI validated/audited/generated the frozen fixture. The runtime/test dependency set is empty. CI additionally exercises Python 3.11 and 3.13; remote matrix results are reported on the PR rather than inferred from local execution.
 

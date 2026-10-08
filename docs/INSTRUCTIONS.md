@@ -22,6 +22,8 @@ For each change, name the affected contract IDs and run meaningful checks approp
 
 The frozen formal fixture binds contracts.py, tokenizer.py, and data.py source bytes. A semantic change to those files requires deliberate fixture regeneration into a new directory, comparison, and a reviewed update of the retained fixture. Do not automatically regenerate fixtures in tests or CI to make them pass.
 
+.gitattributes pins LF working-tree bytes for byte-bound Python and JSON/JSONL artifacts, including the retained fixtures. Preserve these rules; core.autocrlf or a platform's default newline must not change a source/fixture identity.
+
 Documentation changes require relative-link and moved-asset checks plus review for conflicting contracts/status claims. Model changes require forward/gradient/capture checks; exports require importer rejection and parity; data changes require rights, generator correctness, deduplication, and family-split checks. Required numerical tolerances must be frozen before comparing outcomes.
 
 PR descriptions state the concrete behavior, scope, checks actually run, and remaining gates. Update the roadmap only for demonstrated completion. Do not add a green CI badge before that workflow exists. Open reviewable PRs; release/tag/archive actions follow an explicit release task and retained evidence.

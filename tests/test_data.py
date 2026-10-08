@@ -5,12 +5,45 @@ import unittest
 
 from trinite.contracts import ContractError, ModelConfig, identity, json_bytes
 from trinite.data import (audit_bytes, audit_directory, build_dataset, parse_prompt,
-                          solve, split_families, verify_answer, write_dataset)
+                          solve, split_families, verify_answer, write_dataset,
+                          admission, implementation_receipt, validate_admission)
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class DataTests(unittest.TestCase):
+    def test_complete_source_admission_evidence(self):
+        record = admission()
+        validate_admission(record)
+        self.assertIn("OpenAI Codex", record["author"])
+        self.assertIn("Trent Slade", record["author"])
+        self.assertEqual(record["supporting_reference"]["content_identity"],
+                         implementation_receipt()["data.py"])
+        self.assertEqual(len(record["rights_evidence"]["formal_source"]), 24)
+        self.assertEqual(len(record["rights_evidence"]["rendered_payload"]), 48)
+        self.assertEqual(record["rights_evidence"]["payload_identity"],
+                         identity(json_bytes(record["rights_evidence"]["rendered_payload"])))
+
+    def test_incomplete_or_substituted_admission_evidence_fails(self):
+        original = admission()
+        mutations = [lambda r: r.pop("author"),
+                     lambda r: r.update(author=""),
+                     lambda r: r.pop("generation_procedure"),
+                     lambda r: r["generation_procedure"].update(acquisition=""),
+                     lambda r: r.pop("supporting_reference"),
+                     lambda r: r["supporting_reference"].update(content_identity=identity(b"other")),
+                     lambda r: r["rights_evidence"]["formal_source"][0].update(modulus=True),
+                     lambda r: r["rights_evidence"]["rendered_payload"].__setitem__(0, "copied prose")]
+        for mutation in mutations:
+            record = deepcopy(original)
+            mutation(record)
+            with self.assertRaises(ContractError):
+                validate_admission(record)
+            data, manifest = build_dataset()
+            manifest["admission"] = record
+            with self.assertRaises(ContractError):
+                audit_bytes(json_bytes(data), json_bytes(manifest))
+
     def test_independent_solver_exhaustive_small_domain(self):
         for m in range(2, 10):
             for a in range(m):

@@ -24,3 +24,22 @@ Implement Phase 2 only: the dense/ternary reference decoder, quantizer and surro
 Each phase should be a reviewable increment with stated requirements, completed checks, and unresolved gates. A software fixture does not close an empirical milestone. “Implemented” and “measured” are separate statuses.
 
 Scaling is conditional: first prove the data, semantics, and measurement procedure, then decide whether a larger parameter tier is worth training. The initial 0.5B target is not a prerequisite or an automatic promise. Optional formal verification comes after a stable implementation target; it cannot prove language-model reasoning or substitute for empirical evaluation.
+
+## Planned training corpus and curriculum
+
+Status: curriculum approved by Trent Slade on 2026-10-09; corpus preparation, admission, and training remain pending. Teach short, verified basics first, then introduce curated first-party material and scale only after measured results. This section does not import data or extend the current Phase 1 implementation task.
+
+| Tier | Source | Training target | Admission / evaluation gate |
+| --- | --- | --- | --- |
+| 1 — Foundations | Independently verified generated arithmetic, logic, and short sequences | Correct answers, structured completion, and simple transformations | Formal verification, content identities, and family-held-out evaluation; visible software fixtures remain conformance data |
+| 2 — YAML | A new generated YAML stress corpus | Structure, indentation, types, validation, and minimal repairs; harder cases introduced gradually | Pin YAML version/parser and resource limits; verify answers with that oracle; keep valid/invalid variants and repair counterparts in the same family |
+| 3 — Epistemic discipline | Selected public [QSOL-SUBSTRATE](https://github.com/QSOLKCB/QSOL-SUBSTRATE) contracts and source-bound records | Distinguish known, retrieved, inferred, unknown, conflicting, and fictional claims; preserve claim maturity | Pin source revision/record hashes and metadata; select stable interpretation rules for training; deliver changing project facts through retrieval |
+| 4 — Contextual language | Curated [AUSTRALIAN-FOR-AIS](https://github.com/QSOLKCB/AUSTRALIAN-FOR-AIS) training examples | Banter, understatement, ambiguity, and context-dependent meaning | Preserve benchmark/pilot evaluation sets; create separate training examples and group related context contrasts; preserve annotation uncertainty |
+
+AUSTRALIAN-FOR-AIS currently documents 60 synthetic pilot prompts awaiting human annotation. They are not human-labelled gold training targets. Referenced comedy programmes and other third-party works remain research references rather than automatically admitted dialogue.
+
+The authorised data-policy addition is **Trent's own material explicitly approved for training**, alongside the existing eligible formal/public-domain inputs. Before importing it, reflect this category consistently in DATA and the affected invariants and record the author/rights holder, permission scope, supporting evidence, immutable source identities, transformations, and split/exposure audit. Repository ownership is not a blanket admission of bundled third-party material or private records.
+
+Each source must be selected at file/record level rather than dumped wholesale. Maintain separate training, validation, and fresh confirmatory evaluation families; benchmarks used for training or tuning cannot also support an uncontaminated generalisation claim. QSOL-SUBSTRATE mutable facts should retain source/date context rather than becoming timeless memorised assertions.
+
+At the initial roughly 1.25M parameter tier, target narrow completion, classification, and transformation tasks. Establish reproducible learning and held-out behavior before broader language training, larger parameter tiers, or the conditional 0.5B goal. Curriculum acquisition begins within reviewed Phase 3 training/data work after the model-conformance gate; expansion remains conditional in Phase 8.

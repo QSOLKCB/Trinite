@@ -115,11 +115,36 @@ def _formal_source() -> list[dict]:
 
 
 def admission() -> dict:
+    formal = _formal_source()
+    rendered = [_render(spec, carrier) + solve(spec) for spec in formal
+                for carrier in ("infix", "fields")]
     return {
         "source_id": SOURCE_ID,
-        "source_content_identity": identity(json_bytes(_formal_source())),
+        "source_content_identity": identity(json_bytes(formal)),
         "origin": "local numeric formal generator; no external text source",
+        "author": "Trinite deterministic formal generator; implementation created by "
+                  "OpenAI Codex at Trent Slade / QSOL-IMC's request",
+        "generation_procedure": {
+            "formal_source": "Enumerate moduli 2..9 with operand pairs (0,0), (0,m-1), (1,1)",
+            "answer_generation": "Cyclic-counter addition with wrap at the modulus",
+            "answer_verification": "Independent integer addition and remainder; parse each prompt",
+            "rendering": "Two minimal symbolic carriers: infix and labelled fields",
+            "acquisition": "Generated locally; no downloaded or inherited corpus",
+        },
         "rights_basis": "numeric mathematical facts rendered with minimal symbols",
+        "supporting_reference": {
+            "path": "src/trinite/data.py",
+            "content_identity": implementation_receipt()["data.py"],
+            "symbols": ["_formal_source", "_render", "solve", "verify_answer", "parse_prompt"],
+        },
+        "rights_evidence": {
+            "kind": "inspectable-numeric-source-and-symbolic-payload",
+            "formal_source": formal,
+            "rendered_payload": rendered,
+            "payload_identity": identity(json_bytes(rendered)),
+            "review_basis": "Source and all 48 exact texts are retained for scope inspection; "
+                            "only numeric facts and the declared symbolic forms are admitted",
+        },
         "scope": "only the 24 formal triples and the two specified symbolic carriers",
         "reviewer": "trinite.phase1-symbolic-admission.v1 (automated policy audit)",
         "reviewed_on": "2026-10-09",
@@ -128,10 +153,55 @@ def admission() -> dict:
     }
 
 
+def validate_admission(record: object) -> None:
+    """Check required evidence against source/content, not a bare rights label.
+
+    These checks verify the documented admission evidence and narrow scope;
+    they do not automate a legal opinion or certify future corpora.
+    """
+    required = {"source_id", "source_content_identity", "origin", "author",
+                "generation_procedure", "rights_basis", "supporting_reference",
+                "rights_evidence", "scope", "reviewer", "reviewed_on", "outcome",
+                "limitations"}
+    record = exact_keys(record, required, "source admission")
+    for name in ("origin", "author", "rights_basis", "scope", "reviewer",
+                 "reviewed_on", "outcome", "limitations"):
+        if type(record[name]) is not str or not record[name].strip():
+            raise ContractError(f"source admission requires non-empty {name}")
+    procedure = exact_keys(record["generation_procedure"],
+                           {"formal_source", "answer_generation", "answer_verification",
+                            "rendering", "acquisition"}, "generation procedure")
+    if any(type(v) is not str or not v.strip() for v in procedure.values()):
+        raise ContractError("generation procedure must identify every step")
+    reference = exact_keys(record["supporting_reference"],
+                           {"path", "content_identity", "symbols"}, "supporting reference")
+    if (reference["path"] != "src/trinite/data.py"
+            or reference["content_identity"] != implementation_receipt()["data.py"]
+            or reference["symbols"] != ["_formal_source", "_render", "solve",
+                                        "verify_answer", "parse_prompt"]):
+        raise ContractError("source admission reference does not bind the current source")
+    evidence = exact_keys(record["rights_evidence"],
+                          {"kind", "formal_source", "rendered_payload", "payload_identity",
+                           "review_basis"}, "rights evidence")
+    formal = _formal_source()
+    payload = [_render(spec, carrier) + solve(spec) for spec in formal
+               for carrier in ("infix", "fields")]
+    if (record["source_id"] != SOURCE_ID
+            or record["source_content_identity"] != identity(json_bytes(formal))
+            or evidence["kind"] != "inspectable-numeric-source-and-symbolic-payload"
+            or json_bytes(evidence["formal_source"]) != json_bytes(formal)
+            or evidence["rendered_payload"] != payload
+            or evidence["payload_identity"] != identity(json_bytes(payload))
+            or type(evidence["review_basis"]) is not str or not evidence["review_basis"].strip()):
+        raise ContractError("source admission evidence does not match the numeric source/payload")
+
+
 def build_dataset(config: ModelConfig = ModelConfig(), *, seed: int = 0) -> tuple[dict, dict]:
     if not isinstance(config, ModelConfig):
         raise ContractError("config must be a validated ModelConfig")
     integer(seed, "seed", 0, SEED_MAX)
+    source_admission = admission()
+    validate_admission(source_admission)
     tokenizer = ByteTokenizer(config.context_length)
     assignment = split_families([_family(m) for m in range(2, 10)], seed)
     generator = generator_identity()
@@ -171,7 +241,7 @@ def build_dataset(config: ModelConfig = ModelConfig(), *, seed: int = 0) -> tupl
     manifest = {
         "schema": MANIFEST_SCHEMA, "dataset_identity": identity(json_bytes(dataset)),
         "config_identity": config.content_identity, "generator_identity": generator,
-        "implementation": implementation_receipt(), "admission": admission(),
+        "implementation": implementation_receipt(), "admission": source_admission,
         "seed": seed, "split_policy": SPLIT_POLICY,
         "family_splits": assignment,
         "counts": {s: sum(e["split"] == s for e in examples)
@@ -196,6 +266,9 @@ def audit_bytes(dataset_bytes: bytes, manifest_bytes: bytes) -> dict:
     dataset = exact_keys(parse_json(dataset_bytes, canonical=True),
                          {"schema", "config", "seed", "examples"}, "dataset")
     manifest = parse_json(manifest_bytes, canonical=True)
+    if type(manifest) is not dict or "admission" not in manifest:
+        raise ContractError("manifest requires source admission evidence")
+    validate_admission(manifest["admission"])
     if dataset["schema"] != DATASET_SCHEMA:
         raise ContractError("unsupported dataset schema")
     config = ModelConfig.from_dict(dataset["config"])
