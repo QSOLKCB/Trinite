@@ -33,4 +33,31 @@ Geometry is secondary, detached and training-only, using the existing numerical 
 
 ## Results
 
-The first frozen local matrix is pending; complete outcomes, including null/negative results, will be recorded here. Conformance alone demonstrates software semantics.
+The first frozen local matrix completed on 2026-10-09 (Australia/Adelaide), using implementation [d18ac4e](https://github.com/QSOLKCB/Trinite/commit/d18ac4e45df47853679585d3e2a77039a1599ba4), Python 3.12.14, locked Torch 2.8.0+cpu, one intra-op thread and an AMD EPYC 9V74 shared host. All 27 cells completed, all closed bundles passed the actual upstream verifier, no artifacts were missing and no worker errors were recorded. The unchanged request and complete cell summary are retained in [request.json](../fixtures/comparison-v1/request.json) and [summary.json](../fixtures/comparison-v1/summary.json).
+
+Every lane/seed scored zero complete test answers, including required EOS. Test set sizes per cell are formal 6, qutrit 32 and ququart 60. The table reports three-seed means, accuracy min/max, mean teacher-forced test target loss, mean detached native geometry contrast, and the range of paired training wall-time ratios to dense. These are different measurements; loss and geometry cannot substitute for exact answers.
+
+| Workload | Lane | Exact accuracy mean [min, max] | Test target loss | Native geometry contrast | Training wall ratio to dense |
+| --- | --- | --- | --- | --- | --- |
+| formal | dense | 0% [0%, 0%] | 3.1787 | -0.4902 | 1.000–1.000 |
+| formal | ternary | 0% [0%, 0%] | 3.7546 | -0.4279 | 0.915–1.104 |
+| formal | four-state | 0% [0%, 0%] | 3.4648 | -0.3582 | 0.957–1.180 |
+| qutrit | dense | 0% [0%, 0%] | 1.5835 | -1.0440 | 1.000–1.000 |
+| qutrit | ternary | 0% [0%, 0%] | 1.5980 | -1.0332 | 1.043–1.206 |
+| qutrit | four-state | 0% [0%, 0%] | 1.5825 | -1.0271 | 1.059–1.248 |
+| ququart | dense | 0% [0%, 0%] | 1.6884 | -0.9285 | 1.000–1.000 |
+| ququart | ternary | 0% [0%, 0%] | 1.6855 | -0.9970 | 1.016–1.135 |
+| ququart | four-state | 0% [0%, 0%] | 1.6855 | -0.9774 | 1.103–1.135 |
+
+This is **inconclusive for choosing a weight format**. Equal zero scores make all five-percentage-point quality margins pass mechanically, but provide no evidence of useful equivalence, superiority or quantum advantage. All measured training wall ratios fell below the frozen 1.25 margin; these subsecond single-host observations do not establish a speedup. Every lane retained 29,056 float32 latent weight bytes: there is no measured storage saving or packed inference.
+
+Each cell ran 60 updates. Actual scored training labels were 480 for formal; 1,075/1,080/1,078 for qutrit; and 1,320/1,319/1,322 for ququart (seeds 0/1/2). Counts, batches, initialization and plans matched across lanes within each workload/seed. Initial teacher-forced train losses were approximately 5.49–5.62 and final train losses 1.51–1.69; loss decreased without successful held-out complete answers. QEC training exact answers were also zero in every cell. Formal train correct counts were dense 0/0/12, ternary 1/0/12 and four-state 2/0/6 out of 36. This exposes a learning-adequacy floor in the tiny budget; it does not isolate quantization as a failure cause.
+
+All 27 native training-only geometry contrasts were negative. Both one-sided permutation and Rademacher controls, every per-item prediction, code occupancy/error, timings, RSS, captures, snapshots, update histories and closed verification reports remain retained. Earlier Phase 4 observations and limitations are unchanged. No setting was altered after these target outcomes.
+
+[Evidence inventory](../fixtures/comparison-v1/inventory.json) binds the summary and complete 9.14 MB archive supplied with the PR handoff. The archive includes all 27 cells and logs, numerical artifacts, snapshots, verified bundles, source/configuration/test/fixture files and an internal SHA-256 member inventory. It is a local complete-evidence handoff, not a public release or independent replication. Archive SHA-256: `722acbf6023c989c7470d506786d366bb82f31dc2a0e375ed84a76db60a17c1e`. The archive's implementation documentation is the pre-outcome version; this section records the subsequent outcome interpretation.
+
+Software validation passed: 71 standard-library checks, 44 existing CPU checks, 13 comparison checks, and upstream conformance. The six hosted Python 3.11/3.12/3.13 jobs each ran their required suites without skips; upstream conformance ran all 51 cases. Local root execution skipped one upstream permissions case. The complete manual hosted matrix remains available after merge and has not been independently run.
+
+Before a later comparison can select a format, freeze a separate basics-first learning-adequacy protocol with explicit train and held-out exact-answer/EOS gates, appropriate matched training budgets, and failure criteria. Preserve this run as the initial null result. New curriculum topics and budget decisions belong to that later reviewed increment.
+
