@@ -138,3 +138,11 @@ The next training-only diagnostic is implemented in [CONVERGENCE.md](CONVERGENCE
 with a separately frozen [protocol](CONVERGENCE-PROTOCOL.md). It retains all
 dense learning-rate candidates and never selects a new learning protocol or
 unlocks held-out scoring automatically. Phase 5 remains conditional.
+
+The complete convergence development matrix is measured and verified: 27 dense
+cells, no worker/aggregate errors, and no candidate passes every training task
+across all seeds. Lower-rate arithmetic/lattice improvements do not close the
+fold gate. The next increment needs a separately frozen training budget/schedule
+or curriculum decision before another learning/evaluation protocol. Complete
+counts, failures and retrieval instructions are in [CONVERGENCE.md](CONVERGENCE.md).
+Held-out scoring and Phase 5 remain blocked.

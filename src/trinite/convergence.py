@@ -73,9 +73,42 @@ def restore_state(payload, metadata, workload, seed, candidate, request_identity
     if (not isinstance(config, FoundationsPlan) or config.seed != seed
             or config.learning_rate != protocol()['candidates'][candidate]):
         raise ContractError('convergence restore plan/candidate mismatch')
-    state = restore(payload, metadata, workload, 'dense', seed, request_identity, identities, config)
+    if (type(payload) is not bytes or type(metadata) is not bytes or len(payload) > 32*1024*1024
+            or len(metadata) > 2*1024*1024
+            or (identity(payload), identity(metadata)) != identities):
+        raise ContractError('convergence checkpoint identity/type/size mismatch')
+    envelope = parse_json(metadata, canonical=True)
+    expected = checkpoint_context(workload, seed, candidate)
+    exact_keys(envelope, set(expected)|{'inner_metadata'}, 'convergence checkpoint')
+    if any(json_bytes(envelope[k]) != json_bytes(v) for k, v in expected.items()):
+        raise ContractError('convergence checkpoint context mismatch')
+    inner = json_bytes(envelope['inner_metadata'])
+    state = restore(payload, inner, workload, 'dense', seed, request_identity,
+                    (identity(payload), identity(inner)), config)
     state.data = {'train': state.data['train'], 'validation': state.data['train']}
     return state
+
+
+def checkpoint_context(workload, seed, candidate):
+    cell_name(workload, seed, candidate)
+    return {'schema': 'trinite.convergence-checkpoint.v1', 'protocol_identity': PROTOCOL_IDENTITY,
+            'source': sources(), 'data_view': 'train-only.v1', 'workload': workload,
+            'seed': seed, 'candidate': candidate}
+
+
+def snapshot_state(state, workload, candidate, request_identity):
+    if not isinstance(state.config, FoundationsPlan):
+        raise ContractError('convergence checkpoint requires its separate bounded plan')
+    context = checkpoint_context(workload, state.config.seed, candidate)
+    if (state.lane != 'dense'
+            or state.config.learning_rate != protocol()['candidates'][candidate]
+            or state.data['validation'] is not state.data['train']):
+        raise ContractError('convergence checkpoint requires its elected train-only state')
+    payload, inner = snapshot(state, workload, request_identity)
+    metadata = json_bytes({**context, 'inner_metadata': parse_json(inner, canonical=True)})
+    if len(metadata) > 2*1024*1024:
+        raise ContractError('convergence metadata exceeds budget')
+    return payload, metadata
 
 
 def request_core():
@@ -142,7 +175,7 @@ def train_cell(root, workload, seed, candidate, request, request_identity):
                            'scores': scores, 'training_gate_failures': task_failures(scores, 'train'),
                            'stability': stability(state.history, previous, step, state.config.gradient_clip)})
             previous = step
-        payload, metadata = snapshot(state, workload, request_identity)
+        payload, metadata = snapshot_state(state, workload, candidate, request_identity)
         (root/'tensors.safetensors').write_bytes(payload); (root/'metadata.json').write_bytes(metadata)
         write(root, 'steps.json', {'steps': state.history, 'train_diagnostics': state.validation})
         report = {'schema': 'trinite.convergence-cell.v1', 'outcome': 'completed',

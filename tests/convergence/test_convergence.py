@@ -39,7 +39,7 @@ class ConvergenceTests(unittest.TestCase):
                 state = c.state_for('arithmetic', 0, candidate, plan)
                 self.assertIs(state.data['train'], state.data['validation'])
                 run_steps(state, stop_after=2)
-                payload, metadata = snapshot(state, 'arithmetic', REQUEST)
+                payload, metadata = c.snapshot_state(state, 'arithmetic', candidate, REQUEST)
                 resumed = c.restore_state(payload, metadata, 'arithmetic', 0, candidate, REQUEST,
                                           (identity(payload), identity(metadata)), plan)
                 self.assertIs(resumed.data['train'], resumed.data['validation'])
@@ -47,12 +47,31 @@ class ConvergenceTests(unittest.TestCase):
                 self.assertEqual(state.history, resumed.history)
                 self.assertEqual(state.validation, resumed.validation)
                 self.assertEqual(model_identity(state.model), model_identity(resumed.model))
-                self.assertEqual(snapshot(state, 'arithmetic', REQUEST), snapshot(resumed, 'arithmetic', REQUEST))
+                self.assertEqual(c.snapshot_state(state, 'arithmetic', candidate, REQUEST),
+                                 c.snapshot_state(resumed, 'arithmetic', candidate, REQUEST))
         with self.assertRaises(ContractError):
             c.state_for('arithmetic', 0, 'low', c.plan_for(0, 'high'))
         for values in (('arithmetic', True, 'low'), ('unknown', 0, 'low'), ('fold', 0, 'custom')):
             with self.assertRaises(ContractError):
                 c.cell_name(*values)
+
+    def test_checkpoint_profile_rejects_native_metadata_and_wrong_data_view(self):
+        plan = replace(c.plan_for(0, 'reference'), steps=4, validation_every=2)
+        state = c.state_for('arithmetic', 0, 'reference', plan)
+        raw, native = snapshot(state, 'arithmetic', REQUEST)
+        with self.assertRaises(ContractError):
+            c.restore_state(raw, native, 'arithmetic', 0, 'reference', REQUEST,
+                            (identity(raw), identity(native)), plan)
+        payload, metadata = c.snapshot_state(state, 'arithmetic', 'reference', REQUEST)
+        record = parse_json(metadata, canonical=True)
+        for field, value in [('data_view', 'validation'), ('candidate', 'high'), ('protocol_identity', REQUEST)]:
+            changed = {**record, field:value}; changed_raw = json_bytes(changed)
+            with self.assertRaises(ContractError):
+                c.restore_state(payload, changed_raw, 'arithmetic', 0, 'reference', REQUEST,
+                                (identity(payload), identity(changed_raw)), plan)
+        state.data['validation'] = list(state.data['train'])
+        with self.assertRaisesRegex(ContractError, 'train-only state'):
+            c.snapshot_state(state, 'arithmetic', 'reference', REQUEST)
 
     def test_request_binds_protocol_source_environment_and_corpus(self):
         with tempfile.TemporaryDirectory() as directory:
