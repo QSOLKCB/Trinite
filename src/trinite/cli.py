@@ -34,6 +34,17 @@ def main(argv: list[str] | None = None) -> int:
     inspect.add_argument("--capture-layer", action="append")
     inspect.add_argument("--capture-position", type=int, action="append")
     inspect.add_argument("--capture-bytes", type=int, default=65536)
+    train = commands.add_parser("train")
+    train.add_argument("output", type=Path)
+    train.add_argument("--config", required=True, type=Path)
+    train.add_argument("--dataset", required=True, type=Path)
+    train.add_argument("--lane", choices=("dense", "ternary"), default="ternary")
+    train.add_argument("--resume", type=Path)
+    train.add_argument("--stop-after", type=int)
+    train.add_argument("--observer", choices=("pinned", "off"), default="pinned")
+    train.add_argument("--source-revision", default="unreported")
+    verify = commands.add_parser("verify-observation")
+    verify.add_argument("directory", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "validate-config":
@@ -49,6 +60,32 @@ def main(argv: list[str] | None = None) -> int:
             result = write_dataset(args.output, config, seed=args.seed)
         elif args.command == "audit-fixture":
             result = audit_directory(args.directory)
+        elif args.command == "verify-observation":
+            from .observation import verify_observation
+            result = verify_observation(args.directory)
+        elif args.command == "train":
+            try:
+                import torch
+                import numpy as np
+                import random
+                from .training import RunConfig
+                from .experiment import train_run
+            except ImportError as error:
+                raise ContractError("training requires the hash-locked CPU dependencies; "
+                                    "see docs/TRAINING.md") from error
+            torch.set_num_threads(1)
+            torch.use_deterministic_algorithms(True)
+            plan = RunConfig.load(args.config)
+            random.seed(plan.seed)
+            np.random.seed(plan.seed)
+            torch.manual_seed(plan.seed)
+            result = train_run(args.output, args.dataset, plan,
+                               lane=args.lane, resume=args.resume, stop_after=args.stop_after,
+                               observer=args.observer == "pinned",
+                               source_revision=args.source_revision)
+            sys.stdout.write(json_bytes(result).decode("utf-8"))
+            return int(result["compute_outcome"] == "failed" or bool(result["observation_errors"])
+                       or (args.observer == "pinned" and not result["observer_evidence_eligible"]))
         else:
             # Import only on explicit model selection; foundation stays stdlib.
             try:

@@ -1,6 +1,6 @@
 # CPU inference, export, and inspection
 
-Status: Phase 2 implements CPU eager forward execution, named tensor/quantizer inspection, and bounded detached hidden-state capture. Generation, checkpoints/loading, packed export/import, and edge benchmarks remain planned.
+Status: Phase 2 implements CPU eager forward execution, named tensor/quantizer inspection, and bounded detached hidden-state capture. Phase 3 adds safe training checkpoints/loading. Generation, packed export/import, and edge benchmarks remain planned.
 
 ## Reference execution
 

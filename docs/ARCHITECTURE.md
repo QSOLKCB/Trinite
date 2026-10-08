@@ -1,6 +1,6 @@
 # Architecture
 
-Status: Phase 2 implements the CPU float32 dense/ternary reference model. No training or capability results exist.
+Status: Phase 3 adds bounded CPU native training and safe replay to the float32 dense/ternary reference model. The 6,752-parameter tiny configuration demonstrates learning on visible formal fixtures; fresh capability evidence remains pending. See [PHASE-3.md](PHASE-3.md).
 
 ## First target
 

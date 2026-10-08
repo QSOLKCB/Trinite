@@ -7,9 +7,13 @@ ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
     "contracts": set(), "tokenizer": {"contracts"},
     "data": {"contracts", "tokenizer"},
-    "cli": {"contracts", "tokenizer", "data", "model", "inspection"},
+    "cli": {"contracts", "tokenizer", "data", "model", "inspection", "training", "experiment", "observation"},
     "quantizer": {"contracts"}, "model": {"contracts", "quantizer"},
     "inspection": {"contracts", "model", "quantizer"},
+    "training": {"contracts", "data", "inspection", "model", "tokenizer"},
+    "checkpoint": {"contracts", "inspection", "training"},
+    "observation": {"contracts"},
+    "experiment": {"contracts", "data", "checkpoint", "observation", "training", "inspection"},
     "__main__": {"cli"}, "__init__": set(),
 }
 
@@ -28,9 +32,12 @@ class BoundaryTests(unittest.TestCase):
                 else:
                     continue
                 for name in imports:
-                    self.assertIn(name, sys.stdlib_module_names | (
-                        {"torch"} if path.stem in {"model", "quantizer", "inspection", "cli"}
-                        else set()))
+                    optional = ({"torch"} if path.stem in {
+                        "model", "quantizer", "inspection", "cli", "training", "checkpoint"} else set())
+                    if path.stem == "checkpoint": optional |= {"numpy", "safetensors"}
+                    if path.stem == "cli": optional |= {"numpy"}
+                    if path.stem == "observation": optional |= {"provenance_core", "provenance_verify"}
+                    self.assertIn(name, sys.stdlib_module_names | optional)
                     self.assertNotIn(name, {"socket", "urllib", "http", "ssl", "subprocess"})
 
     def test_foundation_imports_without_optional_site_packages(self):
