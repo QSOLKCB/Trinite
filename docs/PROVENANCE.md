@@ -71,3 +71,7 @@ Observer evidence eligibility means that this procedure's required observations 
 ## Implemented geometry observation
 
 Phase 4 uses the same pinned collector and verifier. capture-and-measure-dense, capture-and-measure-ternary and geometry-result are DERIVED stages. Each retains the exact request, admitted dataset/manifest, frozen training plan and both checkpoint pairs as inputs; lane outputs are model inventory, lossless prompt captures and complete geometry metrics/controls. Result and verification/report artifacts preserve negative outcomes and eligibility distinctions. The collector does not execute the model or choose pairs. Checkpoint bytes and caller RNG are checked across observer-on/off/failing modes; [GEOMETRY.md](GEOMETRY.md) defines the scope and bounds.
+
+## Exact construction reuse
+
+The OPT-guided detour introduces OBS-REUSE-001: collector-local exact immutable bytes may reuse a successfully retained name binding under the fixed upstream record policy. Unique snapshots share the existing 64-item/64-MiB budget and are released at finalize. Full retained-file verification remains fresh and unchanged; deletion/tampering still rejects eligibility. This is a construction CPU/memory tradeoff within the existing stable-filesystem contract, not a persisted store or verification cache. [OPTIMIZATION.md](OPTIMIZATION.md) records equivalence, lifecycle measurements and rollback gates. Observer changes alter strict source receipts: create current-tree checkpoints/requests; replay older checkpoints with their original tree.

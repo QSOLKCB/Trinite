@@ -127,6 +127,44 @@ class ObservationTests(unittest.TestCase):
                         self.assertEqual(len(family['pairs']),9)
                         self.assertEqual(sum(p['type']=='same-item/different-carrier' for p in family['pairs']),3)
 
+    def test_geo_null_reuse_001_exact_direct_pair_oracle_and_one_materialization(self):
+        from trinite.geometry_run import summarize
+        from trinite.geometry import alignment
+        captures=parse_json((self.root/'on/dense-captures.json').read_bytes())
+        records=[]
+        for r in captures['records']:
+            _,points=audit_capture(json_bytes(r['capture']))
+            records.append({**{k:r[k] for k in ('example_identity','semantic_identity','family_id','carrier')},'points':points})
+        with patch('trinite.geometry_run.rademacher',wraps=rademacher) as make_null:
+            result=summarize(records,lambda:None)
+        self.assertEqual(make_null.call_count,36*2)
+        by_id={r['example_identity']:r for r in records}
+        before=rng_id()
+        for layer,conditions in result.items():
+            for family in conditions['deterministic-rademacher-vectors']['families']:
+                for pair in family['pairs']:
+                    a,b=by_id[pair['left']],by_id[pair['right']]
+                    expected=alignment(rademacher(a['points'][layer],a['example_identity']+':'+layer),
+                                       rademacher(b['points'][layer],b['example_identity']+':'+layer))
+                    self.assertEqual(pair['cosine_hex'],expected.hex())
+        self.assertEqual(before,rng_id())
+
+    def test_combined_cpu_runner_preserves_standalone_suite_ids(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('cpu_runner',ROOT/'scripts/check_cpu.py')
+        runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)
+        def ids(suite):
+            for case in suite:
+                if isinstance(case,unittest.TestSuite):yield from ids(case)
+                else:yield case.id()
+        expected=[]
+        for directory in ('tests/model','tests/training','tests/geometry'):
+            expected.extend(ids(unittest.TestLoader().discover(str(ROOT/directory))))
+        actual=list(ids(runner.load_suites()))
+        self.assertEqual(actual,expected)
+        self.assertEqual(len(actual),len(set(actual)))
+        self.assertFalse(any('_FailedTest' in name for name in actual))
+
     def test_replay_off_and_failed_observer_preserve_artifacts_rng_checkpoints(self):
         class Broken:
             def __init__(self,path):raise OSError('injected observer acquisition failure')

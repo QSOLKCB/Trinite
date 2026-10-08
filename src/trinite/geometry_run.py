@@ -103,6 +103,14 @@ def summarize(records, check_budget):
             per_family = []
             for family, group in sorted(families.items()):
                 same, different, pairs = [], [], []
+                # GEO-NULL-REUSE-001: fixed seed/key/layer/shape, immutable
+                # audited prompt points. Every pair consumes this exact null.
+                nulls = {}
+                if condition == 'deterministic-rademacher-vectors':
+                    for item in group:
+                        check_budget()
+                        nulls[item['example_identity']] = rademacher(
+                            item['points'][layer], item['example_identity']+':'+layer)
                 for a, b in itertools.combinations(sorted(group, key=lambda r: r['example_identity']), 2):
                     same_item = a['semantic_identity'] == b['semantic_identity'] and a['carrier'] != b['carrier']
                     different_item = a['semantic_identity'] != b['semantic_identity'] and a['carrier'] == b['carrier']
@@ -111,8 +119,8 @@ def summarize(records, check_budget):
                     left, right = a['points'][layer], b['points'][layer]
                     if condition == 'reverse-token-order': left, right = left[::-1], right[::-1]
                     elif condition == 'deterministic-rademacher-vectors':
-                        left = rademacher(left, a['example_identity']+':'+layer)
-                        right = rademacher(right, b['example_identity']+':'+layer)
+                        left = nulls[a['example_identity']]
+                        right = nulls[b['example_identity']]
                     score = alignment(left, right)
                     (same if same_item else different).append(score)
                     pairs.append({'left': a['example_identity'], 'right': b['example_identity'],
