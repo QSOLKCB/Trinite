@@ -4,7 +4,7 @@
 
 An inspectable, ternary-weight edge AI research project: small models, curated data, geometric reasoning experiments, and PROVENANCE observation.
 
-**Status: Phase 3 native training implemented.** Matched dense and ternary CPU decoders now support bounded supervised training, safe checkpoints, exact interrupted replay, and a pinned PROVENANCE observer. Tiny runs learn the visible formal fixture; this is software and learning conformance, not a reasoning or edge benchmark. See [Phase 3 evidence and limits](docs/PHASE-3.md).
+**Status: Phase 4 geometry measurement implemented.** Matched dense and ternary CPU decoders support native training, safe replay, detached prompt captures, and analysis with a pinned QSOL-GEO-REASON kernel and PROVENANCE observer. First visible-fixture geometry observations are descriptive; reasoning, intervention, and edge benchmarks remain pending. See [Phase 4 evidence and limits](docs/PHASE-4.md).
 
 
 Start with the [documentation index](docs/README.md), [architecture](docs/ARCHITECTURE.md), and [roadmap](docs/ROADMAP.md). Contributors and implementing agents should read the [operating instructions](docs/INSTRUCTIONS.md) and [invariants](docs/INVARIANTS.md) before changing the project.

@@ -45,6 +45,17 @@ def main(argv: list[str] | None = None) -> int:
     train.add_argument("--source-revision", default="unreported")
     verify = commands.add_parser("verify-observation")
     verify.add_argument("directory", type=Path)
+    for command in ('freeze-observation', 'measure-observation'):
+        geometry = commands.add_parser(command)
+        geometry.add_argument('output', type=Path)
+        geometry.add_argument('--dataset', required=True, type=Path)
+        geometry.add_argument('--training-config', required=True, type=Path)
+        geometry.add_argument('--dense-checkpoint', required=True, type=Path)
+        geometry.add_argument('--ternary-checkpoint', required=True, type=Path)
+        if command == 'measure-observation':
+            geometry.add_argument('--request', required=True, type=Path)
+            geometry.add_argument('--request-identity', required=True)
+            geometry.add_argument('--observer', choices=('pinned', 'off'), default='pinned')
     args = parser.parse_args(argv)
     try:
         if args.command == "validate-config":
@@ -63,6 +74,23 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "verify-observation":
             from .observation import verify_observation
             result = verify_observation(args.directory)
+        elif args.command in ('freeze-observation', 'measure-observation'):
+            try:
+                import torch
+                from .geometry_run import freeze_observation, measure_observation
+            except ImportError as error:
+                raise ContractError('geometry observation requires the hash-locked CPU dependencies') from error
+            torch.set_num_threads(1)
+            torch.use_deterministic_algorithms(True)
+            options = {k: getattr(args, k) for k in ('dataset', 'training_config', 'dense_checkpoint', 'ternary_checkpoint')}
+            if args.command == 'freeze-observation':
+                result = freeze_observation(args.output, **options)
+            else:
+                result = measure_observation(args.output, **options, request=args.request,
+                    request_identity=args.request_identity, observer=args.observer == 'pinned')
+                sys.stdout.write(json_bytes(result).decode('utf-8'))
+                return int(result['compute_outcome']=='failed' or bool(result['observation_errors'])
+                           or (args.observer=='pinned' and not result['observer_evidence_eligible']))
         elif args.command == "train":
             try:
                 import torch

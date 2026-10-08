@@ -7,13 +7,16 @@ ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
     "contracts": set(), "tokenizer": {"contracts"},
     "data": {"contracts", "tokenizer"},
-    "cli": {"contracts", "tokenizer", "data", "model", "inspection", "training", "experiment", "observation"},
+    "cli": {"contracts", "tokenizer", "data", "model", "inspection", "training", "experiment", "observation", "geometry_run"},
     "quantizer": {"contracts"}, "model": {"contracts", "quantizer"},
     "inspection": {"contracts", "model", "quantizer"},
     "training": {"contracts", "data", "inspection", "model", "tokenizer"},
     "checkpoint": {"contracts", "inspection", "training"},
     "observation": {"contracts"},
     "experiment": {"contracts", "data", "checkpoint", "observation", "training", "inspection"},
+    "capture": {"contracts", "inspection", "model", "tokenizer"},
+    "geometry": {"contracts", "_geo_reference"}, "_geo_reference": set(),
+    "geometry_run": {"contracts", "data", "geometry", "observation", "training", "checkpoint", "capture", "inspection"},
     "__main__": {"cli"}, "__init__": set(),
 }
 
@@ -24,7 +27,8 @@ class BoundaryTests(unittest.TestCase):
             for node in ast.walk(ast.parse(path.read_text())):
                 if isinstance(node, ast.ImportFrom):
                     if node.level:
-                        self.assertIn(node.module, ALLOWED[path.stem], str(path))
+                        for name in ([node.module] if node.module else [a.name for a in node.names]):
+                            self.assertIn(name, ALLOWED[path.stem], str(path))
                         continue
                     imports = [node.module.split(".")[0]]
                 elif isinstance(node, ast.Import):
@@ -33,9 +37,10 @@ class BoundaryTests(unittest.TestCase):
                     continue
                 for name in imports:
                     optional = ({"torch"} if path.stem in {
-                        "model", "quantizer", "inspection", "cli", "training", "checkpoint"} else set())
+                        "model", "quantizer", "inspection", "cli", "training", "checkpoint", "capture", "geometry_run"} else set())
                     if path.stem == "checkpoint": optional |= {"numpy", "safetensors"}
                     if path.stem == "cli": optional |= {"numpy"}
+                    if path.stem == "geometry_run": optional |= {"numpy"}
                     if path.stem == "observation": optional |= {"provenance_core", "provenance_verify"}
                     self.assertIn(name, sys.stdlib_module_names | optional)
                     self.assertNotIn(name, {"socket", "urllib", "http", "ssl", "subprocess"})

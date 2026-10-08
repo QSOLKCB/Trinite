@@ -10,7 +10,7 @@ Status: foundation commands/tests remain standard-library only. Phase 2 model co
 | Tokenization | Small in-project byte tokenizer | Fully auditable mapping and no inherited tokenizer corpus |
 | Tensor artifacts | safetensors plus versioned JSON manifests | Explicit tensor inventory; no arbitrary pickle execution for model loading |
 | Tests and CLI | unittest and argparse initially | Standard-library harness and entrypoints with minimal dependencies |
-| Geometry reference | Pinned QSOL-GEO-REASON adapter or frozen cross-check fixtures | Reuse measurement definitions after compatibility tests |
+| Geometry reference | Frozen unmodified QSOL-GEO-REASON numerical kernel at e770f585; standard library only | Actual pinned functions, original 19 numerical tests and analytic fixtures; [GEOMETRY.md](GEOMETRY.md) |
 | Observation | Pinned PROVENANCE adapter | Independent run/artifact lineage; preserve its canonicalization rules |
 | Automation | GitHub Actions for CPU CI and manually dispatched training | Workflow orchestration is distinct from provisioned compute |
 | Optional accelerated training | Unsloth only after compatibility and parity checks | Preserve the idea's training direction without making core semantics depend on an unverified custom-model backend |

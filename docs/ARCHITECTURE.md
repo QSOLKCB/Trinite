@@ -1,6 +1,6 @@
 # Architecture
 
-Status: Phase 3 adds bounded CPU native training and safe replay to the float32 dense/ternary reference model. The 6,752-parameter tiny configuration demonstrates learning on visible formal fixtures; fresh capability evidence remains pending. See [PHASE-3.md](PHASE-3.md).
+Status: Phase 4 adds detached prompt capture and pinned native-space geometry measurement to the existing CPU training/replay model. Numerical model and training semantics are unchanged, with geometry loss zero. The 6,752-parameter tiny configuration has visible-fixture learning and descriptive geometry evidence; fresh capability evidence remains pending. See [PHASE-3.md](PHASE-3.md) and [PHASE-4.md](PHASE-4.md).
 
 ## First target
 
