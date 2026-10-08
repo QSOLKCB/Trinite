@@ -1,3 +1,45 @@
-# Phase 1 runtime and test dependency lock: empty (Python standard library only).
-# Optional wheel/editable builds use the exact backend pinned in pyproject.toml.
-# Model/training dependencies are introduced and locked in Phase 2.
+# CPU model lock v1: Linux x86_64, CPython 3.11/3.12/3.13.
+# Exact versions and official-index wheel hashes, including transitive dependencies.
+# setuptools here is Torch runtime support; isolated project builds retain their own 84.0.0 pin.
+--index-url https://download.pytorch.org/whl/cpu
+--only-binary=:all:
+--require-hashes
+
+torch==2.8.0+cpu \
+    --hash=sha256:8f81dedb4c6076ec325acc3b47525f9c550e5284a18eae1d9061c543f7b6e7de \
+    --hash=sha256:cb06175284673a581dd91fb1965662ae4ecaba6e5c357aa0ea7bb8b84b6b7eeb \
+    --hash=sha256:cb9a8ba8137ab24e36bf1742cb79a1294bd374db570f09fc15a5e1318160db4e
+
+numpy==2.3.5 \
+    --hash=sha256:0d8163f43acde9a73c2a33605353a4f1bc4798745a8b1d73183b28e5b435ae28 \
+    --hash=sha256:11e06aa0af8c0f05104d56450d6093ee639e15f24ecf62d417329d06e522e017 \
+    --hash=sha256:8cba086a43d54ca804ce711b2a940b16e452807acebe7852ff327f1ecd49b0d4
+
+filelock==3.32.3 \
+    --hash=sha256:7f0ca4bcc0e181c60dbbd8aa9ab5b120ebb99e4e064e83636340056f833a1f09
+
+typing-extensions==4.16.0 \
+    --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
+
+setuptools==78.1.0 \
+    --hash=sha256:3e386e96793c8702ae83d17b853fb93d3e09ef82ec62722e61da5cd22376dcd8
+
+sympy==1.14.0 \
+    --hash=sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5
+
+networkx==3.6.1 \
+    --hash=sha256:d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762
+
+jinja2==3.1.6 \
+    --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
+
+fsspec==2026.7.0 \
+    --hash=sha256:b57ddbafedfaef7018c1ecab32aa200a9d7ca26b77965f64e48b70061249d279
+
+mpmath==1.3.0 \
+    --hash=sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c
+
+markupsafe==3.0.3 \
+    --hash=sha256:0bf2a864d67e76e5c9a34dc26ec616a66b9888e25e7b9460e1c76d3293bd9dbf \
+    --hash=sha256:ccfcd093f13f0f0b7fdd0f198b90053bf7b2f02a3927a30e63f3ccc9df56b676 \
+    --hash=sha256:d6dd0be5b5b189d31db7cda48b91d7e0a9795f31430b7f271219ab30f1d3ac9d

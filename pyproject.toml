@@ -5,11 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "trinite"
 version = "0.0.0"
-description = "Inspectable edge AI research: offline foundation contracts and fixtures"
+description = "Inspectable edge AI research: CPU dense and ternary reference decoders"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MPL-2.0"
 dependencies = []
+
+[project.optional-dependencies]
+model = ["torch==2.8.0+cpu", "numpy==2.3.5"]
 
 [project.scripts]
 trinite = "trinite.cli:main"

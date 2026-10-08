@@ -1,6 +1,6 @@
 # Phase 1 foundation
 
-Status: implemented and locally verified; remote CI/review/merge are PR gates. No model has been constructed or trained.
+Status: merged historical Phase 1 foundation report. This increment constructed no model; current model conformance is documented in [PHASE-2.md](PHASE-2.md). No training results exist.
 
 ## Implemented interfaces
 

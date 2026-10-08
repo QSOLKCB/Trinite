@@ -18,9 +18,11 @@ Treat geometry as a hypothesis with controls. Keep simulation, software conforma
 
 ## Verification and reporting
 
-For each change, name the affected contract IDs and run meaningful checks appropriate to those boundaries. The Phase 1 suite is runnable with PYTHONPATH=src python -m unittest discover -s tests -v, or python -m unittest discover -s tests -v after package installation. Follow [GETTING_STARTED.md](GETTING_STARTED.md) for offline commands. No train/serve command is advertised before its implementation exists.
+For each change, name the affected contract IDs and run meaningful checks appropriate to those boundaries. The Phase 1 suite is runnable with PYTHONPATH=src python -m unittest discover -s tests -v, or python -m unittest discover -s tests -v after package installation. After acquiring the CPU lock, run the separate required model suite with PYTHONPATH=src python -m unittest discover -s tests/model -v. It imports the pinned backend directly and never silently skips model checks. Follow [GETTING_STARTED.md](GETTING_STARTED.md) for acquisition and offline commands. No train/serve command is advertised before its implementation exists.
 
 The frozen formal fixture binds contracts.py, tokenizer.py, and data.py source bytes. A semantic change to those files requires deliberate fixture regeneration into a new directory, comparison, and a reviewed update of the retained fixture. Do not automatically regenerate fixtures in tests or CI to make them pass.
+
+The retained model-v0 forward fixture is produced by the independent scalar oracle in tests/model/oracle.py; test/CI execution never replaces it. Changes to model/quantizer semantics must name their numerical compatibility and affected requirements before updating these expectations.
 
 .gitattributes pins LF working-tree bytes for byte-bound Python and JSON/JSONL artifacts, including the retained fixtures. Preserve these rules; core.autocrlf or a platform's default newline must not change a source/fixture identity.
 
