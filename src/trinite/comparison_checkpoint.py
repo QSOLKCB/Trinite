@@ -121,6 +121,14 @@ def restore(payload, metadata, workload, lane, seed, request_identity, expected_
     state.step, state.cursor, state.target_tokens = r['step'], r['cursor'], r['target_tokens']
     state.history, state.validation = r['history'], r['validation']
     progress(state)
+    return restore_tensors(state, payload, r['model_identity'])
+
+
+def restore_tensors(state, payload, expected_model_identity):
+    """Load the shared closed model/AdamW inventory into validated progress."""
+    if type(payload) is not bytes or len(payload) > 32*1024*1024:
+        raise ContractError('comparison tensor payload exceeds budget')
+    progress(state)
     try:
         tensors = load(payload)
     except Exception as error:
@@ -145,6 +153,6 @@ def restore(payload, metadata, workload, lane, seed, request_identity, expected_
                     slots[slot] = value.clone()
                 state.optimizer.state[p] = slots
     progress(state)
-    if model_identity(state.model) != r['model_identity']:
+    if model_identity(state.model) != expected_model_identity:
         raise ContractError('comparison model identity mismatch')
     return state

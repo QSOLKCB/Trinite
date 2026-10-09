@@ -146,3 +146,64 @@ fold gate. The next increment needs a separately frozen training budget/schedule
 or curriculum decision before another learning/evaluation protocol. Complete
 counts, failures and retrieval instructions are in [CONVERGENCE.md](CONVERGENCE.md).
 Held-out scoring and Phase 5 remain blocked.
+
+
+## Training budget development and game-theory curriculum
+
+The next training-only budget increment is implemented in [BUDGET.md](BUDGET.md)
+under its separately frozen [protocol](BUDGET-PROTOCOL.md): nine dense cells,
+constant 0.001 and four times the prior updates, with replayable checkpoints at
+every milestone. Held-out evaluation, format selection and Phase 5 remain gated.
+
+Trent also requested game theory. The introductory [exact numeric pack](GAME-THEORY.md)
+and independent oracle are implemented; teaching/training is a separate pending
+curriculum protocol. Progress from payoff comparison and best responses through
+strict dominance and pure Nash equilibria, then independently checked rational
+mixed-strategy/minimax tasks and bounded repeated games. Keep symmetry-related
+games in one split family and retain ties/no-pure-equilibrium cases. A claim of
+strategic advantage requires scoped, fresh evaluation and comparator evidence.
+
+QEC geometry, ETQ and UFT-ID 3.0 are recorded in [RESEARCH.md](RESEARCH.md#qec-geometry-etq-and-uft-id-intake).
+Exact algebra/invariant tasks can precede a geometry-feature experiment after
+learning succeeds. E8 features, harmonic observation, neural representations,
+finite decoder games and physical quantum behavior require separate contracts
+and evidence. Lean proofs of an observation specification do not verify a neural
+model or the Python implementation automatically.
+
+
+## Ethics and public-domain narrative intake
+
+Trent requested an [ethics crash course](ETHICS.md) and reality/narrative
+separation, using Asimov's laws as a fiction discussion reference and Harvard's
+public-domain collection as a potential source. Curriculum preparation is
+planned alongside game theory: evidence/fiction classification, consent/privacy,
+conflicting duties, uncertainty, safe alternatives and escalation, followed by
+fresh human-reviewed scenarios. It is not an admitted or trained ethics corpus.
+
+The [Harvard intake review](ETHICS.md#harvard-public-domain-intake) records access
+and rights boundaries. Select bounded exact editions with source, rights,
+acquisition, OCR and exposure receipts before admission. Keep
+real and fictional contexts explicitly labelled, and preserve disagreement in
+ethical rubrics. Pre-launch stress and formal software verification cannot
+substitute for this behavioural evaluation.
+
+The [curated public-domain shortlist](PUBLIC-DOMAIN.md) proposes Mill, Kant (Abbott translation), Boole and Shelley for later small, source-bound ethics/logic/narrative intake. Exact editions, file identities, Australian rights, transformations and exposure gates precede admission; none enters the current training experiment.
+
+The [Australian shortlist](PUBLIC-DOMAIN.md#australian-source-candidates) adds
+Lawson, Banjo Paterson, Miles Franklin and Catherine Helen Spence for historical
+Australian language, figurative interpretation and narrative perspectives.
+Begin with bounded Lawson stories alongside separately admitted modern material.
+Exact editions, contributor rights, transformations and distribution/exposure
+review remain prerequisites; these are source candidates, not downloaded,
+admitted or trained books.
+
+
+The complete budget-development matrix is measured: all nine cells passed every
+final per-task **training-only** check, with all milestone predictions/losses
+verified against retained models. Prefix and one full same-host replay checks
+are retained in [BUDGET.md](BUDGET.md). This resolves the exposed training floor
+for the chosen longer dense budget, not held-out learning adequacy. The next
+reviewable increment is a separately frozen learning/evaluation protocol with
+matched lanes and this explicit budget decision; Phase 5 and curriculum training
+remain conditional on measured learning/evaluation gates. Earlier negative and
+blocked evidence stays preserved.

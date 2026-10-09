@@ -47,3 +47,8 @@ The initial pre-launch agent handoff is [QBRAID.md](QBRAID.md).
 
 The next training-only diagnostic is [CONVERGENCE.md](CONVERGENCE.md), with
 its frozen [protocol](CONVERGENCE-PROTOCOL.md).
+
+- [Training budget development](BUDGET.md) and [frozen protocol](BUDGET-PROTOCOL.md).
+- [Exact game-theory foundations](GAME-THEORY.md); numeric corpus prepared, training pending.
+- [Ethics, reality and narrative curriculum](ETHICS.md); Harvard source intake pending.
+- [Curated public-domain sources](PUBLIC-DOMAIN.md); editions/rights/exposure admission pending.

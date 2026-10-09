@@ -71,5 +71,6 @@ jobs:
           python -m unittest discover -s tests/comparison -v
           python -m unittest discover -s tests/foundations -v
           python -m unittest discover -s tests/convergence -v
+          python -m unittest discover -s tests/budget -v
           python -m trinite inspect-model --lane dense --text '1+1=2' > "$RUNNER_TEMP/dense-inventory.json"
           python -m trinite inspect-model --lane ternary --text '1+1=2' --capture-layer final --capture-position 0 > "$RUNNER_TEMP/ternary-inventory.json"
