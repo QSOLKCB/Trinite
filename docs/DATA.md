@@ -71,3 +71,8 @@ independent scalar oracle/parser checks procedural labels and prompt meanings.
 Exact source revision, parent example/semantic lineage, content identities and
 rights evidence are retained in the new manifests. This preparation has not
 been trained and admits no donor text or model output.
+
+
+## Finite maths admission
+
+[MATHS.md](MATHS.md) adds a separate source-specific bounded formal admission: 12 finite-maths/algebra tasks, independent exact labels/parser checks, source identities, rights evidence and orbit-grouped splits. Both carriers and all algebra projections/RHS variants stay in their family. No textbook or donor prose enters the native lane; earlier admissions remain unchanged.
