@@ -210,3 +210,9 @@ separately frozen [protocol](SCALAR-LEARNING-PROTOCOL.md) preserves original
 composed-output, Phase 5 and release gates. Run small scalar conformance checks
 with `PYTHONPATH=src python -m unittest discover -s tests/scalar -v` inside the
 locked CPU environment; the grouped research runner includes these cases.
+
+
+For optional external internal-activation capture, follow the separate locked
+backend and explicit offline-input procedure in
+[REFERENCE-GEOMETRY.md](REFERENCE-GEOMETRY.md). The base CPU lock is unchanged;
+pretrained model acquisition is explicit and separate from capture.

@@ -1,0 +1,41 @@
+# Optional reference capture extension; install after requirements.lock.
+--extra-index-url https://pypi.org/simple
+--only-binary=:all:
+--require-hashes
+
+PyYAML==6.0.3 \
+    --hash=sha256:b8bb0864c5a28024fac8a632c443c87c5aa6f215c0b126c449ae1a150412f31d\
+    --hash=sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc\
+    --hash=sha256:0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6
+
+certifi==2025.11.12 \
+    --hash=sha256:97de8790030bbd5c2d96b7ec782fc2f7820ef8dba6db909ccf95449f2d062d4b
+
+charset-normalizer==3.4.4 \
+    --hash=sha256:7a32c560861a02ff789ad905a2fe94e3f840803362c84fecf1851cb4cf3dc37f
+
+huggingface-hub==0.30.2 \
+    --hash=sha256:68ff05969927058cfa41df4f2155d4bb48f5f54f719dd0390103eefa9b191e28
+
+idna==3.11 \
+    --hash=sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea
+
+regex==2025.11.3 \
+    --hash=sha256:10483eefbfb0adb18ee9474498c9a32fcf4e594fbca0543bb94c48bac6183e2e\
+    --hash=sha256:a12ab1f5c29b4e93db518f5e3872116b7e9b1646c9f9f426f777b50d44a09e8c\
+    --hash=sha256:4aecb6f461316adf9f1f0f6a4a1a3d79e045f9b71ec76055a791affa3b285850
+
+requests==2.32.5 \
+    --hash=sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6
+
+tokenizers==0.21.4 \
+    --hash=sha256:51b7eabb104f46c1c50b486520555715457ae833d5aee9ff6ae853d1130506ff
+
+tqdm==4.67.1 \
+    --hash=sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2
+
+transformers==4.51.3 \
+    --hash=sha256:fd3279633ceb2b777013234bbf0b4f5c2d23c4626b05497691f00cfda55e8a83
+
+urllib3==2.6.1 \
+    --hash=sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b

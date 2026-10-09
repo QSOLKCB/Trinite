@@ -146,3 +146,19 @@ validates the larger projection total and delegates unchanged per-task threshold
 `scripts/run_scalar_learning.py` owns bounded fixed fresh workers and retention.
 No numerical update loop or scorer is copied; original experiment source modules
 remain unchanged. The grouped research CI appends the scalar suite in order.
+
+
+## External reference geometry observation
+
+`reference_inputs.py` binds visible scalar admission, the pinned external asset
+manifest, original native producer and separate frozen request.
+`reference_capture.py` is the sole optional Transformers/Torch instrumentation
+boundary. It consumes locally verified inputs and explicit native capture APIs.
+`reference_geometry.py` owns bounded standard-library detached geometry.
+`reference_evidence.py` composes closed condition and derived PROVENANCE evidence.
+`scripts/run_reference_geometry.py` owns fixed fresh workers and deadlines;
+`scripts/acquire_reference_model.py` is explicit fixed-revision acquisition.
+The independent Fraction oracle under `scripts/reference_math_oracle.py` is an
+intentional verification implementation, not a second production kernel. No
+numerical training loop, native checkpoint reader or admission operation is
+duplicated. See [REFERENCE-GEOMETRY.md](REFERENCE-GEOMETRY.md).
