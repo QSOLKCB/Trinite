@@ -40,6 +40,11 @@ ALLOWED = {
     "budget_training": {"contracts", "foundations_training", "budget_plan", "foundations_data", "foundations", "training"},
     "budget": {"contracts", "budget_training", "foundations_data",
                "budget_checkpoint", "convergence", "foundations", "training", "observation"},
+    "learning_data": {"contracts", "foundations_data"},
+    "learning_plan": {"contracts", "budget_plan"},
+    "learning_training": {"contracts", "foundations_training", "foundations", "learning_data", "learning_plan", "training"},
+    "learning_checkpoint": {"contracts", "comparison_checkpoint", "training", "learning_plan", "learning_training", "learning_data"},
+    "learning": {"contracts", "learning_training", "learning_data", "learning_checkpoint", "foundations", "comparison", "training", "observation"},
     "__main__": {"cli"}, "__init__": set(),
 }
 

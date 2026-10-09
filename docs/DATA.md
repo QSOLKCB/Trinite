@@ -54,3 +54,11 @@ nonempty contradictory field or changed evidence fails. Both carriers and all
 related transformations remain in the same family. This admits no donor prose,
 software text, benchmark questions or third-party sheets. The earlier fixtures
 and data policy remain unchanged.
+
+The matched [learning increment](LEARNING.md) uses a separate
+`trinite.learning-data.v1` admission wrapper over those same independently checked
+facts. It binds generator revision, split seed and transformation lineage in every
+item, including the original example as `ordering_identity`. These new identities
+preserve the prior texts, families, splits and numerical exposure order. The
+retained parent evidence is unchanged; this is not blanket admission of generated
+data or external curriculum sources.
