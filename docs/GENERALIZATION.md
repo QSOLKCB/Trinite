@@ -152,3 +152,18 @@ Affected contracts: TRI-I03, I07, I08, I11, I12, I13 and I14. The model, tokeniz
 quantizers, optimizer, old scientific protocols, learning thresholds, historical
 fixtures and archived producers are unchanged. No larger-model or general
 reasoning claim follows from these diagnostic counts.
+
+A second fresh read-only reproduction regenerated the exact report and verified
+both the parent matrix and new closed evidence again. All 37 new output files
+still matched the restored packet byte for byte. The archived procedure also
+passed request/source/environment conformance and fresh upstream verification.
+[Reproduction receipt](../fixtures/generalization-v1/reproduction.json) and
+[restored-packet checks](../fixtures/generalization-v1/restored-verification.json)
+state their separate scopes. They do not replay every original optimizer update.
+
+Local validation: 101 standard-library tests passed; all 122 CPU research cases
+passed in each of six characterization runs with identical ordered identities;
+upstream ran 51 checks with its unprivileged-permission case skipped locally.
+All six hosted Python 3.11–3.13 jobs passed, covering all 274 current cases per
+Python version including that permission case. Relative documentation links,
+anchors, module boundaries and whitespace checks also passed.
