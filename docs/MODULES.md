@@ -189,3 +189,8 @@ Historical fold-exposure modules and evidence remain unchanged. See
 ## Maths corpus and pilot
 
 `maths_data.py` and `maths_oracle.py` own standard-library generation/admission and independent exact checking. `maths_plan.py` delegates bounds to the existing budget profile. `maths_learning.py` composes admitted train rows, the authoritative native updater, shared safe tensor/progress reader and foundations prompt-only scorer, with its own frozen protocol and closed observer evidence. `scripts/run_maths.py` launches fixed fresh workers. Historical numerical/evidence implementations remain unchanged.
+
+
+## Maths retention development
+
+`maths_retention.py` composes the existing admitted pooled state with two ranked training streams and a separately frozen rehearsal protocol. It owns source/request/schedule/checkpoint context, actual exposure diagnostics and fresh report assembly. Admission, initialization, numerical updates, safe tensor/progress handling, prompt-only scoring, drift diagnostics and closed PROVENANCE verification delegate to their existing authoritative operations. `scripts/run_maths_retention.py` owns fixed fresh workers and failure retention. The unique training diagnostic view stays separate from scheduled rehearsal visits. See [MATHS-RETENTION.md](MATHS-RETENTION.md).

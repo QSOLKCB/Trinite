@@ -309,3 +309,8 @@ selection, scaling and Phase 5 remain blocked.
 ## User-authorised finite maths pilot
 
 Requested by Trent Slade after PR #18 on 2026-10-09. [MATHS.md](MATHS.md) implements a separately frozen finite maths/linear algebra corpus and paired arithmetic-control training pilot. This explicit new scope permits exploratory held-out diagnostics for its own protocol while historical fold-sum and composed adequacy remain blocked. It selects no format and unlocks no geometry phase or scaling; Both complete pilots are measured and retained. The corrected pilot improves over the arithmetic control in both seeds, but only one seed beats the overall majority baseline and arithmetic retention regresses. Unique-system solving remains mixed. Learning adequacy and drift prevention are unresolved; historical gates stay blocked.
+
+
+## Fixed arithmetic rehearsal development
+
+After PR #19, the next separately frozen learning increment is [MATHS-RETENTION.md](MATHS-RETENTION.md): repeat the pooled maths pilot and compare four arithmetic/four maths examples in each batch with the same two seeds and update budget. All four cells completed and freshly verified. Rehearsal passes the arithmetic training criterion in both seeds but reduces maths accuracy; all maths training criteria remain failed. Both pooled safe tensors, histories and predictions reproduce PR #19 exactly. Actual visits, targets and training criteria remain visible. The reused test diagnostics are exploratory. No schedule is selected and historical learning adequacy, composed assessment, format selection, scaling and Phase 5 remain blocked.

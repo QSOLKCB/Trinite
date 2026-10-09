@@ -68,3 +68,5 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 ## Finite maths curriculum
 
 [MATHS.md](MATHS.md): admitted exact finite maths/algebra, independently checked oracles, family isolation, paired native-training control, full prediction/checkpoint/PROVENANCE retention and explicit exploratory limits.
+
+[MATHS-RETENTION.md](MATHS-RETENTION.md): fixed balanced arithmetic rehearsal versus the unchanged pooled maths curriculum, explicit exposure accounting and fresh safe-state verification.
