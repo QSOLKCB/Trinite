@@ -184,3 +184,20 @@ The manual foundations matrix freezes a new request, trains all 27 cells and
 retains a verified dense-learning decision before any held-out scoring. Blocked
 or failed runs retain their records and exit nonzero. Never copy a request from
 another source/environment or modify historical evidence to make it pass.
+
+## Generalization diagnostics and current research conformance
+
+[GENERALIZATION.md](GENERALIZATION.md) documents the parent-bound diagnostic
+worker and standard-library scalar preparation. Fresh numerical verification
+requires the retained parent's exact environment; different-host conformance
+does not certify that matrix. After acquiring the CPU lock, the complete current
+research runner is:
+
+```sh
+PYTHONPATH=src python scripts/check_research_cpu.py
+```
+
+It executes native model/training/geometry followed by comparison, foundations,
+convergence, budget, learning and generalization, retaining every standalone
+test ID and explicit subprocess probe. The historical `check_cpu.py` and all
+standalone suite commands remain supported.

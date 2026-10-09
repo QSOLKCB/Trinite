@@ -66,3 +66,61 @@ Use the hash-locked CPU environment. Each output must be new. Observer/geometry 
 The CPU benchmark dispatcher accepts only four fixed suite selectors and launches fixed argument vectors with the current Python interpreter, the repository working directory and `shell=False`. Unknown selectors reject before process creation; CLI output paths and environment values are never interpolated into arguments. Its subprocess call has a narrowly scoped exception for the `dangerous-subprocess-use-audit` rule: the dynamic interpreter preserves the selected hash-locked environment, while the closed dispatcher prevents external command selection. Regression tests check every allowed argument vector and rejection of command-like selectors. No shell escaping is needed because no shell interprets the arguments.
 
 Rollback a candidate if exact bundle/report/trajectory/metric/control parity fails, changed inputs/files escape rejection, model/RNG/checkpoint bytes change, discovery loses a case, or repeated target measurements show the tradeoff no longer improves the workload. Keep the direct cold/reference paths for comparison. Further source/verifier caching, fewer tests/seeds, numerical approximations, packed export and Phase 5 intervention are outside this detour.
+
+## Complete research CI grouping after the learning increment
+
+Trent requested another OPT review after PR #13. This adaptation uses
+[OPT v1.4.0 at 1ddd931](https://github.com/QSOLKCB/OPT/tree/1ddd93198991c2d296447693c040466ed2ed13cb), its README4AI,
+OPTIMIZATION-PROBLEM, CATALOG and complete OPT-PY-001/OPT-INV-001 records.
+No OPT runtime or training data enters Trinite.
+
+The target contract is fixed before timing the candidate:
+
+| Component | Definition |
+| --- | --- |
+| X | Standalone CPU research-suite processes versus one grouped process |
+| F | Exact ordered test identities, assertions, three Python lanes, existing fresh-process probes and failure/skip semantics preserved |
+| f / d | Minimize complete dependency-consuming conformance wall time on the current host |
+| C | No test deletion, result/verifier cache, tolerance change, changed science or package-lock weakening; every required suite executes fresh |
+| B | One candidate and three alternating paired complete-suite trials, plus the direct coverage gate |
+| S | Stop after the fixed trials; adopt only after complete parity and lower local median wall time; otherwise keep separate invocations |
+
+Classification: categorical local choice; noisy wall time; derivative-free;
+moderate evaluation cost; equality, semantic and resource constraints;
+sequential; exact. Acquisition and the unchanged inspection commands are outside
+the local timed boundary; no hosted CI speedup is assumed.
+
+**CPU-RESEARCH-COVERAGE-001:** `scripts/check_research_cpu.py` delegates the
+historical native model/training/geometry discovery to the unchanged
+`check_cpu.py`, then discovers comparison, foundations, convergence, budget,
+learning and generalization in standalone order. Its exact ordered test-ID list
+must equal the standalone discoveries without duplicates. Empty suites, import
+errors, assertion failures and required skips cannot produce success. Existing
+fresh-process replay, CLI and missing-dependency checks still create subprocesses.
+Standalone suite commands and the original runner remain available. Foundation
+and upstream standard-library jobs remain separate. Existing download caching,
+fresh hash-locked installation and `pip check` stay in place.
+
+The candidate changes process lifetime only; it never reuses a previous test
+result or verifier outcome. Reject it on test identity, assertion or isolation
+failure, or if the fixed paired measurements do not improve the target median.
+
+Three alternating full-suite pairs passed with the exact same 122 ordered cases
+and no skips. On the existing shared Linux x86_64 / AMD EPYC 9V74 / CPython
+3.12.14 / Torch 2.8.0+cpu host, standalone times were 163.225342, 160.341148
+and 160.501597 seconds; grouped times were 153.394814, 151.756027 and
+147.358382 seconds. Medians were **160.501597 s versus 151.756027 s**, a
+**5.45% lower local wall time**. This met the fixed adoption rule; current CPU
+CI uses the grouped research runner. All six hosted conformance jobs at
+`d3d504305ef81120630066150980f9ab668abe82` also passed.
+
+[Raw samples, source/environment identities and executed logs](../fixtures/performance/research-cpu/)
+retain the characterization. The source producer is
+`5664b48a00df2cbf510828b7c866db076f51cffc`. These are three descriptive pairs
+on shared compute, not a statistical significance claim or a guaranteed hosted
+CI improvement. No other local model process overlapped these timing trials.
+Reproduce the fixed three-pair characterization with:
+
+```sh
+PYTHONPATH=src python scripts/benchmark_research_cpu.py --output /tmp/research-cpu-characterization
+```

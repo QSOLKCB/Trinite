@@ -16,3 +16,5 @@
 *.jpeg binary
 *.zip binary
 *.zip.part* binary
+
+fixtures/performance/research-cpu/*.log -text

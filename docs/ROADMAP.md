@@ -207,3 +207,29 @@ reviewable increment is implemented in [LEARNING.md](LEARNING.md), with a
 separately frozen learning/evaluation protocol, matched lanes and this explicit
 budget decision. Its corrected complete 27-cell run scored held-out examples, but every dense seed failed at least one per-task learning gate. Arithmetic/fold generalization stays low; lattice’s 80% aggregate hides traversal failure. Format selection and Phase 5 remain blocked. The next increment requires a separately frozen curriculum/generalization decision; curriculum training remains pending. Earlier negative and
 blocked evidence stays preserved.
+
+## Generalization diagnosis and scalar curriculum decision
+
+The next separately frozen increment is implemented in
+[GENERALIZATION.md](GENERALIZATION.md) under
+[GENERALIZATION-PROTOCOL.md](GENERALIZATION-PROTOCOL.md): fresh read-only
+verification of the complete corrected learning matrix, per-task/carrier
+coverage and EOS/component diagnostics, and independently checked scalar
+fold/traversal preparation over unchanged family splits. Arithmetic remains an
+unchanged-text control. Diagnostic observations are descriptive; no new model
+is trained in this increment.
+
+The next training experiment must freeze its matched budget, exposure schedule,
+checkpoint profile and per-task gates before outcomes. It should measure the
+scalar curriculum and subsequently test original composed outputs under a
+separately declared protocol. Correlated projections cannot count as independent
+samples, component credit cannot replace exact-answer/EOS gates, and unseen
+answers/vocabulary observations cannot establish a causal explanation of failure.
+Phase 5, format selection, structure/algebra expansion and scaling stay blocked.
+
+The diagnostic is now measured and retained: all 27 parent cells freshly verified,
+with the 1,306-file parent inventory unchanged. Dense fold count components
+reached 311–319/320 while complete answers remained 0–37/320; traversal stayed
+0/8 and all dense held-out errors were wrong-answer rather than EOS failures.
+All 27 lanes/cells remain in the report. This does not close learning adequacy;
+scalar curriculum training is still the next separately frozen experiment.

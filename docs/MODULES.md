@@ -120,3 +120,16 @@ The shared scorer accepts an explicitly admitted example list and cap, while the
 historical foundations entrypoints retain their original dataset and protocol.
 The new admission metadata changes identities, not numeric examples or exposure
 order. See [LEARNING.md](LEARNING.md).
+
+## Implemented generalization diagnostics and scalar preparation
+
+`curriculum_data.py` owns parent-bound scalar projections and admission;
+`curriculum_oracle.py` independently checks labels and rendered prompts without
+model/observer dependencies. `generalization.py` delegates fresh model/evidence
+verification to the unchanged learning summarizer, then computes bounded
+descriptive coverage/component counts and closes the new observer evidence.
+`scripts/run_generalization.py` owns the fixed fresh-worker deadline, disjoint
+output paths, exclusive publication and partial failure retention. It never
+trains or unlocks geometry. `check_research_cpu.py` extends the historical native
+runner with exact ordered research-suite discovery; standalone and existing
+fresh-process probes remain available.

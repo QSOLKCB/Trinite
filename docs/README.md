@@ -54,3 +54,6 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 - [Curated public-domain sources](PUBLIC-DOMAIN.md); editions/rights/exposure admission pending.
 
 - [Matched learning/evaluation](LEARNING.md) and [frozen protocol](LEARNING-PROTOCOL.md); complete three-lane evidence and scoped learning gates.
+
+- [Generalization diagnostics and scalar preparation](GENERALIZATION.md) — read-only verified failure/coverage analysis, inherited family splits and untrained scalar targets.
+- [Generalization protocol](GENERALIZATION-PROTOCOL.md) — frozen parent identities, diagnostic definitions and conservative gates.
