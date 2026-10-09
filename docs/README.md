@@ -59,3 +59,5 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 - [Generalization protocol](GENERALIZATION-PROTOCOL.md) — frozen parent identities, diagnostic definitions and conservative gates.
 
 - [Scalar curriculum learning](SCALAR-LEARNING.md) and [frozen protocol](SCALAR-LEARNING-PROTOCOL.md) — matched scalar training, fresh gates and separate composed-output limits.
+
+- [Fold-sum exposure development](FOLD-EXPOSURE.md) and [frozen protocol](FOLD-EXPOSURE-PROTOCOL.md).

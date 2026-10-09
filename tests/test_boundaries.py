@@ -5,6 +5,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    "fold_exposure_plan": {"contracts", "budget_plan"},
+    "fold_exposure": {"contracts", "curriculum_data", "fold_exposure_plan", "scalar_training", "scalar_learning", "comparison_checkpoint", "foundations", "model", "training", "observation"},
     'reference_geometry': {'contracts'},
     'reference_inputs': {'contracts', 'curriculum_data'},
     'reference_capture': {'contracts', 'model', 'tokenizer', 'reference_geometry', 'reference_inputs', 'scalar_checkpoint', 'scalar_training'},
