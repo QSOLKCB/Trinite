@@ -226,3 +226,10 @@ separately declared protocol. Correlated projections cannot count as independent
 samples, component credit cannot replace exact-answer/EOS gates, and unseen
 answers/vocabulary observations cannot establish a causal explanation of failure.
 Phase 5, format selection, structure/algebra expansion and scaling stay blocked.
+
+The diagnostic is now measured and retained: all 27 parent cells freshly verified,
+with the 1,306-file parent inventory unchanged. Dense fold count components
+reached 311–319/320 while complete answers remained 0–37/320; traversal stayed
+0/8 and all dense held-out errors were wrong-answer rather than EOS failures.
+All 27 lanes/cells remain in the report. This does not close learning adequacy;
+scalar curriculum training is still the next separately frozen experiment.

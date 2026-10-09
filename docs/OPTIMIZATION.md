@@ -70,7 +70,7 @@ Rollback a candidate if exact bundle/report/trajectory/metric/control parity fai
 ## Complete research CI grouping after the learning increment
 
 Trent requested another OPT review after PR #13. This adaptation uses
-[OPT v1.4.0](https://github.com/QSOLKCB/OPT/tree/v1.4.0), its README4AI,
+[OPT v1.4.0 at 1ddd931](https://github.com/QSOLKCB/OPT/tree/1ddd93198991c2d296447693c040466ed2ed13cb), its README4AI,
 OPTIMIZATION-PROBLEM, CATALOG and complete OPT-PY-001/OPT-INV-001 records.
 No OPT runtime or training data enters Trinite.
 
@@ -104,3 +104,23 @@ fresh hash-locked installation and `pip check` stay in place.
 The candidate changes process lifetime only; it never reuses a previous test
 result or verifier outcome. Reject it on test identity, assertion or isolation
 failure, or if the fixed paired measurements do not improve the target median.
+
+Three alternating full-suite pairs passed with the exact same 122 ordered cases
+and no skips. On the existing shared Linux x86_64 / AMD EPYC 9V74 / CPython
+3.12.14 / Torch 2.8.0+cpu host, standalone times were 163.225342, 160.341148
+and 160.501597 seconds; grouped times were 153.394814, 151.756027 and
+147.358382 seconds. Medians were **160.501597 s versus 151.756027 s**, a
+**5.45% lower local wall time**. This met the fixed adoption rule; current CPU
+CI uses the grouped research runner. All six hosted conformance jobs at
+`d3d504305ef81120630066150980f9ab668abe82` also passed.
+
+[Raw samples, source/environment identities and executed logs](../fixtures/performance/research-cpu/)
+retain the characterization. The source producer is
+`5664b48a00df2cbf510828b7c866db076f51cffc`. These are three descriptive pairs
+on shared compute, not a statistical significance claim or a guaranteed hosted
+CI improvement. No other local model process overlapped these timing trials.
+Reproduce the fixed three-pair characterization with:
+
+```sh
+PYTHONPATH=src python scripts/benchmark_research_cpu.py --output /tmp/research-cpu-characterization
+```

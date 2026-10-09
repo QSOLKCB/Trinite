@@ -85,6 +85,60 @@ for workload in ('arithmetic', 'fold', 'lattice'):
 PY
 ```
 
+## Retained diagnostic observations
+
+The complete run passed fresh authoritative verification for all 27 parent cells.
+All **1,306 parent files** retained the same content inventory through analysis.
+The pinned upstream observer closed the new evidence, including full scalar data.
+The following counts are descriptive breakdowns of the already visible parent
+outcomes; they are not a new model experiment or causal attribution.
+
+Every dense held-out output ended with EOS and had a strict ASCII body. Failed
+answers were wrong-answer cases, not missing-EOS or misplaced-special-token cases.
+
+| Dense fold seed | Complete answer/EOS | Count component | Sum component | Squares component |
+| --- | ---: | ---: | ---: | ---: |
+| 0 | 37/320 | 319/320 | 114/320 | 61/320 |
+| 1 | 0/320 | 311/320 | 37/320 | 0/320 |
+| 2 | 0/320 | 317/320 | 107/320 | 0/320 |
+
+Dense traversal stayed **0/8** in every seed; its z coordinate was also **0/8**.
+The other lattice tasks remained perfect, giving the historical 32/40 aggregate.
+Arithmetic complete answers stayed 0/64, 1/64 and 1/64. None of these component
+counts rescues the original per-task learning gate.
+
+All held-out prompt bytes were present in the same task's training prompts.
+Every held-out fold answer tuple was absent from training. Division and
+multiplication held-out exact answers were absent from their task's training
+answers; addition and subtraction answers were present. Lattice conversions
+succeeded on novel complete answers, so exact-answer novelty alone cannot
+explain all observed failures. These counts motivate examining scalar targets;
+they do not establish that the preparation improves learning.
+
+The [retained report and evidence inventory](../fixtures/generalization-v1/)
+include the frozen request, upstream verification and a 1,345,178-byte lossless
+packet containing all new outputs plus the exact diagnostic source closure.
+The separately retained corrected learning packet is also required for numerical
+replay. This is a bounded evidence-review exception to the small-fixture rule;
+no evolving training directory enters git.
+
+Protocol commit: `9924e82047b728e229094c37f5714bb268ebe6a3`.
+Measured source producer: `5664b48a00df2cbf510828b7c866db076f51cffc`.
+Report identity: `sha256:f0b802442f4fe5d81a3b7faaeb3086d6989ff1d08fcb918cdc14612274602ef5`.
+
+Restore the new packet into a fresh destination:
+
+```sh
+python scripts/restore_foundations_archive.py fixtures/generalization-v1/Trinite-generalization-v1.zip /tmp/generalization-restored --archive-identity sha256:770d293d715c6b68f9ff1bf43ed81219722e2f0a74ec82a5726bcfeac7339c57
+```
+
+Use the exact source producer and recorded environment when calling read-only
+verification; later source changes require their own new request. The archived
+`producer/` is the diagnostic execution closure, not the entire repository or
+the independently required old matrix. Its `COMMIT` label alone is not source
+verification: check the actual files against the request's content identities
+and the declared commit before execution.
+
 ## Completion and remaining gates
 
 The implementation, retained diagnostic observations and validation are reported
