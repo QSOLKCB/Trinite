@@ -5,6 +5,10 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    "maths_oracle": {"contracts"},
+    "maths_data": {"contracts", "maths_oracle", "tokenizer"},
+    "maths_plan": {"contracts", "budget_plan"},
+    "maths_learning": {"contracts", "maths_data", "learning_data", "maths_plan", "tokenizer", "model", "training", "comparison_checkpoint", "foundations", "observation"},
     "fold_order_plan": {"contracts", "budget_plan"},
     "fold_order": {"contracts", "curriculum_data", "fold_order_plan", "scalar_training", "scalar_learning", "comparison_checkpoint", "foundations", "model", "training", "observation"},
     "fold_exposure_plan": {"contracts", "budget_plan"},

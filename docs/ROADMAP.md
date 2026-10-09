@@ -304,3 +304,8 @@ both orderings fail the sum training gate in every seed while passing count and
 squares. Mixed order improves one seed and worsens two. No schedule is selected.
 A new separately frozen training-only decision must precede further outcomes. Held-out and composed assessment, format
 selection, scaling and Phase 5 remain blocked.
+
+
+## User-authorised finite maths pilot
+
+Requested by Trent Slade after PR #18 on 2026-10-09. [MATHS.md](MATHS.md) implements a separately frozen finite maths/linear algebra corpus and paired arithmetic-control training pilot. This explicit new scope permits exploratory held-out diagnostics for its own protocol while historical fold-sum and composed adequacy remain blocked. It selects no format and unlocks no geometry phase or scaling; Both complete pilots are measured and retained. The corrected pilot improves over the arithmetic control in both seeds, but only one seed beats the overall majority baseline and arithmetic retention regresses. Unique-system solving remains mixed. Learning adequacy and drift prevention are unresolved; historical gates stay blocked.

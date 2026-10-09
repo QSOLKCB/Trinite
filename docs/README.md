@@ -63,3 +63,8 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 - [Fold-sum exposure development](FOLD-EXPOSURE.md) and [frozen protocol](FOLD-EXPOSURE-PROTOCOL.md).
 
 - [Fold-order development](FOLD-ORDER.md) and its [frozen protocol](FOLD-ORDER-PROTOCOL.md): equal-exposure training-only ordering control.
+
+
+## Finite maths curriculum
+
+[MATHS.md](MATHS.md): admitted exact finite maths/algebra, independently checked oracles, family isolation, paired native-training control, full prediction/checkpoint/PROVENANCE retention and explicit exploratory limits.

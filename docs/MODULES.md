@@ -184,3 +184,8 @@ PROVENANCE verification; it does not add a numerical kernel or scoring rule.
 `scripts/run_fold_order.py` owns fixed fresh workers and failure retention.
 Historical fold-exposure modules and evidence remain unchanged. See
 [FOLD-ORDER.md](FOLD-ORDER.md).
+
+
+## Maths corpus and pilot
+
+`maths_data.py` and `maths_oracle.py` own standard-library generation/admission and independent exact checking. `maths_plan.py` delegates bounds to the existing budget profile. `maths_learning.py` composes admitted train rows, the authoritative native updater, shared safe tensor/progress reader and foundations prompt-only scorer, with its own frozen protocol and closed observer evidence. `scripts/run_maths.py` launches fixed fresh workers. Historical numerical/evidence implementations remain unchanged.
