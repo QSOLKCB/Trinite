@@ -42,7 +42,8 @@ jobs:
 
   model-conformance:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Include hash-locked acquisition and the expanded required research suites.
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:

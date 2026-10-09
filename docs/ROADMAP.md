@@ -299,6 +299,8 @@ training-only increment is implemented in [FOLD-ORDER.md](FOLD-ORDER.md), under
 grouping with deterministic mixed-task order, preserving exactly eight visits
 per example and equal total scored targets. The shared 3,450-update budget is an
 explicit new decision, not a relabelling of the preceding 4,096-update evidence.
-Full measurement is pending. Training success, if observed, only informs a later
-separately frozen learning decision. Held-out and composed assessment, format
+All six cells completed and freshly verified without worker or pairing errors;
+both orderings fail the sum training gate in every seed while passing count and
+squares. Mixed order improves one seed and worsens two. No schedule is selected.
+A new separately frozen training-only decision must precede further outcomes. Held-out and composed assessment, format
 selection, scaling and Phase 5 remain blocked.
