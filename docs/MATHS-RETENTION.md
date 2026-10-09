@@ -89,9 +89,120 @@ threshold. `scripts/check_research_cpu.py` includes the separate required
 `maths_retention` suite. No corpus, tokenizer, model, quantizer, optimizer,
 numerical updater or historical producer is changed by this increment.
 
-## Outcome status at protocol publication
+## Complete paired results
 
-Full training outcomes are pending. No measured improvement or retention pass
-is claimed at this publication point. Successful and failed cells, source,
-corpora, final safe checkpoints, histories, predictions, custody and fresh
-verification will be retained together and reported here after execution.
+Producer `edbd1baf1fd7ebaadd88bb313276f1b17391b4c8` was published before target
+outcomes. Request: `sha256:bbb81e65c84abf0b559d475ada743ead0a0fe97f116119ca652919dd57f90057`.
+Summary: `sha256:cadb6263a2a8652bc1c4f17f4a417d3329b3f5b1585f2bee1d7bd1b4fb2603af`.
+All four full 4,096-update cells completed and freshly verified, without worker
+or pairing errors. Both pooled model/AdamW payloads, complete update/diagnostic
+histories and prediction files match PR #19 v2 byte-for-byte on this host.
+
+| Seed | Profile | Arithmetic train | Arithmetic reused test | Maths train | Maths reused test |
+| --- | --- | --- | --- | --- | --- |
+| 0 | pooled | 153/264 (58.0%) | 0/64 (0.0%) | 1152/1998 (57.7%) | 274/654 (41.9%) |
+| 0 | rehearsal | 256/264 (97.0%) | 0/64 (0.0%) | 1030/1998 (51.6%) | 271/654 (41.4%) |
+| 1 | pooled | 157/264 (59.5%) | 0/64 (0.0%) | 1263/1998 (63.2%) | 324/654 (49.5%) |
+| 1 | rehearsal | 263/264 (99.6%) | 6/64 (9.4%) | 1120/1998 (56.1%) | 308/654 (47.1%) |
+
+Rehearsal clears the predeclared 90% arithmetic criterion in each task and
+both seeds; pooled training fails all four arithmetic tasks. All 12 maths
+training tasks miss their criterion in every cell. Rehearsal improves arithmetic
+training retention while reducing maths training and aggregate reused-test
+accuracy in both seeds. Arithmetic generalization remains poor. The maths
+majority baseline is 288/654 (44.0%); only seed 1 beats it in either profile.
+No schedule is selected and learning adequacy/Phase 5 remain blocked.
+
+| Arithmetic training task (66 examples) | Seed 0 pooled | Seed 0 rehearsal | Seed 1 pooled | Seed 1 rehearsal |
+| --- | --- | --- | --- | --- |
+| add | 27 | 66 | 34 | 66 |
+| divide | 46 | 60 | 41 | 66 |
+| multiply | 51 | 65 | 50 | 66 |
+| subtract | 29 | 65 | 32 | 65 |
+
+| Maths reused-test task | Examples | Majority | Seed 0 pooled | Seed 0 rehearsal | Seed 1 pooled | Seed 1 rehearsal |
+| --- | --- | --- | --- | --- | --- | --- |
+| choose | 22 | 8 | 8 | 6 | 4 | 4 |
+| determinant | 34 | 18 | 24 | 18 | 22 | 21 |
+| dot | 34 | 10 | 18 | 24 | 19 | 21 |
+| intersection-count | 28 | 12 | 11 | 2 | 14 | 9 |
+| matvec-0 | 102 | 42 | 45 | 52 | 53 | 45 |
+| matvec-1 | 102 | 42 | 41 | 50 | 60 | 49 |
+| mod-add | 32 | 8 | 12 | 23 | 15 | 8 |
+| solve-0 | 102 | 54 | 37 | 35 | 40 | 61 |
+| solve-1 | 102 | 54 | 38 | 32 | 51 | 54 |
+| union-count | 28 | 12 | 14 | 5 | 12 | 9 |
+| vector-add-0 | 34 | 14 | 15 | 11 | 19 | 12 |
+| vector-add-1 | 34 | 14 | 11 | 13 | 15 | 15 |
+
+Post-training derived class counts in `analysis.json` keep singular detection
+and unique-system solving separate. Across both projections/carriers, unique
+test solutions rise from 18/96 to 36/96 in seed 0 and 44/96 to 45/96 in seed 1.
+Singular test detection changes from 57/108 to 31/108 and 47/108 to 70/108.
+Total solve accuracy is 75→67/204 and 91→115/204; the ERR majority baseline is
+108/204. These mixed class outcomes do not establish algebra adequacy, a
+causal arithmetic-transfer mechanism or held-out rational solving.
+
+Every cell has zero missing EOS on maths test outputs. Rehearsal has 383/346
+wrong answers with EOS, compared with pooled 380/330. Carrier disagreement is
+46/327 and 43/327, versus pooled 46/327 and 57/327; both carriers are exact in
+123/327 and 139/327, versus 126/327 and 138/327. Freedom from drift is unresolved.
+
+## Actual exposure and resource observations
+
+| Seed | Profile | Arithmetic visits | Maths visits | Arithmetic targets | Maths targets | Nonpadding input tokens |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | pooled | 3823 | 28945 | 9853 | 73825 | 559078 |
+| 0 | rehearsal | 16384 | 16384 | 42199 | 41761 | 456676 |
+| 1 | pooled | 3818 | 28950 | 9831 | 73849 | 559014 |
+| 1 | rehearsal | 16384 | 16384 | 42204 | 41801 | 456750 |
+
+Pooled examples receive 14–15 visits each. Rehearsal arithmetic examples
+receive 62–63 and maths examples 8–9 visits. Full per-task visits and per-example
+histograms remain in every verified report. The result concerns joint training
+from random initialization; sequential checkpoint forgetting is outside this
+protocol. Rehearsal changes exposure and batch composition together.
+
+Numerical training wall time was 26.8–30.1 seconds and process peak RSS before
+output scoring was 342,232–348,576 KiB. Output scoring, verification and archive
+IO are outside that timer. Different targets/input lengths and shared-host
+conditions prevent a compute-matched speed claim. Full rehearsal optimizer
+replay and independent-host replication remain pending.
+
+## Retained evidence and reproduction
+
+The lossless review packet under `fixtures/maths-retention-v1/` restores 370
+files / 81,432,928 bytes: 237 exact producer files, 132 run files and the member
+inventory. All producer files match the published producer's GitHub blobs; all
+81 request-bound runtime sources are included. The packet retains all four safe
+model/AdamW payloads, update histories, complete predictions, admitted corpora,
+closed PROVENANCE, worker logs and the standard-library/CPU/upstream check logs.
+The independent restored archive matches every original member byte.
+
+Fresh read-only verification reconstructs all scores, losses, exposure and
+summary, and preserves every byte of all 132 run files. Fresh archived-producer
+verification also passes and preserves all 132 restored run files. Post-training class counts and historical
+control parity are derived in `analysis.json`, bound to the complete summary;
+they never selected a schedule. The inventory and verification receipts record
+the exact identities and scope. Raw weights remain review evidence, not a release.
+
+```sh
+cat fixtures/maths-retention-v1/Trinite-maths-retention-v1.zip.part* > /tmp/Trinite-maths-retention-v1.zip
+python scripts/restore_foundations_archive.py /tmp/Trinite-maths-retention-v1.zip \
+  /tmp/maths-retention-review --archive-identity sha256:d799c429b2942cd1285588404a73163d86a3f6edfdd8c362a8cfd07b2df085ab
+cd /tmp/maths-retention-review/producer
+cp ../run/request.json /tmp/maths-retention-review-request.json
+PYTHONPATH=src python scripts/run_maths_retention.py \
+  --request /tmp/maths-retention-review-request.json \
+  --request-identity sha256:bbb81e65c84abf0b559d475ada743ead0a0fe97f116119ca652919dd57f90057 \
+  --output ../run --verify-only
+```
+
+Validation: 115 standard-library checks, all 173 required CPU research checks
+and the six standalone rehearsal CPU/schedule/replay checks passed. Frozen
+upstream: 51 cases with its existing root-permission skip. Dependency consistency
+and changed-document links passed. Hosted CPU and reference checks on the frozen
+producer are green across their declared Python versions. Final result-head
+checks are reported separately. Full rehearsal optimizer replay, independent
+host replication, historical learning gates and release requirements remain
+pending; verification success grants no broader learning claim.
