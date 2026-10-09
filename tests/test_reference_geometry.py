@@ -4,11 +4,12 @@ import math
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from trinite.contracts import ContractError
+from trinite.contracts import ContractError, identity, json_bytes
 from trinite.reference_geometry import encode_vector, decode_vector, cka, distances, cosine_distances
 from trinite.reference_inputs import probes, anchors, modelfile, settings
-from trinite.reference_evidence import retain, verify_retained
+from trinite.reference_evidence import retain, verify_retained, publish, verify
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('reference_oracle',ROOT/'scripts/reference_math_oracle.py')
@@ -67,6 +68,36 @@ class ReferenceGeometryTests(unittest.TestCase):
             artifact = next((path/'provenance/artifacts/sha256').iterdir())
             artifact.write_bytes(b'tampered')
             with self.assertRaises(ContractError): verify_retained(path,inputs,outputs)
+
+    def test_complete_simulation_evidence_and_derived_receipt(self):
+        # Closed orchestration conformance only; these vectors are synthetic.
+        selected,admission = probes()
+        request = {'schema':'simulation-only','probes':selected,'admission':admission,'protocol':settings()}
+        request_raw = json_bytes(request)
+        with tempfile.TemporaryDirectory() as tmp, patch('trinite.reference_evidence.validate',return_value=(request,{})):
+            path=Path(tmp); (path/'request.json').write_bytes(request_raw)
+            (path/'Modelfile').write_bytes(b'simulation-only');(path/'locations.json').write_bytes(b'{}\n')
+            for condition in ('native','stock','modelfile'):
+                cell=path/condition;cell.mkdir();rows=[]
+                for i,probe in enumerate(selected):
+                    states=[]
+                    for end in anchors(probe['prompt']):
+                        encoding={'rendered':probe['prompt'][:end],'input_ids':[1]*end,
+                            'offsets':[[k,k+1] for k in range(end)],'user_span':[0,end],'selected_position':end-1}
+                        vector=encode_vector([float(i+1),float(end),float(i%3)])
+                        states.append({'endpoint':end,'encoding':encoding,'vectors':{'block.0':vector,'final':vector}})
+                    rows.append({'example_identity':probe['example_identity'],'anchors':states,
+                        'generation_input':encoding,'output':{'token_ids':[],'text':probe['answer'],
+                            'utf8_hex':probe['answer'].encode().hex(),'stop_reason':'eos'},'exact_visible_answer':True})
+                raw=json_bytes({'schema':'trinite.reference-capture.v1','condition':condition,
+                    'request_identity':identity(request_raw),'model':{},'rng_identity':identity(b'simulation'),
+                    'layers':{},'rows':rows})
+                (cell/'capture.json').write_bytes(raw)
+                (cell/'replay.json').write_bytes(json_bytes({'capture_identity':identity(raw),'fresh_process_exact_match':True}))
+                (cell/'worker.log').write_bytes(b'simulation');(cell/'replay.log').write_bytes(b'simulation')
+            publish(path,oracle);self.assertTrue(verify(path,oracle)['verified'])
+            (path/'comparison/verification.json').unlink()
+            with self.assertRaises(ContractError):verify(path,oracle)
 
 
 if __name__ == '__main__': unittest.main()
