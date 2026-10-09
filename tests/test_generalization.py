@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from trinite.contracts import ContractError, parse_json
+from trinite.contracts import ContractError, json_bytes, parse_json
 from trinite.generalization import (answer_body, component_counts, corpus_coverage, diagnose,
                                    protocol, run_inventory)
 from trinite.learning_data import dataset
@@ -62,7 +62,7 @@ class GeneralizationTests(unittest.TestCase):
             self.assertEqual((root/'file').read_bytes(),b'original')
 
 class DiagnosticEvidenceTests(unittest.TestCase):
-    def test_fresh_closed_evidence_rejects_tampered_root_and_payload(self):
+    def test_fresh_closed_evidence_rejects_tampered_root_receipt_and_payload(self):
         from unittest.mock import patch
         from trinite.generalization import retain_evidence, verify_evidence
         with tempfile.TemporaryDirectory() as temporary:
@@ -77,6 +77,17 @@ class DiagnosticEvidenceTests(unittest.TestCase):
                 for name in ('dataset.json','manifest.json'): (directory/name).write_bytes(b'{}\n')
             with patch('trinite.generalization.protocol',return_value={'parent':parent}):
                 retain_evidence(output,run); self.assertTrue(verify_evidence(output,run)['integrity_verified'])
+                receipt = output/'verification.json'; original = receipt.read_bytes()
+                changed = {**parse_json(original), 'manifest_identity': 'sha256:'+'0'*64}
+                for label, raw in (('missing', None), ('modified', json_bytes(changed)),
+                                   ('noncanonical', original+b'\n')):
+                    with self.subTest(receipt=label):
+                        if raw is None: receipt.unlink()
+                        else: receipt.write_bytes(raw)
+                        with self.assertRaises(ContractError): verify_evidence(output,run)
+                    receipt.write_bytes(original)
+                    self.assertEqual(json_bytes(verify_evidence(output,run)), original)
+                    self.assertEqual(receipt.read_bytes(), original)
                 (output/'report.json').write_bytes(b'{"changed":true}\n')
                 with self.assertRaises(ContractError): verify_evidence(output,run)
                 (output/'report.json').write_bytes(b'{}\n')

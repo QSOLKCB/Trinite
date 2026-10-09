@@ -233,6 +233,8 @@ def verify_evidence(output, run):
     bundle = Path(output)/'provenance'
     manifest_raw = read(bundle/'manifest.json'); verification = verify_observation(bundle)
     if read(bundle/'manifest.json') != manifest_raw: raise ContractError('diagnostic manifest changed during verification')
+    if read(Path(output)/'verification.json') != json_bytes(verification):
+        raise ContractError('retained diagnostic verification receipt differs from fresh verification')
     manifest = parse_json(manifest_raw, canonical=True)
     if manifest['manifest_identity'] != verification['manifest_identity']:
         raise ContractError('diagnostic evidence logical identity mismatch')

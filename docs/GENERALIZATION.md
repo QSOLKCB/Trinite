@@ -161,6 +161,18 @@ passed request/source/environment conformance and fresh upstream verification.
 [restored-packet checks](../fixtures/generalization-v1/restored-verification.json)
 state their separate scopes. They do not replay every original optimizer update.
 
+### Retained verification receipt correction
+
+The measured producer reran the upstream verifier but did not compare the
+published `verification.json` receipt. The current verifier requires that file
+to match `json_bytes(verification)` from the fresh result exactly; missing,
+modified or noncanonical receipts reject. Regression checks reproduce all three
+failures in the earlier implementation and check successful read-only verification
+after restoring the original receipt. This closes the retained-record check under
+TRI-I07, I12, I13 and I14. Historical requests, reports and archived producer bytes
+remain unchanged; execution with the changed source requires a newly frozen request.
+The diagnostic counts and blocked gates are unchanged.
+
 Local validation: 101 standard-library tests passed; all 122 CPU research cases
 passed in each of six characterization runs with identical ordered identities;
 upstream ran 51 checks with its unprivileged-permission case skipped locally.
