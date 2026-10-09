@@ -52,3 +52,5 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 - [Exact game-theory foundations](GAME-THEORY.md); numeric corpus prepared, training pending.
 - [Ethics, reality and narrative curriculum](ETHICS.md); Harvard source intake pending.
 - [Curated public-domain sources](PUBLIC-DOMAIN.md); editions/rights/exposure admission pending.
+
+- [Matched learning/evaluation](LEARNING.md) and [frozen protocol](LEARNING-PROTOCOL.md); complete three-lane evidence and scoped learning gates.

@@ -85,7 +85,7 @@ checkout transfer without changing original evidence bytes.
 numerical loop, shared safe checkpoints and closed observation. Its elected
 training-only data view uses train examples for every numerical diagnostic.
 `scripts/run_convergence.py` owns freeze, fixed fresh workers and read-only review;
-there is no held-out stage. The original modules and protocols remain unchanged.
+there is no held-out stage. That convergence increment preserves the preceding numerical modules and protocols. The later learning increment factors the shared scorer entrypoints without changing their computations.
 
 
 ## Implemented budget development and game corpus

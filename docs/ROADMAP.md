@@ -205,7 +205,5 @@ are retained in [BUDGET.md](BUDGET.md). This resolves the exposed training floor
 for the chosen longer dense budget, not held-out learning adequacy. The next
 reviewable increment is implemented in [LEARNING.md](LEARNING.md), with a
 separately frozen learning/evaluation protocol, matched lanes and this explicit
-budget decision. Its complete target run is pending at the implementation commit;
-Phase 5 and curriculum training
-remain conditional on measured learning/evaluation gates. Earlier negative and
+budget decision. Its corrected complete 27-cell run scored held-out examples, but every dense seed failed at least one per-task learning gate. Arithmetic/fold generalization stays low; lattice’s 80% aggregate hides traversal failure. Format selection and Phase 5 remain blocked. The next increment requires a separately frozen curriculum/generalization decision; curriculum training remains pending. Earlier negative and
 blocked evidence stays preserved.
