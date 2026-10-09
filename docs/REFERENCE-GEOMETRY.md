@@ -165,7 +165,16 @@ forward. To execute fresh model workers, update only `locations.json` transport
 hints to your separately verified local inputs and use `--replay` with the
 archived producer and pinned CPU/backend dependencies.
 
-Local checks: 107 root tests, 143 CPU research tests, the frozen upstream suite
-(51 checks, one upstream intentional skip) and three required optional-backend
+Local checks: 109 root tests, 143 CPU research tests, the frozen upstream suite
+(51 checks, one upstream intentional skip) and four required optional-backend
 simulation checks. Routine CI also runs the reference backend on Python
 3.11–3.13. All historical scientific protocols and learning gates stay unchanged.
+
+Review fixes isolate the full capture entrypoint, including initialization and
+seeding, inside a CPU RNG fork, restoring a long-lived caller's entry RNG on
+success and failure. Acquisition now restarts stale regular partial files,
+rejects partial symlinks and promotes downloads only after identity validation.
+Regression simulations cover both boundaries. The measured pilot remains bound
+to its original producing source; these API/acquisition fixes do not relabel its
+request or claim a new pretrained run. Restore the archived producer to verify
+that retained request, as shown above.

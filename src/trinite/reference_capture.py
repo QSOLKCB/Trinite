@@ -117,6 +117,13 @@ def generate(model, tokenizer, encoded, native):
 
 
 def capture(directory, condition):
+    # Include initialization/seeding as well as inference in caller isolation.
+    # CPU is the sole supported lane; do not initialize a CUDA RNG context.
+    with torch.random.fork_rng(devices=[]):
+        return _capture(directory, condition)
+
+
+def _capture(directory, condition):
     if condition not in CONDITIONS: raise ContractError('unknown reference condition')
     torch.set_num_threads(1); torch.use_deterministic_algorithms(True); torch.manual_seed(17)
     request, locations = validate(directory)

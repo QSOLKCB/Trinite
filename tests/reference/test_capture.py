@@ -1,5 +1,8 @@
 """Required optional backend conformance; tiny random models are simulations."""
 import unittest
+from unittest.mock import patch
+import tempfile
+from pathlib import Path
 import torch
 from transformers import Qwen3Config, Qwen3ForCausalLM, PreTrainedTokenizerFast
 from tokenizers import Tokenizer
@@ -8,7 +11,7 @@ from tokenizers.pre_tokenizers import Whitespace
 
 from trinite.contracts import ModelConfig
 from trinite.model import Decoder, CaptureSpec
-from trinite.reference_capture import hidden, native_prompt, reference_prompt, tensor_manifest, generate
+from trinite.reference_capture import hidden, native_prompt, reference_prompt, tensor_manifest, generate, capture
 from trinite.reference_geometry import decode_vector
 
 
@@ -53,6 +56,21 @@ class ReferenceCaptureTests(unittest.TestCase):
         self.assertLess(stock['user_span'][0],profile['user_span'][0])
         for e in (stock,profile):
             self.assertEqual(e['offsets'][e['selected_position']][1],e['user_span'][1])
+
+    def test_capture_preserves_entry_rng_on_success_and_failure(self):
+        model=Decoder(ModelConfig(),lane='dense',seed=0)
+        request={'probes':[{'prompt':'A:1,2=','answer':'3','example_identity':'simulation'}],
+                 'protocol':{'system':'Only an answer.'}}
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp);(directory/'request.json').write_bytes(b'simulation-only\n')
+            entry=torch.get_rng_state().clone()
+            with patch('trinite.reference_capture.validate',return_value=(request,{})), \
+                 patch('trinite.reference_capture.native_model',return_value=model):
+                capture(directory,'native')
+            self.assertTrue(torch.equal(entry,torch.get_rng_state()))
+            with patch('trinite.reference_capture.validate',side_effect=ValueError('rejected input')):
+                with self.assertRaises(ValueError):capture(directory,'native')
+            self.assertTrue(torch.equal(entry,torch.get_rng_state()))
 
 
 if __name__ == '__main__': unittest.main()
