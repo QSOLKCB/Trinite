@@ -5,6 +5,10 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    'reference_geometry': {'contracts'},
+    'reference_inputs': {'contracts', 'curriculum_data'},
+    'reference_capture': {'contracts', 'model', 'tokenizer', 'reference_geometry', 'reference_inputs', 'scalar_checkpoint', 'scalar_training'},
+    'reference_evidence': {'contracts', 'reference_inputs', 'reference_geometry', 'observation'},
     "contracts": set(), "tokenizer": {"contracts"},
     "data": {"contracts", "tokenizer"},
     "cli": {"contracts", "tokenizer", "data", "model", "inspection", "training", "experiment", "observation", "geometry_run", "comparison", "foundations"},
@@ -82,6 +86,7 @@ class BoundaryTests(unittest.TestCase):
                     if path.stem == "cli": optional |= {"numpy"}
                     if path.stem == "geometry_run": optional |= {"numpy"}
                     if path.stem == "observation": optional |= {"provenance_core", "provenance_verify"}
+                    if path.stem == 'reference_capture': optional |= {'torch', 'transformers'}
                     self.assertIn(name, sys.stdlib_module_names | optional)
                     self.assertNotIn(name, {"socket", "urllib", "http", "ssl", "subprocess"})
 

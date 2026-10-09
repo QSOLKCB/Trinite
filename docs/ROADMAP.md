@@ -258,3 +258,21 @@ about fold-sum exposure or budget before further outcomes. Original fold-tuple
 and traversal-address assessment still needs its own protocol. Geometry
 intervention, format selection, broader corpus admission and release remain
 blocked; this result does not justify proceeding directly to Phase 5.
+
+
+## Separate external reference observation
+
+The [reference geometry increment](REFERENCE-GEOMETRY.md) compares internal
+activations from retained Trinite arithmetic training with pinned open-weight
+Qwen stock and a SYSTEM-only Modelfile-derived profile. It adds byte audits, an
+independent exact arithmetic oracle, fresh worker replay and separate closed
+PROVENANCE bundles. Routine CI uses tiny simulations; pretrained model pilot
+evidence is reported separately. These visible training probes do not establish
+learning adequacy, matched compute or generalization. The fold-sum scalar gate,
+held-out scoring, geometry intervention and Phase 5 remain blocked.
+
+The retained pretrained pilot completed all three conditions with exact paired
+fresh-worker capture/output replay, independent arithmetic checks and four
+verified closed PROVENANCE bundles. The lossless packet includes exact producer
+source and all captures; stock/profile final-state CKA was 0.996344 while output
+format changed. This small descriptive result does not unlock later phases.
