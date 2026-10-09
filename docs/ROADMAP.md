@@ -270,3 +270,9 @@ PROVENANCE bundles. Routine CI uses tiny simulations; pretrained model pilot
 evidence is reported separately. These visible training probes do not establish
 learning adequacy, matched compute or generalization. The fold-sum scalar gate,
 held-out scoring, geometry intervention and Phase 5 remain blocked.
+
+The retained pretrained pilot completed all three conditions with exact paired
+fresh-worker capture/output replay, independent arithmetic checks and four
+verified closed PROVENANCE bundles. The lossless packet includes exact producer
+source and all captures; stock/profile final-state CKA was 0.996344 while output
+format changed. This small descriptive result does not unlock later phases.

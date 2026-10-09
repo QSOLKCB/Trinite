@@ -101,3 +101,71 @@ immutability and chat alignment. Tiny random Qwen models in CI are simulations;
 routine CI does not download pretrained model weights or claim empirical parity.
 The reference CI runs this suite on Python 3.11, 3.12 and 3.13 separately from the
 existing CPU research suites.
+
+
+## Retained pretrained pilot v1
+
+The complete three-condition pilot passed on the pinned CPU environment. Each
+condition ran twice in fresh workers; complete capture and generation bytes
+matched exactly. All six cross-condition CKA checks and every squared-distance
+matrix entry passed the independent Fraction oracle. All four closed bundles
+and their retained verification receipts passed.
+
+| Condition | Unique parameters | Hidden width | Exact visible answers | Generated tokens, including EOS |
+| --- | ---: | ---: | ---: | ---: |
+| Trinite trained arithmetic | 86,528 | 64 | 16/16 | 38 |
+| Qwen stock | 596,049,920 | 1024 | 0/16 | 512 |
+| Qwen SYSTEM-only profile | 596,049,920 | 1024 | 4/16 | 33 |
+
+| Full-prompt final-state comparison | Linear CKA |
+| --- | ---: |
+| native vs stock | 0.035314 |
+| native vs modelfile | 0.036244 |
+| stock vs modelfile | 0.996344 |
+
+Stock reached the 32-token cap on all sixteen probes; the SYSTEM-only profile
+terminated at EOS on every probe. Profile outputs often repeat an operand and
+do not demonstrate understanding of the abbreviated operator vocabulary. Native
+training exposure differs, so answer counts do not establish model superiority.
+Near-unity stock/profile CKA coexists with a substantial output-format change;
+this small observation does not prove a causal geometric explanation.
+
+![Within-model final-state cosine distance matrices](assets/reference-geometry-v1.svg)
+
+The common 0–2 color scale shows within-model cosine distances, not cross-model
+coordinate alignment. White lines separate the two selected families; `i` and
+`f` label infix and fields carriers. Exact unrounded values remain in the
+[analysis](../fixtures/reference-geometry-v1/analysis.json).
+
+The fixed [review inventory](../fixtures/reference-geometry-v1/inventory.json),
+[request](../fixtures/reference-geometry-v1/request.json),
+[verification](../fixtures/reference-geometry-v1/verification.json) and lossless
+archive retain 192 files and 14,489,597 original bytes. The 1,419,632-byte packet
+is a separately identified review exception to the small-fixture convention.
+Its producer is `bc3c6b0f9a2f05504c3159abb8af3fb25fab376c`; all 112 retained
+producer files were checked against Git blob identities. External model assets
+and the original scalar archive remain separately retrieved inputs.
+
+### Restore retained evidence
+
+```bash
+cp fixtures/reference-geometry-v1/Trinite-reference-geometry-v1.zip.part000 /tmp/Trinite-reference-geometry-v1.zip
+python scripts/restore_foundations_archive.py /tmp/Trinite-reference-geometry-v1.zip /tmp/reference-review --archive-identity sha256:666e8f4d5b49da60aada4a26acbfa6001a5a8b8b62447c1ddfd3a5613cfd8721
+mv /tmp/reference-review/run/profile-source.txt /tmp/reference-review/run/Modelfile
+PYTHONPATH=/tmp/reference-review/producer/src python /tmp/reference-review/producer/scripts/run_reference_geometry.py /tmp/reference-review/run --verify-only
+```
+
+Transport uses `profile-source.txt` to avoid a portable archive case collision
+between the `Modelfile` file and `modelfile/` condition directory. The explicit
+rename reconstructs the original Linux study names without changing any bytes;
+the authoritative bounded restorer is unchanged. Restoration followed by a
+fresh standard-library verification passed, with original and restored run
+inventories identical. This rechecks custody and arithmetic, not a new model
+forward. To execute fresh model workers, update only `locations.json` transport
+hints to your separately verified local inputs and use `--replay` with the
+archived producer and pinned CPU/backend dependencies.
+
+Local checks: 107 root tests, 143 CPU research tests, the frozen upstream suite
+(51 checks, one upstream intentional skip) and three required optional-backend
+simulation checks. Routine CI also runs the reference backend on Python
+3.11–3.13. All historical scientific protocols and learning gates stay unchanged.
