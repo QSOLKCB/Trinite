@@ -37,6 +37,10 @@ Correlated projections and two carriers are not independent samples. Family
 macro and paired quality/time/storage margins are descriptive three-seed measures.
 Latent float32 storage is not packed inference savings.
 
+Here, composed-output assessment means the original fold-tuple and traversal-address
+tasks. Unchanged non-traversal lattice controls, including role-to-address, remain
+in this admitted corpus as declared in the preparation.
+
 Scalar adequacy has its own `dense_scalar_learning_adequate` flag. Original
 `dense_learning_adequate`, format selection, Phase 5 and release stay false even
 if every scalar task passes. No original composed-output model call is made;
@@ -70,8 +74,93 @@ Replay scope and remaining trusted numerical/filesystem components are explicit.
 ## Measurements and remaining work
 
 The protocol was frozen at `06edd13c3011028b18231c144b83ef8d92528c74` before
-training outcomes. Full matrix measurement and its verified evidence are pending
-in this implementation draft. No scalar learning claim is made from unit tests.
+training outcomes. Producer `df2e01037979d4268de9443ef86d4d2c39bf1f4b`
+completed all 27 training cells under the unchanged frozen request. Dense
+arithmetic and lattice passed every training task in all three seeds. Fold's
+training results were:
+
+| Dense seed | Count | Sum | Squares |
+| --- | ---: | ---: | ---: |
+| 0 | 1,150/1,150 | 934/1,150 | 1,147/1,150 |
+| 1 | 1,148/1,150 | 868/1,150 | 1,141/1,150 |
+| 2 | 1,145/1,150 | 882/1,150 | 1,132/1,150 |
+
+Each task has 1,150 examples. Sum misses the 90% gate in every seed, so the
+matrix decision is false and no held-out model predictions are produced.
+This is a completed, blocked scientific result; training success on the other
+tasks is not a generalization claim. All three lanes and seeds remain in the
+summary, including negative results.
+
+The next learning increment requires a separately frozen training-only decision
+about fold-sum exposure or budget. No tuning, budget extension or composed-output
+assessment is performed after seeing these outcomes.
+
+### Producer lineage and admission correction
+
+After measurement started, commit
+`7496237d3c6b0fa353db5a4bc6e491b0b49371a0` tightened fresh request admission:
+generated corpus and manifest identities must equal the exact preparation in the
+already bound generalization report. A regression rejects either identity's drift
+before model construction. The measured request was independently checked to
+already match that preparation exactly. This correction changes source binding
+and rejection behavior; it changes no data, model, update, exposure or scorer.
+The measured request and archived producer retain their original identities.
+Current source requires a fresh request; replay this retained packet with its
+archived producer rather than relabelling its request.
+
+## Retained evidence and reproduction
+
+The complete packet is retained in [scalar-learning-v1](../fixtures/scalar-learning-v1/inventory.json):
+[request](../fixtures/scalar-learning-v1/request.json),
+[summary](../fixtures/scalar-learning-v1/summary.json),
+[blocked decision](../fixtures/scalar-learning-v1/test-decision.json),
+[arithmetic control parity](../fixtures/scalar-learning-v1/arithmetic-control-parity.json)
+and [fresh archive verification](../fixtures/scalar-learning-v1/verification.json).
+All 27 training bundles, exact verification receipts, safe tensor/AdamW payloads,
+4,096-step histories, diagnostics, predictions and worker logs are included.
+There were no worker, pairing or aggregate integrity errors. No held-out
+predictions exist under the blocked decision.
+
+The eight numbered archive parts restore 858 files and 449,066,128 bytes,
+including the exact producer closure and prior admission anchors. The archive
+uses lossless ZIP/LZMA with the existing bounded, hash-checking restorer.
+
+- Protocol identity: `sha256:d1f64a577e78d7c38f58f3cf21e7683763869dc7e50e5a7be327ab42e69be670`.
+- Measured request: `sha256:f75f368f04963336de3c32f70e3c28592b4ae010f2c6e7c3acd6ab2ac016b70d`.
+- Summary: `sha256:60b017fa8cf89a1a9bcc5214d18ac380906565cfff77cd5a279032a2b77e3889`.
+- Archive: `sha256:34847d7b746c580867fd2c42468d40b685f7abbbce7d015cc2f5eb4065d8f71d`.
+
+After acquiring the CPU lock, run from the repository root:
+
+```sh
+cat fixtures/scalar-learning-v1/Trinite-scalar-learning-v1.zip.part* > /tmp/Trinite-scalar-learning-v1.zip
+python scripts/restore_foundations_archive.py /tmp/Trinite-scalar-learning-v1.zip /tmp/scalar-review --archive-identity sha256:34847d7b746c580867fd2c42468d40b685f7abbbce7d015cc2f5eb4065d8f71d
+cp /tmp/scalar-review/run/request.json /tmp/scalar-review-request.json
+export PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/tmp/scalar-review/producer/src
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+python /tmp/scalar-review/producer/scripts/run_scalar_learning.py --verify-only --request /tmp/scalar-review-request.json --request-identity sha256:f75f368f04963336de3c32f70e3c28592b4ae010f2c6e7c3acd6ab2ac016b70d --output /tmp/scalar-review/run
+```
+
+Keep the supplied request outside the output directory; the CLI rejects request/
+output overlap. Restoration verifies every transport byte. Numerical verification
+requires the exact retained CPU/kernel/Python/package fingerprint; other hosts
+must freeze a new request for a fresh experiment. The same-host verification
+checked all 59 declared source files against their retained identities and
+GitHub producer blobs, checked 112 versioned producer files, and regenerated
+checkpoint predictions,
+losses, receipts, the decision and summary without changing any run file.
+The packet also retains the producer label and six generated package metadata
+files, separately identified as non-repository members. They do not substitute
+for source checks. Verification did not replay every optimizer update or establish
+independent-host replication. Separately, all nine arithmetic controls matched historical bound
+model/optimizer bytes, normalized full histories and train diagnostics exactly.
+No new runtime speedup or packed-storage benefit is claimed.
+
+The small local scalar suite passed 21 cases; hosted Python 3.11, 3.12 and 3.13
+CI passed 101 standard-library, 51 upstream and 143 research checks per version
+on admission-guard commit `7496237d3c6b0fa353db5a4bc6e491b0b49371a0`.
+The locally root-only upstream permission case was skipped; hosted CI passed it.
+Software conformance and evidence integrity do not close the scientific gates.
 
 Affected contracts: TRI-I02, I03, I05, I06, I07, I08, I10, I11, I12, I13 and I14.
 No model, optimizer, original scientific protocol, admission fixture or archived

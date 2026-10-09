@@ -232,7 +232,7 @@ with the 1,306-file parent inventory unchanged. Dense fold count components
 reached 311–319/320 while complete answers remained 0–37/320; traversal stayed
 0/8 and all dense held-out errors were wrong-answer rather than EOS failures.
 All 27 lanes/cells remain in the report. This does not close learning adequacy;
-scalar curriculum training is still the next separately frozen experiment.
+the subsequently frozen scalar training experiment is reported below.
 
 ## Matched scalar curriculum learning
 
@@ -243,5 +243,18 @@ scalar corpus in all 27 matched fresh CPU cells with 4,096 updates, fixed parent
 projection exposure, safe checkpoints and fresh verified per-task gates. Arithmetic
 texts remain the control. Original composed outputs are outside this experiment;
 their assessment requires a separately declared protocol. Scalar success cannot
-close composed learning adequacy, select a format or unlock Phase 5. Measurements
-and complete failure retention are reported with this increment.
+close composed learning adequacy, select a format or unlock Phase 5.
+
+All 27 training workers completed. Dense arithmetic and lattice passed their
+training tasks in every seed, but fold sum reached 934/1,150, 868/1,150 and
+882/1,150, below the unchanged 90% training gate. The verified matrix decision
+therefore blocked every held-out model call. The complete negative result,
+checkpoints, update histories, receipts and exact producer closure are retained
+with this increment. Nine arithmetic control payloads and normalized histories
+match the earlier learning run exactly on the same host.
+
+The next learning increment needs a separately frozen training-only decision
+about fold-sum exposure or budget before further outcomes. Original fold-tuple
+and traversal-address assessment still needs its own protocol. Geometry
+intervention, format selection, broader corpus admission and release remain
+blocked; this result does not justify proceeding directly to Phase 5.
