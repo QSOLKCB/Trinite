@@ -146,7 +146,7 @@ and 96 unique-system scalar/carrier examples across the two solve tasks; there
 are no fractional test targets. This correction is exploratory development after
 exposure to V1, not a fresh confirmatory benchmark. V1 is not deleted or relabelled.
 
-The v2 result will be appended after its separately frozen training/verification.
+V2 was published at [d5d50fd0](https://github.com/QSOLKCB/Trinite/commit/d5d50fd006a5232136982d98a19edae150903821) before its outcomes. All four cells completed, with no worker or pairing errors, and their full predictions/losses freshly regenerated from safe checkpoints.
 Historical fold-sum/composed adequacy, format selection, scaling and Phase 5
 remain blocked regardless of these exploratory diagnostics.
 
@@ -158,7 +158,8 @@ cat fixtures/maths-v1/Trinite-maths-v1.zip.part* > /tmp/Trinite-maths-v1.zip
 python scripts/restore_foundations_archive.py /tmp/Trinite-maths-v1.zip \
   /tmp/maths-review-v1 --archive-identity sha256:294df98f6ae72128ef69b1cff71ddaa392765c57df74e608d0133b8c55b083a2
 cd /tmp/maths-review-v1/producer
-PYTHONPATH=src python scripts/run_maths.py --request ../run/request.json \
+cp ../run/request.json /tmp/maths-review-v1-request.json
+PYTHONPATH=src python scripts/run_maths.py --request /tmp/maths-review-v1-request.json \
   --request-identity sha256:64e53e5d0063393092792713979384ac8b103d3510080322466b29732d2cfc9a \
   --output ../run --verify-only
 ```
@@ -167,3 +168,90 @@ Use the matching locked environment; the request deliberately binds Python,
 packages, device scope, numerical settings and actual source bytes. A different
 environment must freeze a new request. The producer packet supports pilot replay;
 full historical conformance needs the complete published checkout and fixtures.
+
+
+## Complete v2 result
+
+Exact complete answer plus EOS, final step; each test has 654 examples:
+
+| Seed | Arithmetic control | Expanded maths | Train-derived majority |
+| --- | --- | --- | --- |
+| 0 | 159/654 (24.3%) | 274/654 (41.9%) | 288/654 (44.0%) |
+| 1 | 157/654 (24.0%) | 324/654 (49.5%) | 288/654 (44.0%) |
+
+The expanded recipe improves over the arithmetic control in both seeds, but only
+seed 1 beats the majority baseline overall. This is a partial, task-dependent
+gain, not mathematical learning adequacy. No candidate or new training protocol
+is selected from these outcomes.
+
+| Task | Test examples | Control seed 0 / 1 correct | Expanded seed 0 / 1 correct | Majority correct |
+| --- | --- | --- | --- | --- |
+| choose | 22 | 2 / 2 | 8 / 4 | 8 |
+| determinant | 34 | 14 / 14 | 24 / 22 | 18 |
+| dot | 34 | 10 / 8 | 18 / 19 | 10 |
+| intersection-count | 28 | 0 / 8 | 11 / 14 | 12 |
+| matvec-0 | 102 | 42 / 42 | 45 / 53 | 42 |
+| matvec-1 | 102 | 42 / 38 | 41 / 60 | 42 |
+| mod-add | 32 | 4 / 2 | 12 / 15 | 8 |
+| solve-0 | 102 | 8 / 11 | 37 / 40 | 54 |
+| solve-1 | 102 | 11 / 13 | 38 / 51 | 54 |
+| union-count | 28 | 0 / 4 | 14 / 12 | 12 |
+| vector-add-0 | 34 | 14 / 10 | 15 / 19 | 14 |
+| vector-add-1 | 34 | 12 / 5 | 11 / 15 | 14 |
+
+Determinant and dot-product accuracy exceed both the control and majority in both
+seeds. Matrix-vector results vary by seed/component; combinations and unique
+linear-system solving show no consistent benefit. Across both solve projections,
+unique-system counts are control/expanded **19/18** for seed 0 and **24/44** for
+seed 1, each out of 96. Expanded singular-system counts are 57/108 and 47/108;
+always returning ERR solves all singular examples. Aggregate solve accuracy stays
+below the task-majority baseline in both seeds. These class counts are derived
+from retained predictions in `fixtures/maths-v2/analysis.json`, without new model
+calls or answer filtering.
+
+Retention is a material negative result: control arithmetic train accuracy is
+264/264 in both seeds, while expanded is **153/264 (58.0%)** and **157/264 (59.5%)**.
+All four reused arithmetic test results remain **0/64**. Reduced old-task exposure
+is part of the expanded recipe; neither a forgetting mechanism nor a corpus-only
+causal effect is established. Maths training accuracy is 1,152/1,998 and
+1,263/1,998 in the expanded seeds. Learning adequacy remains unresolved.
+
+Expanded maths test outputs have zero missing-EOS cases but 380/330 wrong answers
+with EOS. Carrier disagreement is 46/327 and 57/327 paired problems; both carriers
+are exactly correct in 126/327 and 138/327 pairs. These diagnostics do not establish
+freedom from drift. All individual predictions, families and tasks remain visible.
+
+Both freshly trained control model/AdamW safetensor payloads and complete update
+histories match V1 byte-for-byte on this host. Expanded full-update replay and
+independent-host replication remain pending. Resource observations describe
+numerical training wall time and process peak RSS sampled before output scoring;
+they are not matched-token compute or speed comparisons.
+
+The complete V2 review packet is in `fixtures/maths-v2/`: 361 restored files /
+81,326,806 bytes. All 232 exact producer files match published GitHub blobs;
+all 78 request source artifacts are present. Fresh read-only verification
+regenerates the summary and leaves every byte of all 128 run files unchanged.
+Restoration checks every original member byte. Both review packets retain
+all safe model/optimizer states, histories, predictions, corpora, custody and
+exact producer; raw model weights are review evidence, not a release.
+
+```sh
+cat fixtures/maths-v2/Trinite-maths-v2.zip.part* > /tmp/Trinite-maths-v2.zip
+python scripts/restore_foundations_archive.py /tmp/Trinite-maths-v2.zip \
+  /tmp/maths-review-v2 --archive-identity sha256:b410e17388cd9f5774dd16f89c4899f5e730b5a66d13316d6b85c74b343f61e8
+cd /tmp/maths-review-v2/producer
+cp ../run/request.json /tmp/maths-review-v2-request.json
+PYTHONPATH=src python scripts/run_maths.py --request /tmp/maths-review-v2-request.json \
+  --request-identity sha256:43b1846e05ce78403daa35c8877bc42a31033455610cad66e462c621d05b444d \
+  --output ../run --verify-only
+```
+
+Validation: initial frozen producer passed 114 standard-library and 167 required
+CPU research tests. After the explicit data-only coverage correction, 115
+standard-library tests and all four maths CPU/replay tests passed. The frozen
+upstream suite ran 51 cases with its existing root-permission skip; this sandbox
+cannot switch to an unprivileged account. Dependency consistency, changed-doc
+relative links, source/blob parity, complete-cell custody/scoring regeneration,
+read-only byte parity and both lossless restorations passed. Hosted checks on
+the final head are reported separately; no unrun full expanded replay or external
+replication is claimed.
