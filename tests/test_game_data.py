@@ -31,6 +31,47 @@ class GameDataTests(unittest.TestCase):
             seen[family]=row['split']
         self.assertEqual(set(seen.values()),{'train','validation','test'})
 
+    def test_every_example_has_bound_generator_seed_and_transformation_lineage(self):
+        raw,manifest=dataset();rows=parse_json(raw,canonical=True)['examples']
+        checked=parse_json(manifest,canonical=True)
+        revision=identity(json_bytes(checked['admission']['supporting_reference']['implementation']))
+        families={row['family_id'] for row in rows}
+        ranked=sorted(families,key=lambda f:identity(json_bytes({'policy':'trinite.game-data.v1','seed':41,'family':f})))
+        train_count=len(ranked)*8//10;validation_count=max(1,len(ranked)//10)
+        splits={f:'train' if i<train_count else 'validation' if i<train_count+validation_count else 'test'
+                for i,f in enumerate(ranked)}
+        for row in rows:
+            self.assertEqual(row['generator_revision'],revision)
+            self.assertIs(type(row['seed']),int);self.assertEqual(row['seed'],41)
+            self.assertEqual(row['split'],splits[row['family_id']])
+            self.assertEqual(row['transformation_lineage'],{
+                'formal_identity':identity(json_bytes(row['formal'])),
+                'carrier':'trinite.game-symbols.v1',
+                'family_rule':'action-relabel-player-exchange-v1',
+                'split_rule':'sha256-family-rank-80-10-remainder-v1'})
+            self.assertEqual(row['example_identity'],identity(json_bytes({
+                k:v for k,v in row.items() if k!='example_identity'})))
+
+    def test_missing_or_forged_lineage_rejects_with_refreshed_receipts(self):
+        raw,manifest=dataset()
+        forged={'generator_revision':'sha256:'+'0'*64,'seed':42,
+                'transformation_lineage':None}
+        for name,value in forged.items():
+            for remove in (False,True):
+                with self.subTest(field=name,removed=remove):
+                    data=parse_json(raw,canonical=True);row=data['examples'][0]
+                    if remove:del row[name]
+                    elif name=='transformation_lineage':
+                        row[name]={**row[name],'formal_identity':'sha256:'+'0'*64}
+                    else:row[name]=value
+                    row['example_identity']=identity(json_bytes({k:v for k,v in row.items() if k!='example_identity'}))
+                    data['examples'].sort(key=lambda r:r['example_identity'])
+                    changed=json_bytes(data);record=parse_json(manifest,canonical=True)
+                    record['dataset_identity']=identity(changed)
+                    record['admission']['evidence']['dataset_identity']=identity(changed)
+                    record['admission']['supporting_reference']['evidence_identity']=identity(json_bytes(record['admission']['evidence']))
+                    with self.assertRaises(ContractError):audit_bytes(changed,json_bytes(record))
+
     def test_ties_strict_dominance_and_no_pure_equilibrium(self):
         # Matching pennies has no pure Nash equilibrium; equal payoffs have four.
         zero={'payoffs':[0]*8,'task':'pure-nash'}

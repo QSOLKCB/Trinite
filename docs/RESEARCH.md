@@ -193,4 +193,12 @@ terms, edition/translation/OCR identities and evaluation exposure review. No dat
 source/date and fiction labels; source availability does not establish truth,
 ethical authority or model safety.
 
-[PUBLIC-DOMAIN.md](PUBLIC-DOMAIN.md) records four catalogue-checked source candidates and distinct teaching goals: Mill/Kant ethical contrasts, Boole-inspired independently checked formal exercises, and Shelley with explicit fiction labels. Catalogue US public-domain metadata is not a global rights determination or permission to import modern summaries/commentaries.
+[PUBLIC-DOMAIN.md](PUBLIC-DOMAIN.md) records US catalogue candidates and distinct teaching goals: Mill/Kant ethical contrasts, Boole-inspired independently checked formal exercises, and Shelley with explicit fiction labels. Catalogue US public-domain metadata is not a global rights determination or permission to import modern summaries/commentaries.
+
+Its [Australian intake](PUBLIC-DOMAIN.md#australian-source-candidates) separately
+records Lawson, Paterson, Franklin and Spence from Project Gutenberg Australia.
+Proposed studies cover historical dialogue, humour, metaphor, character agency
+and South Australian narrative settings. Use fresh comprehension/interpretation
+questions with passage-family exposure controls. Australian collection status,
+exact-edition admission and international distribution are distinct checks;
+these works have not been imported or trained.

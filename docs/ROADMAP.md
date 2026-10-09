@@ -189,6 +189,14 @@ substitute for this behavioural evaluation.
 
 The [curated public-domain shortlist](PUBLIC-DOMAIN.md) proposes Mill, Kant (Abbott translation), Boole and Shelley for later small, source-bound ethics/logic/narrative intake. Exact editions, file identities, Australian rights, transformations and exposure gates precede admission; none enters the current training experiment.
 
+The [Australian shortlist](PUBLIC-DOMAIN.md#australian-source-candidates) adds
+Lawson, Banjo Paterson, Miles Franklin and Catherine Helen Spence for historical
+Australian language, figurative interpretation and narrative perspectives.
+Begin with bounded Lawson stories alongside separately admitted modern material.
+Exact editions, contributor rights, transformations and distribution/exposure
+review remain prerequisites; these are source candidates, not downloaded,
+admitted or trained books.
+
 
 The complete budget-development matrix is measured: all nine cells passed every
 final per-task **training-only** check, with all milestone predictions/losses

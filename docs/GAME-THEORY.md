@@ -26,6 +26,19 @@ binds the [dataset](../fixtures/game-data-v1/dataset.json). Auditing regenerates
 all labels, carriers, identities, admission and family splits; contradictory
 policy/evidence mutations reject independently of a model.
 
+Every example retains `generator_revision`, the content identity of the named
+generator/oracle/contracts/tokenizer source-receipt inventory, and `seed: 41`.
+Enumeration is exhaustive rather than random; that seed controls family-rank
+splitting. `transformation_lineage` binds the exact formal specification to the
+versioned symbolic carrier, action/player symmetry rule and seeded split rule.
+All these fields participate in `example_identity`. Regeneration rejects missing
+or forged lineage even if callers refresh example, dataset and admission hashes.
+The review correction regenerates the current fixture's example/dataset/manifest
+identities, preserving all 2,816 formal tasks, texts, answers and family splits.
+The immutable budget archive retains its original producer; the game corpus was
+not consumed by that experiment and its historical evidence is not rewritten.
+Affected requirements: TRI-I03, TRI-I07, TRI-I11 and TRI-I14.
+
 All row/column action relabellings and player-exchanged transposes are grouped
 into one family before 80/10/remainder family-rank splitting. These are visible
 conformance/development fixtures, not an unexposed confirmatory benchmark.

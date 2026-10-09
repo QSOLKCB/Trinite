@@ -7,6 +7,7 @@ from .game_oracle import solve, parse_prompt
 from .tokenizer import ByteTokenizer
 
 POLICY='trinite.game-data.v1'
+SPLIT_SEED=41
 
 
 def source_receipt():
@@ -71,9 +72,11 @@ def render(spec):
 
 
 def dataset():
+    source=source_receipt()
+    generator_revision=identity(json_bytes(source))
     matrices=list(product((0,1),repeat=8))
     families={values:'game:'+identity(json_bytes(list(orbit(values)))) for values in matrices}
-    ranked=sorted(set(families.values()),key=lambda f:identity(json_bytes({'policy':POLICY,'seed':41,'family':f})))
+    ranked=sorted(set(families.values()),key=lambda f:identity(json_bytes({'policy':POLICY,'seed':SPLIT_SEED,'family':f})))
     train_count=len(ranked)*8//10;validation_count=max(1,len(ranked)//10)
     splits={f:'train' if i<train_count else 'validation' if i<train_count+validation_count else 'test'
             for i,f in enumerate(ranked)}
@@ -84,7 +87,12 @@ def dataset():
             if solve(spec)!=answer or parse_prompt(prompt)!=spec:raise ContractError('game independent oracle mismatch')
             core={'formal':spec,'family_id':families[values],'split':splits[families[values]],
                   'task':spec['task'],'prompt':prompt,'answer':answer,'text':prompt+answer,
-                  'source_id':POLICY,'verifier_outcome':'verified'}
+                  'source_id':POLICY,'generator_revision':generator_revision,'seed':SPLIT_SEED,
+                  'transformation_lineage':{'formal_identity':identity(json_bytes(spec)),
+                      'carrier':'trinite.game-symbols.v1',
+                      'family_rule':'action-relabel-player-exchange-v1',
+                      'split_rule':'sha256-family-rank-80-10-remainder-v1'},
+                  'verifier_outcome':'verified'}
             ByteTokenizer(64).encode(core['text'],answer_start=len(prompt.encode()))
             rows.append({**core,'example_identity':identity(json_bytes(core))})
     if len({r['text'] for r in rows})!=len(rows):raise ContractError('duplicate game examples')
@@ -96,7 +104,7 @@ def dataset():
         'author':'Codex deterministic generator commissioned by Trent Slade / QSOL-IMC',
         'generation':'dataset enumerates matrices and five task types; label uses unilateral deviations; game_oracle.solve checks labels using payoff maximization and regret; parse_prompt checks semantics; orbit groups all action relabellings and player exchange before family hash splitting',
         'rights_basis':'locally generated numeric facts and minimal symbols; no third-party prose, dialogue, teacher/model output or repository content imported',
-        'supporting_reference':{'implementation':source_receipt(),'functions':['dataset','label','orbit','game_oracle.solve','game_oracle.parse_prompt'],
+        'supporting_reference':{'implementation':source,'functions':['dataset','label','orbit','game_oracle.solve','game_oracle.parse_prompt'],
             'evidence_identity':identity(json_bytes(evidence))},'evidence':evidence,
         'scope':'this exact bounded binary payoff corpus only',
         'reviewer':'automated source/rights/oracle/split audit under Trent Slade commissioned generation',
