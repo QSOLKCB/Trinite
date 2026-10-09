@@ -179,3 +179,7 @@ upstream ran 51 checks with its unprivileged-permission case skipped locally.
 All six hosted Python 3.11–3.13 jobs passed, covering all 274 current cases per
 Python version including that permission case. Relative documentation links,
 anchors, module boundaries and whitespace checks also passed.
+
+The later [matched scalar experiment](SCALAR-LEARNING.md) trains this exact
+preparation under a new [protocol](SCALAR-LEARNING-PROTOCOL.md). Its scalar-only
+gates do not change the historical diagnostic counts or composed learning result.

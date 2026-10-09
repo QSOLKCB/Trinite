@@ -233,3 +233,15 @@ reached 311–319/320 while complete answers remained 0–37/320; traversal stay
 0/8 and all dense held-out errors were wrong-answer rather than EOS failures.
 All 27 lanes/cells remain in the report. This does not close learning adequacy;
 scalar curriculum training is still the next separately frozen experiment.
+
+## Matched scalar curriculum learning
+
+The next separately frozen training increment is implemented in
+[SCALAR-LEARNING.md](SCALAR-LEARNING.md), under
+[SCALAR-LEARNING-PROTOCOL.md](SCALAR-LEARNING-PROTOCOL.md). It trains the prepared
+scalar corpus in all 27 matched fresh CPU cells with 4,096 updates, fixed parent/
+projection exposure, safe checkpoints and fresh verified per-task gates. Arithmetic
+texts remain the control. Original composed outputs are outside this experiment;
+their assessment requires a separately declared protocol. Scalar success cannot
+close composed learning adequacy, select a format or unlock Phase 5. Measurements
+and complete failure retention are reported with this increment.

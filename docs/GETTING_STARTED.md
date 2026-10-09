@@ -198,6 +198,15 @@ PYTHONPATH=src python scripts/check_research_cpu.py
 ```
 
 It executes native model/training/geometry followed by comparison, foundations,
-convergence, budget, learning and generalization, retaining every standalone
+convergence, budget, learning, generalization and scalar, retaining every standalone
 test ID and explicit subprocess probe. The historical `check_cpu.py` and all
 standalone suite commands remain supported.
+
+### Matched scalar curriculum
+
+[SCALAR-LEARNING.md](SCALAR-LEARNING.md) provides source/environment-bound freeze,
+27-cell training, gated evaluation and read-only verification commands. The
+separately frozen [protocol](SCALAR-LEARNING-PROTOCOL.md) preserves original
+composed-output, Phase 5 and release gates. Run small scalar conformance checks
+with `PYTHONPATH=src python -m unittest discover -s tests/scalar -v` inside the
+locked CPU environment; the grouped research runner includes these cases.

@@ -48,6 +48,12 @@ ALLOWED = {
     "curriculum_oracle": {"contracts", "foundations_oracle"},
     "curriculum_data": {"contracts", "learning_data", "curriculum_oracle", "tokenizer"},
     "generalization": {"contracts", "learning_data", "curriculum_data", "tokenizer", "learning_training", "training", "learning", "observation"},
+    "scalar_plan": {"contracts", "budget_plan"},
+    "scalar_training": {"contracts", "curriculum_data", "learning_data", "learning_training",
+                        "scalar_plan", "foundations", "model", "tokenizer", "training"},
+    "scalar_checkpoint": {"contracts", "comparison_checkpoint", "training", "scalar_plan", "scalar_training", "curriculum_data"},
+    "scalar_learning": {"contracts", "scalar_training", "curriculum_data", "scalar_checkpoint",
+                        "foundations", "comparison", "training", "observation"},
     "__main__": {"cli"}, "__init__": set(),
 }
 
