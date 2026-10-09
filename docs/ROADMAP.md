@@ -283,6 +283,9 @@ The next reviewable increment is implemented in [FOLD-EXPOSURE.md](FOLD-EXPOSURE
 under a separately frozen [protocol](FOLD-EXPOSURE-PROTOCOL.md). Nine dense cells
 compare fixed sum multiplicities 1, 2 and 4 over unchanged scalar examples and
 4,096 updates. All count/sum/squares training gates and candidates are retained.
-Measurement is pending; there are no held-out model calls or automatic schedule
-selection. Any subsequent learning or composed assessment needs a separate
+All nine cells completed and freshly verified; no candidate passes every
+training task in every seed. Extra consecutive sum exposure reduces sum accuracy
+in every seed and the 4× schedule also fails squares. All three 1× controls match
+prior model/AdamW, history and prediction bytes exactly. There are no held-out
+model calls or automatic schedule selection. Any subsequent learning or composed assessment needs a separate
 protocol. Phase 5, format selection and scaling remain blocked.
