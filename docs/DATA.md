@@ -62,3 +62,12 @@ item, including the original example as `ordering_identity`. These new identitie
 preserve the prior texts, families, splits and numerical exposure order. The
 retained parent evidence is unchanged; this is not blanket admission of generated
 data or external curriculum sources.
+
+The [scalar curriculum preparation](GENERALIZATION.md) admits bounded numeric
+projections over the same learning facts: separate count/sum/squares and
+traversal-value/x/y/z targets. Every child inherits its parent's semantic family
+and split; both carriers and correlated projections stay together. The
+independent scalar oracle/parser checks procedural labels and prompt meanings.
+Exact source revision, parent example/semantic lineage, content identities and
+rights evidence are retained in the new manifests. This preparation has not
+been trained and admits no donor text or model output.
