@@ -172,3 +172,15 @@ verification. It delegates scalar admission/order/scoring, the native numerical
 loop, shared named-tensor reader and closed observer; no numerical kernel or
 scorer is duplicated. `run_fold_exposure.py` owns fixed fresh workers and failure
 retention. It has no evaluation stage. See [FOLD-EXPOSURE.md](FOLD-EXPOSURE.md).
+
+
+## Fold-order development
+
+`fold_order_plan.py` adds the separate fixed parent/mixed ordering profile within
+BudgetPlan bounds. `fold_order.py` owns source-bound requests, schedule context,
+replay and training-only evidence composition. It delegates existing admission,
+scalar rows/scoring, numerical updates, tensor serialization/loading and closed
+PROVENANCE verification; it does not add a numerical kernel or scoring rule.
+`scripts/run_fold_order.py` owns fixed fresh workers and failure retention.
+Historical fold-exposure modules and evidence remain unchanged. See
+[FOLD-ORDER.md](FOLD-ORDER.md).
