@@ -88,15 +88,19 @@ def state_for(workload, seed, lane, plan=None):
 
 def request_core():
     settings = protocol(); root = Path(__file__).resolve().parents[2]
-    prior = {name: identity(read_bytes(root/'fixtures/generalization-v1'/name))
-             for name in settings['prior_generalization']}
+    prior_raw = {name: read_bytes(root/'fixtures/generalization-v1'/name)
+                 for name in settings['prior_generalization']}
+    prior = {name: identity(raw) for name, raw in prior_raw.items()}
     if prior != settings['prior_generalization']:
         raise ContractError('scalar curriculum decision evidence mismatch')
+    corpora = {w: {'dataset_identity': identity(dataset(w)[0]),
+                   'manifest_identity': identity(dataset(w)[1])} for w in WORKLOADS}
+    if corpora != parse_json(prior_raw['report.json'], canonical=True)['curriculum_preparation']:
+        raise ContractError('scalar corpus/admission differs from frozen preparation')
     return {'schema': 'trinite.scalar-learning-request.v1', 'protocol': settings,
         'protocol_identity': PROTOCOL_IDENTITY, 'protocol_commit': PROTOCOL_COMMIT,
         'source': sources(), 'environment': require_environment(), 'prior_generalization': prior,
-        'corpora': {w: {'dataset_identity': identity(dataset(w)[0]),
-                        'manifest_identity': identity(dataset(w)[1])} for w in WORKLOADS}}
+        'corpora': corpora}
 
 
 def freeze_request(path):

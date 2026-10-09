@@ -119,6 +119,17 @@ class ScalarLearningTests(unittest.TestCase):
             path.write_bytes(original)
             with self.assertRaises(FileExistsError): lt.freeze_request(path)
 
+    def test_new_requests_reject_corpus_or_admission_drift_from_published_preparation(self):
+        actual=lt.dataset
+        for member in (0,1):
+            def changed(workload):
+                pair=list(actual(workload))
+                if workload=='fold':pair[member]+=b'\n'
+                return tuple(pair)
+            with self.subTest(member=member),patch.object(lt,'dataset',side_effect=changed),patch.object(lt,'Decoder') as model:
+                with self.assertRaisesRegex(ContractError,'differs from frozen preparation'):lt.request_core()
+                model.assert_not_called()
+
     def test_request_checks_actual_runner_source_bytes(self):
         read=lt.read_bytes;runner=ROOT/'scripts/run_scalar_learning.py'
         with tempfile.TemporaryDirectory() as temporary:
