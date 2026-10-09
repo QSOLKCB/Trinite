@@ -95,8 +95,13 @@ def train_cell(root, workload, seed, lane, request, request_identity):
 
 def closed_stage(root, workload, request_identity, stage):
     root = Path(root); bundle = root/(stage+'-provenance')
+    manifest_raw = read_bytes(bundle/'manifest.json')
     verification = verify_observation(bundle)
-    manifest = parse_json(read_bytes(bundle/'manifest.json'), canonical=True)
+    if read_bytes(bundle/'manifest.json') != manifest_raw:
+        raise ContractError('learning manifest changed during verification')
+    manifest = parse_json(manifest_raw, canonical=True)
+    if manifest['manifest_identity'] != verification['manifest_identity']:
+        raise ContractError('learning upstream manifest identity mismatch')
     members = {a['content_identity'] for a in manifest['core']['artifacts']}
     indexes = []
     for key in members:
@@ -118,7 +123,7 @@ def closed_stage(root, workload, request_identity, stage):
         if identity(raw) != names.get(name) or names[name] not in members:
             raise ContractError('learning root copy differs from closed evidence')
         return raw
-    return bound, names, members, verification
+    return bound, names, members, verification, identity(manifest_raw)
 
 
 def restore_report(root, workload, seed, lane, request_identity, report):
@@ -128,7 +133,7 @@ def restore_report(root, workload, seed, lane, request_identity, report):
 
 
 def verified_training(root, workload, seed, lane, request_identity):
-    bound, _, _, verification = closed_stage(root, workload, request_identity, 'train')
+    bound, _, _, verification, manifest_file_identity = closed_stage(root, workload, request_identity, 'train')
     report = parse_json(bound('training.json'), canonical=True)
     context = {'schema': 'trinite.learning-training.v1', 'outcome': 'completed',
         'workload': workload, 'seed': seed, 'lane': lane, 'request_identity': request_identity,
@@ -168,7 +173,8 @@ def verified_training(root, workload, seed, lane, request_identity):
             or wall.hex() != report['training_wall_seconds_hex']):
         raise ContractError('invalid learning wall budget')
     integer(report['peak_process_rss_kib'], 'learning peak RSS', 1, 2**63-1)
-    return {'report': report, 'report_identity': identity(bound('training.json')), 'verification': verification}
+    return {'report': report, 'report_identity': identity(bound('training.json')),
+            'manifest_file_identity': manifest_file_identity, 'verification': verification}
 
 
 def training_inventory(root, request_identity, worker_errors):
@@ -216,7 +222,8 @@ def decision_record(root, request_identity, worker_errors):
         'protocol_identity': PROTOCOL_IDENTITY, 'eligible': eligible,
         'dense_training_failures': failures, 'pairing_errors': pairing_errors,
         'worker_errors': dict(worker_errors), 'training_receipts': {cell_name(r['workload'], r['seed'], r['lane']):
-            {'report_identity': r['report_identity'], 'manifest_identity': r['verification']['manifest_identity']}
+            {'report_identity': r['report_identity'], 'manifest_identity': r['verification']['manifest_identity'],
+             'manifest_file_identity': r['manifest_file_identity']}
             for r in records if r['outcome'] == 'completed'}}, records
 
 
@@ -237,7 +244,7 @@ def evaluate_matrix(root, request, request_identity, training_errors):
                     raise ContractError('learning decision changed during evaluation')
                 if (identity(read_bytes(directory/'training.json')) != row['report_identity']
                         or identity(read_bytes(directory/'train-provenance/manifest.json'))
-                        != row['verification']['manifest_identity']):
+                        != row['manifest_file_identity']):
                     raise ContractError('verified training receipt changed before scoring')
                 state = restore_report(directory, workload, seed, lane, request_identity, row['report'])
                 scores, predictions = score(state.model, workload, 'test')
@@ -262,7 +269,7 @@ def evaluate_matrix(root, request, request_identity, training_errors):
 
 
 def verified_evaluation(root, workload, seed, lane, request_identity, row, decision_raw):
-    bound, names, members, verification = closed_stage(root, workload, request_identity, 'test')
+    bound, names, members, verification, _ = closed_stage(root, workload, request_identity, 'test')
     report = parse_json(bound('evaluation.json'), canonical=True)
     state = restore_report(root, workload, seed, lane, request_identity, row['report'])
     scores = check_predictions(workload, 'test', bound('test-predictions.json'))

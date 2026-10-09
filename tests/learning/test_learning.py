@@ -43,7 +43,8 @@ def fake_training(root, workload, seed, lane, request_identity):
         'schedule_identity':str(seed),'training_wall_seconds_hex':(1.).hex(),
         'latent_float32_bytes':346112,'scores':scores(),'training_gate_failures':[]}
     return {'report':report,'report_identity':identity(json_bytes(report)),
-            'verification':{'manifest_identity':identity(b'{}')}}
+            'manifest_file_identity':identity(b'{}'),
+            'verification':{'manifest_identity':'sha256:'+'1'*64}}
 
 
 def fake_evaluation(root, w, s, lane, request_identity, row, decision):
@@ -159,9 +160,35 @@ class LearningTests(unittest.TestCase):
                 rebuild(*l.dataset('arithmetic'))
                 with self.assertRaisesRegex(ContractError,'model/prediction/loss'):
                     l.verified_training(cell,'arithmetic',0,'dense',frozen['request_identity'])
+
                 path.write_bytes(original);rebuild(b'{}',b'{}')
                 with self.assertRaisesRegex(ContractError,'admission mismatch'):
                     l.verified_training(cell,'arithmetic',0,'dense',frozen['request_identity'])
+
+    def test_real_upstream_logical_identity_and_manifest_file_hash_are_distinct(self):
+        config = self.short_plan()
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);request=root/'request.json';frozen=lt.freeze_request(request)
+            cell=root/'arithmetic-0-dense'
+            with patch.object(lt,'plan_for',return_value=config),patch.object(l,'plan_for',return_value=config):
+                l.train_cell(cell,'arithmetic',0,'dense',request,frozen['request_identity'])
+                verified=l.verified_training(cell,'arithmetic',0,'dense',frozen['request_identity'])
+                manifest=parse_json((cell/'train-provenance/manifest.json').read_bytes())
+                self.assertEqual(verified['verification']['manifest_identity'],manifest['manifest_identity'])
+                self.assertEqual(verified['manifest_file_identity'],identity((cell/'train-provenance/manifest.json').read_bytes()))
+                self.assertNotEqual(verified['manifest_file_identity'],manifest['manifest_identity'])
+                row={'workload':'arithmetic','seed':0,'lane':'dense','outcome':'completed',**verified}
+                # Exercise the selected-model binding against a real verified
+                # manifest. Gate eligibility is synthetic here, not evidence.
+                decision={'eligible':True}
+                with patch.object(l,'decision_record',return_value=(decision,[row])), \
+                     patch.object(l,'score',wraps=l.score) as scorer:
+                    _,errors=l.evaluate_matrix(root,request,frozen['request_identity'],{})
+                    self.assertEqual(errors,{})
+                    self.assertEqual(scorer.call_count,1);self.assertEqual(scorer.call_args.args[-1],'test')
+                    actual=l.verified_evaluation(cell,'arithmetic',0,'dense',frozen['request_identity'],row,
+                                                 (root/'test-decision.json').read_bytes())
+                    self.assertEqual(actual[0],parse_json((cell/'evaluation.json').read_bytes()))
 
     def summarize_fake(self, root, factory=fake_training, worker_errors=None):
         l.write(root,'training-worker-errors.json',{})
