@@ -276,3 +276,16 @@ fresh-worker capture/output replay, independent arithmetic checks and four
 verified closed PROVENANCE bundles. The lossless packet includes exact producer
 source and all captures; stock/profile final-state CKA was 0.996344 while output
 format changed. This small descriptive result does not unlock later phases.
+
+## Training-only fold-sum exposure development
+
+The next reviewable increment is implemented in [FOLD-EXPOSURE.md](FOLD-EXPOSURE.md)
+under a separately frozen [protocol](FOLD-EXPOSURE-PROTOCOL.md). Nine dense cells
+compare fixed sum multiplicities 1, 2 and 4 over unchanged scalar examples and
+4,096 updates. All count/sum/squares training gates and candidates are retained.
+All nine cells completed and freshly verified; no candidate passes every
+training task in every seed. Extra consecutive sum exposure reduces sum accuracy
+in every seed and the 4× schedule also fails squares. All three 1× controls match
+prior model/AdamW, history and prediction bytes exactly. There are no held-out
+model calls or automatic schedule selection. Any subsequent learning or composed assessment needs a separate
+protocol. Phase 5, format selection and scaling remain blocked.

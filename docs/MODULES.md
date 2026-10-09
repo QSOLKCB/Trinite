@@ -162,3 +162,13 @@ The independent Fraction oracle under `scripts/reference_math_oracle.py` is an
 intentional verification implementation, not a second production kernel. No
 numerical training loop, native checkpoint reader or admission operation is
 duplicated. See [REFERENCE-GEOMETRY.md](REFERENCE-GEOMETRY.md).
+
+## Fold-sum exposure development
+
+`fold_exposure_plan.py` validates a separate fixed multiplicity profile using the
+existing budget constraints. `fold_exposure.py` owns train-only composition,
+request/source/admission binding, safe checkpoint context and fresh report
+verification. It delegates scalar admission/order/scoring, the native numerical
+loop, shared named-tensor reader and closed observer; no numerical kernel or
+scorer is duplicated. `run_fold_exposure.py` owns fixed fresh workers and failure
+retention. It has no evaluation stage. See [FOLD-EXPOSURE.md](FOLD-EXPOSURE.md).
