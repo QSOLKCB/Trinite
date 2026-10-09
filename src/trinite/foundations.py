@@ -83,13 +83,19 @@ def metrics(rows):
 
 
 def score(model,workload,split):
+    examples=parse_json(dataset(workload)[0],canonical=True)['examples']
+    return score_examples(model,examples,split,protocol()['generation_caps'][workload])
+
+
+def score_examples(model,examples,split,cap):
+    """Shared prompt-only scorer over explicitly admitted examples and a fixed cap."""
     if split not in ('train','test'):raise ContractError('unknown scoring split')
-    examples=parse_json(dataset(workload)[0],canonical=True)['examples'];baseline=majority_answers(examples)
+    baseline=majority_answers(examples)
     rows=[];before=model_identity(model)
     for item in examples:
         if item['split']!=split:continue
         expected=[*item['answer'].encode(),EOS]
-        emitted=greedy(model,item['prompt'],protocol()['generation_caps'][workload])
+        emitted=greedy(model,item['prompt'],cap)
         constant=[*baseline[item['task']].encode(),EOS]
         rows.append({'example_identity':item['example_identity'],'family_id':item['family_id'],
             'task':item['task'],'split':split,'expected_tokens':expected,'generated_tokens':emitted,
@@ -100,7 +106,14 @@ def score(model,workload,split):
 
 
 def check_predictions(workload,split,raw):
-    examples=parse_json(dataset(workload)[0],canonical=True)['examples'];baselines=majority_answers(examples)
+    examples=parse_json(dataset(workload)[0],canonical=True)['examples']
+    return check_prediction_examples(examples,split,protocol()['generation_caps'][workload],raw)
+
+
+def check_prediction_examples(examples,split,cap,raw):
+    """Shared exact prediction/context validator, without any model execution."""
+    if split not in ('train','test'):raise ContractError('unknown scoring split')
+    baselines=majority_answers(examples)
     selected={e['example_identity']:e for e in examples if e['split']==split}
     record=parse_json(raw,canonical=True);exact_keys(record,{'predictions'},'foundations predictions')
     rows=record['predictions']
@@ -113,7 +126,7 @@ def check_predictions(workload,split,raw):
         if type(key) is not str or key not in selected or key in seen:raise ContractError('unknown/duplicate prediction')
         seen.add(key);item=selected[key];expected=[*item['answer'].encode(),EOS]
         constant=[*baselines[item['task']].encode(),EOS];emitted=row['generated_tokens']
-        if type(emitted) is not list or not 1<=len(emitted)<=protocol()['generation_caps'][workload]:
+        if type(emitted) is not list or not 1<=len(emitted)<=cap:
             raise ContractError('invalid generated token count')
         for token in emitted:integer(token,'generated token',0,258)
         expected_fields={'family_id':item['family_id'],'task':item['task'],'split':split,'expected_tokens':expected,

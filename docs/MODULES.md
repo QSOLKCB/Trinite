@@ -96,9 +96,27 @@ there is no held-out stage. The original modules and protocols remain unchanged.
 `budget.py` composes admitted foundations data, native updates, milestone scoring
 and closed observation. The existing comparison checkpoint module owns the
 shared closed tensor reader, used by comparison, foundations and budget profiles.
+
 No numerical model/update implementation is duplicated.
 
 `game_data.py` and `game_oracle.py` are standard-library numeric admission/oracle
 modules. Neither can import a model, observer or network code. The game corpus
 is prepared for a later frozen training increment and is absent from budget
 requests/inputs. Boundary tests declare these dependencies explicitly.
+
+## Implemented matched learning/evaluation
+
+`learning_data.py` adds a versioned complete per-item admission over unchanged
+foundations facts. `learning_plan.py` delegates numerical/resource bounds to the
+existing budget profile. `learning_training.py` owns the frozen protocol, request,
+actual runner receipt and parent-order-preserving state. `learning_checkpoint.py`
+uses the shared safe named-tensor reader with its own admitted train-only context.
+`learning.py` composes native updates, the shared foundations scorer, fresh matrix
+authorization and prediction-regenerating verification. `scripts/run_learning.py`
+owns fixed fresh-process deadlines and conservative failure retention. The
+low-level model, optimizer and observer gain no dependency on these modules.
+
+The shared scorer accepts an explicitly admitted example list and cap, while the
+historical foundations entrypoints retain their original dataset and protocol.
+The new admission metadata changes identities, not numeric examples or exposure
+order. See [LEARNING.md](LEARNING.md).

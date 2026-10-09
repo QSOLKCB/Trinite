@@ -203,7 +203,9 @@ final per-task **training-only** check, with all milestone predictions/losses
 verified against retained models. Prefix and one full same-host replay checks
 are retained in [BUDGET.md](BUDGET.md). This resolves the exposed training floor
 for the chosen longer dense budget, not held-out learning adequacy. The next
-reviewable increment is a separately frozen learning/evaluation protocol with
-matched lanes and this explicit budget decision; Phase 5 and curriculum training
+reviewable increment is implemented in [LEARNING.md](LEARNING.md), with a
+separately frozen learning/evaluation protocol, matched lanes and this explicit
+budget decision. Its complete target run is pending at the implementation commit;
+Phase 5 and curriculum training
 remain conditional on measured learning/evaluation gates. Earlier negative and
 blocked evidence stays preserved.
