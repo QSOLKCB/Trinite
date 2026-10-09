@@ -289,3 +289,16 @@ in every seed and the 4× schedule also fails squares. All three 1× controls ma
 prior model/AdamW, history and prediction bytes exactly. There are no held-out
 model calls or automatic schedule selection. Any subsequent learning or composed assessment needs a separate
 protocol. Phase 5, format selection and scaling remain blocked.
+
+
+## Training-only fold-order control
+
+Following the negative fold-exposure result, the next separately frozen
+training-only increment is implemented in [FOLD-ORDER.md](FOLD-ORDER.md), under
+[FOLD-ORDER-PROTOCOL.md](FOLD-ORDER-PROTOCOL.md). Six dense cells compare parent
+grouping with deterministic mixed-task order, preserving exactly eight visits
+per example and equal total scored targets. The shared 3,450-update budget is an
+explicit new decision, not a relabelling of the preceding 4,096-update evidence.
+Full measurement is pending. Training success, if observed, only informs a later
+separately frozen learning decision. Held-out and composed assessment, format
+selection, scaling and Phase 5 remain blocked.

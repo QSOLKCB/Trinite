@@ -61,3 +61,5 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 - [Scalar curriculum learning](SCALAR-LEARNING.md) and [frozen protocol](SCALAR-LEARNING-PROTOCOL.md) — matched scalar training, fresh gates and separate composed-output limits.
 
 - [Fold-sum exposure development](FOLD-EXPOSURE.md) and [frozen protocol](FOLD-EXPOSURE-PROTOCOL.md).
+
+- [Fold-order development](FOLD-ORDER.md) and its [frozen protocol](FOLD-ORDER-PROTOCOL.md): equal-exposure training-only ordering control.
