@@ -10,7 +10,7 @@ SCHEMA='trinite.foundations-checkpoint.v1'
 
 
 def _context(state,workload,request_identity):
-    if not isinstance(state.config,FoundationsPlan):
+    if type(state.config) is not FoundationsPlan:
         raise ContractError('foundations snapshot requires its separate bounded plan')
     require_identity(request_identity)
     raw,manifest=dataset(workload)

@@ -15,6 +15,7 @@ from trinite.budget_plan import BudgetPlan
 from trinite.contracts import ContractError, identity, json_bytes, parse_json
 from trinite.convergence import state_for as prior_state
 from trinite.foundations_plan import FoundationsPlan
+from trinite.foundations_checkpoint import snapshot as native_snapshot
 from trinite.observation import BundleObserver
 from trinite.training import model_identity, run_steps
 
@@ -40,6 +41,10 @@ class BudgetTests(unittest.TestCase):
             with self.subTest(name=name,value=value),self.assertRaises(ContractError):
                 replace(plan,**{name:value})
         with self.assertRaises(ContractError): FoundationsPlan(steps=4096)
+        for invalid in ({},False,FoundationsPlan()):
+            with self.assertRaises(ContractError):b.state_for('arithmetic',0,'extended',invalid)
+        state=b.state_for('arithmetic',0,'extended',replace(plan,steps=2,validation_every=2))
+        with self.assertRaises(ContractError):native_snapshot(state,'arithmetic',REQUEST)
         for values in (('arithmetic',True,'extended'),('fold',0,'low'),('unknown',0,'extended')):
             with self.assertRaises(ContractError): b.cell_name(*values)
 

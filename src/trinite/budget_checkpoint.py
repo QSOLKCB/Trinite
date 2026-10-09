@@ -3,14 +3,13 @@ from .contracts import ContractError, exact_keys, identity, json_bytes, parse_js
 from .comparison_checkpoint import tensor_payload, progress, restore_tensors
 from .training import model_identity, require_environment
 from .budget_plan import BudgetPlan
+from .budget_training import sources, PROTOCOL_IDENTITY, cell_name, plan_for, state_for
+from .foundations_data import dataset
 
 METADATA_LIMIT = 8*1024*1024
 
 
 def context(state, workload, candidate, request_identity):
-    # Lazy orchestration imports prevent a checkpoint/orchestration import cycle.
-    from .budget import sources, PROTOCOL_IDENTITY, cell_name, plan_for
-    from .foundations_data import dataset
     if type(state.config) is not BudgetPlan:
         raise ContractError('budget checkpoint requires its separate bounded plan')
     cell_name(workload, state.config.seed, candidate); require_identity(request_identity)
@@ -40,7 +39,6 @@ def snapshot_state(state, workload, candidate, request_identity):
 
 
 def restore_state(payload,metadata,workload,seed,candidate,request_identity,identities,plan=None):
-    from .budget import state_for
     if (type(payload) is not bytes or type(metadata) is not bytes
             or len(payload)>32*1024*1024 or len(metadata)>METADATA_LIMIT
             or (identity(payload),identity(metadata))!=identities):

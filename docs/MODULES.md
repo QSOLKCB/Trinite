@@ -90,6 +90,7 @@ there is no held-out stage. The original modules and protocols remain unchanged.
 
 ## Implemented budget development and game corpus
 
+`budget_training.py` owns frozen settings, requests, source receipts and train-only state.
 `budget_plan.py` owns the explicit larger development resource bounds;
 `budget_checkpoint.py` owns its source/request/train-only checkpoint profile;
 `budget.py` composes admitted foundations data, native updates, milestone scoring

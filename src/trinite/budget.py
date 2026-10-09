@@ -1,111 +1,24 @@
-"""Training-only development orchestration; native numerical/checkpoint reuse."""
-from dataclasses import replace
-from datetime import datetime, timezone
-import itertools
+"""Training-only extended budget orchestration and milestone verification."""
 import math
 from pathlib import Path
 import time
 
-from .contracts import ContractError, exact_keys, identity, integer, json_bytes, parse_json, require_identity
-from .foundations_training import sources as foundations_sources, state_for as foundations_state
-from .budget_plan import BudgetPlan
+from .contracts import ContractError, exact_keys, identity, json_bytes, parse_json, require_identity
+from .budget_training import (PROTOCOL_IDENTITY, PROTOCOL_COMMIT, RUNNER_IDENTITY, WORKLOADS,
+    SEEDS, CANDIDATES, MILESTONES, protocol, sources, cells, cell_name, plan_for, state_for,
+    request_core, freeze_request, read_request)
 from .foundations_data import dataset
 from .budget_checkpoint import snapshot_state, restore_state
 from .convergence import stability
 from .foundations import score, check_predictions, task_failures, read_bytes, write, failure
-from .training import require_environment, run_steps, model_identity, evaluate
+from .training import run_steps, model_identity, evaluate
 from .observation import BundleObserver, verify_observation
-
-PROTOCOL_IDENTITY = 'sha256:9e75f2f3642970e7ca56e81b65174d5f2794e07a008379cd0d621363c58d5087'
-PROTOCOL_COMMIT = '0510c28d682b4d75824d9de25a17841e17e4fd79'
-RUNNER_IDENTITY = 'sha256:4ff888d0803190facdf813e140989b3ab2b8487fd7491dfe5eb293a2f6ab5cfd'
-WORKLOADS = ('arithmetic', 'fold', 'lattice')
-SEEDS = (0, 1, 2)
-CANDIDATES = ('extended',)
-MILESTONES = (1024, 2048, 3072, 4096)
-
-
-def protocol():
-    raw = (Path(__file__).parent / 'budget-protocol.json').read_bytes()
-    if identity(raw) != PROTOCOL_IDENTITY:
-        raise ContractError('budget protocol changed; freeze a new version')
-    return parse_json(raw, canonical=True)
-
-
-def sources():
-    package = Path(__file__).resolve().parent
-    if identity((package.parent.parent/'scripts/run_budget.py').read_bytes()) != RUNNER_IDENTITY:
-        raise ContractError('budget runner source mismatch')
-    return {**foundations_sources(), **{n: identity((package/n).read_bytes()) for n in ('budget.py','budget_plan.py','budget_checkpoint.py','convergence.py')},
-            'budget-protocol.json': PROTOCOL_IDENTITY, 'scripts/run_budget.py': RUNNER_IDENTITY}
-
-
-def cells():
-    return tuple(itertools.product(WORKLOADS, SEEDS, CANDIDATES))
-
-
-def cell_name(workload, seed, candidate):
-    if workload not in WORKLOADS or type(seed) is not int or seed not in SEEDS or candidate not in CANDIDATES:
-        raise ContractError('unknown budget cell')
-    return f'{workload}-{seed}-{candidate}'
-
-
-def plan_for(seed, candidate):
-    cell_name('arithmetic', seed, candidate)
-    return replace(BudgetPlan.from_dict(protocol()['training']), seed=seed,
-                   learning_rate=protocol()['candidates'][candidate])
-
-
-def state_for(workload, seed, candidate, plan=None):
-    cell_name(workload, seed, candidate)
-    config = plan or plan_for(seed, candidate)
-    if (type(config) is not BudgetPlan or config.seed != seed
-            or config.learning_rate != protocol()['candidates'][candidate]):
-        raise ContractError('budget plan/seed mismatch')
-    state = foundations_state(workload, 'dense', seed, config)
-    # The shared loop's diagnostic evaluation uses only admitted training rows.
-    state.data = {'train': state.data['train'], 'validation': state.data['train']}
-    return state
-
-
-def request_core():
-    return {'schema': 'trinite.budget-request.v1', 'protocol': protocol(),
-            'protocol_identity': PROTOCOL_IDENTITY, 'protocol_commit': PROTOCOL_COMMIT,
-            'source': sources(), 'environment': require_environment(),
-            'corpora': {w: {'dataset_identity': identity(dataset(w)[0]),
-                           'manifest_identity': identity(dataset(w)[1])} for w in WORKLOADS}}
-
-
-def freeze_request(path):
-    path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
-    raw = json_bytes({**request_core(), 'created_at': datetime.now(timezone.utc).isoformat()})
-    with path.open('xb') as stream:
-        stream.write(raw)
-    return {'request_identity': identity(raw), 'protocol_identity': PROTOCOL_IDENTITY, 'planned_cells': len(cells())}
-
-
-def read_request(path, expected_identity):
-    require_identity(expected_identity)
-    raw = read_bytes(path, 128*1024)
-    if identity(raw) != expected_identity:
-        raise ContractError('budget request identity mismatch')
-    record = parse_json(raw, canonical=True); expected = request_core()
-    exact_keys(record, set(expected)|{'created_at'}, 'budget request')
-    if any(json_bytes(record[k]) != json_bytes(v) for k, v in expected.items()):
-        raise ContractError('budget request source/data/environment/protocol mismatch')
-    try:
-        if datetime.fromisoformat(record['created_at']).utcoffset() is None:
-            raise ValueError('timezone required')
-    except (ValueError, TypeError) as error:
-        raise ContractError('invalid budget clock') from error
-    return record, raw
-
 
 def train_cell(root, workload, seed, candidate, request, request_identity):
     _, request_raw = read_request(request, request_identity)
     root = Path(root); root.mkdir(parents=True, exist_ok=False)
     try:
-        started = time.perf_counter(); state = state_for(workload, seed, candidate)
+        started = time.perf_counter(); state = state_for(workload, seed, candidate, plan_for(seed,candidate))
         update_seconds = 0.; curves = []; previous = 0
         for step in MILESTONES:
             before = time.perf_counter(); run_steps(state, stop_after=step)
@@ -196,7 +109,7 @@ def verified_cell(root, workload, seed, candidate, request_identity):
         raise ContractError('budget cell context mismatch')
     config = plan_for(seed, candidate)
     state = restore_state(bound('tensors.safetensors'), bound('metadata.json'), workload, seed,
-                          candidate, request_identity, (report['tensors_identity'], report['metadata_identity']))
+                          candidate, request_identity, (report['tensors_identity'], report['metadata_identity']), config)
     expected = {'plan_identity': config.content_identity, 'dataset_identity': state.dataset_identity,
                 'manifest_identity': state.manifest_identity, 'initialization_identity': state.initialization_identity,
                 'model_identity': model_identity(state.model), 'target_tokens': state.target_tokens,

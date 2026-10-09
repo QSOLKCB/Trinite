@@ -176,3 +176,21 @@ They are recorded for follow-on acquisition, not imported, pinned implementation
 or admitted training data. Do not substitute QEC's older ETQ/UFT-ID references
 for these requested records. Before adaptation, retrieve these exact versions,
 bind their files/license/toolchain and inspect the actual mappings/specifications.
+
+
+## Ethics and public-domain research intake
+
+[ETHICS.md](ETHICS.md) records Trent's reality-versus-narrative curriculum and
+Harvard public-domain source suggestion. Asimov's Three Laws are a fictional
+reference, not an admitted text corpus or a proven deployment policy. Proposed
+studies separate exact policy-constraint conformance from human-reviewed ethical
+judgment, with consent/privacy/authority, omission, contradictory evidence,
+uncertainty and safe-escalation controls. Record disagreements and limitations.
+
+The [Harvard intake review](ETHICS.md#harvard-public-domain-intake) records the
+reviewed source policy. Admission remains pending item-level rights, acquisition
+terms, edition/translation/OCR identities and evaluation exposure review. No data was fetched or terms accepted. Preserve historical
+source/date and fiction labels; source availability does not establish truth,
+ethical authority or model safety.
+
+[PUBLIC-DOMAIN.md](PUBLIC-DOMAIN.md) records four catalogue-checked source candidates and distinct teaching goals: Mill/Kant ethical contrasts, Boole-inspired independently checked formal exercises, and Shelley with explicit fiction labels. Catalogue US public-domain metadata is not a global rights determination or permission to import modern summaries/commentaries.
