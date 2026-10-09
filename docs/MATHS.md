@@ -9,7 +9,7 @@ correctness and freedom from drift require measurements, not a corpus guarantee.
 ## Admission and coverage
 
 `maths_data.py` generates 3,154 examples (1,577 formal items, two carriers).
-The orbit split contains 2,452 train, 100 validation and 602 test examples.
+The corrected v2 orbit split contains 1,998 train, 502 validation and 654 test examples.
 Validation remains unused. Every task occurs in every split. These are bounded
 numeric/formal facts with newly rendered minimal symbols, under the existing
 strict [DATA](DATA.md) policy. No textbooks, websites, explanations, pretrained
@@ -47,15 +47,17 @@ families hold n fixed; modular families hold m fixed. Matrix row/column
 permutations, transposition and global sign define conservative algebra orbits.
 All tasks, carriers, RHS/vector variants and scalar projections for an orbit
 share one split, including vector-pair tasks using the same four operands.
-This deliberately uneven orbit split has very small validation counts for some
-tasks. Shared arithmetic primitives still appear across families and in the
+V2 stratifies algebra by singular/nonsingular matrices, with both classes in
+every split. The sole absolute-determinant-2 orbit remains training-only to
+teach rational answers; there is no held-out rational-solving evidence. Shared arithmetic primitives still appear across families and in the
 legacy pack: it is not unseen-algorithm or primitive-isolation evidence.
 
 ## Frozen pilot
 
 The machine protocol is `src/trinite/maths-protocol.json`, hash checked by
 `maths_learning.protocol()`, with its source-bound request written before runs.
-The exact producer is published before full outcomes. Two seeds each train two
+Each protocol producer is published before its own full outcomes. V2 corrects a
+coverage error found in V1; both complete experiments are retained. Two seeds each train two
 fresh dense models from paired random initialization, in alternating profile
 order: control uses unchanged arithmetic train examples; expanded adds the
 maths train split. All four cells use the unchanged 86,528-parameter two-block,
@@ -116,9 +118,52 @@ Requirements affected: TRI-I02/03/05/06/07/08/11/12/13/14; CPU/data/evidence
 boundaries are extended. Historical fixtures and numerical modules are unchanged.
 The new packaged protocol and corpus identities are separate from earlier runs.
 
-## Empirical status
+## Retained v1 result and coverage correction
 
-Implementation and software checks are being completed before the frozen pilot.
-The final report will retain every cell and all per-task/regression counts.
+The original protocol was published at
+[fbc5c243](https://github.com/QSOLKCB/Trinite/commit/fbc5c243c21ef08417ca77e8795dd0c66bea72fd)
+before its four cells. All completed, with every prediction/loss regenerated and
+closed evidence verified by the complete summary. Seed 0 control/expanded maths
+test counts were 127/351 out of 602; seed 1 counts were 134/332. All four legacy
+test counts were 0/64. This is a retained positive aggregate diagnostic with a
+critical coverage limitation: **all solve test matrices were singular**. Its
+solve scores cannot support a unique-system-solving claim; both expanded models
+also underperformed the train-derived ERR majority on those solve tests.
+
+V1's lossless review packet is in `fixtures/maths-v1/`: 361 restored files,
+82,323,009 bytes, archive identity
+`sha256:294df98f6ae72128ef69b1cff71ddaa392765c57df74e608d0133b8c55b083a2`.
+All 232 producer files match published GitHub blobs. This is an explicit review
+exception to the small-fixture convention, preserving complete completed runs
+and exact producer source, rather than an evolving model-release directory.
+
+V2 changes the data policy/schema and orbit stratification, after the coverage
+error and **before its own outcomes**, without changing labels, optimizer,
+architecture, update budget or split seed. It neither searches seeds nor chooses
+a split using predictions. Source admission requires unique and singular systems
+in train/validation/test and rational targets in training. Test has 108 singular
+and 96 unique-system scalar/carrier examples across the two solve tasks; there
+are no fractional test targets. This correction is exploratory development after
+exposure to V1, not a fresh confirmatory benchmark. V1 is not deleted or relabelled.
+
+The v2 result will be appended after its separately frozen training/verification.
 Historical fold-sum/composed adequacy, format selection, scaling and Phase 5
-remain blocked regardless of this exploratory diagnostic.
+remain blocked regardless of these exploratory diagnostics.
+
+To restore V1, join the ordered parts from its inventory and use the existing
+bounded lossless restoration tool:
+
+```sh
+cat fixtures/maths-v1/Trinite-maths-v1.zip.part* > /tmp/Trinite-maths-v1.zip
+python scripts/restore_foundations_archive.py /tmp/Trinite-maths-v1.zip \
+  /tmp/maths-review-v1 --archive-identity sha256:294df98f6ae72128ef69b1cff71ddaa392765c57df74e608d0133b8c55b083a2
+cd /tmp/maths-review-v1/producer
+PYTHONPATH=src python scripts/run_maths.py --request ../run/request.json \
+  --request-identity sha256:64e53e5d0063393092792713979384ac8b103d3510080322466b29732d2cfc9a \
+  --output ../run --verify-only
+```
+
+Use the matching locked environment; the request deliberately binds Python,
+packages, device scope, numerical settings and actual source bytes. A different
+environment must freeze a new request. The producer packet supports pilot replay;
+full historical conformance needs the complete published checkout and fixtures.

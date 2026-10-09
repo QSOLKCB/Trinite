@@ -6,7 +6,7 @@ from .contracts import ContractError, identity, json_bytes, parse_json
 from .maths_oracle import TASKS, TAGS, solve, parse_prompt, validate
 from .tokenizer import ByteTokenizer
 
-POLICY = 'trinite.maths-data.v1'
+POLICY = 'trinite.maths-data.v2'
 SPLIT_SEED = 73
 
 
@@ -113,11 +113,22 @@ def dataset():
                       'semantic_identity': identity(json_bytes(spec))})
     if len({i['semantic_identity'] for i in items}) != len(items): raise ContractError('duplicate maths fact')
     assignments = {}
-    for kind in ('sets', 'choose', 'modulus', 'algebra'):
-        families = sorted({i['family_id'] for i in items if i['family_id'].startswith(kind+':')},
-                          key=lambda f: identity(json_bytes({'policy': POLICY, 'seed': SPLIT_SEED, 'family': f})))
+    groups = {}
+    for item in items:
+        f = item['family_id']; kind = f.split(':')[0]
+        if kind == 'algebra':
+            a, b, c, d = item['formal']['values'][:4]
+            determinant = a*d-b*c
+            kind = 'algebra-singular' if not determinant else 'algebra-unique'
+            # The sole |det|=2 orbit supplies rational-answer training vocabulary.
+            # It cannot appear across splits; rational generalization is not tested.
+            if abs(determinant) == 2:
+                assignments[f] = 'train'; continue
+        groups.setdefault(kind, set()).add(f)
+    for kind, group in sorted(groups.items()):
+        families = sorted(group, key=lambda f: identity(json_bytes({'policy': POLICY, 'seed': SPLIT_SEED, 'family': f})))
         n = len(families); train = n*7//10; validation = max(1, n//10)
-        if n-train-validation < 1: raise ContractError('empty maths split')
+        if n-train-validation < 1: raise ContractError('empty maths split stratum')
         assignments.update({f: 'train' if j < train else 'validation' if j < train+validation else 'test'
                             for j, f in enumerate(families)})
     revision = identity(json_bytes(source_receipt())); examples = []
@@ -136,17 +147,26 @@ def dataset():
                 'symbols': 'bounded integers, reduced rationals, ERR, unique task tags and delimiters'}
     admission = {'source_id': POLICY, 'origin': 'local exhaustive bounded formal enumeration',
         'author': 'Codex deterministic generator commissioned by Trent Slade / QSOL-IMC',
-        'generation': 'procedural set/Pascal/repeated-addition/adjugate labels; independent set/comb/Leibniz/Gaussian oracle; separate prompt parser; orbit family split',
+        'generation': 'procedural set/Pascal/repeated-addition/adjugate labels; independent set/comb/Leibniz/Gaussian oracle; separate prompt parser; rank-stratified orbit family split',
         'rights_basis': 'generated numeric/formal facts and minimal symbolic carriers; no textbook prose, external source examples, pretrained or teacher outputs',
         'supporting_reference': {'implementation': source_receipt(), 'functions': ['specs', 'label', 'render', 'maths_oracle.solve', 'maths_oracle.parse_prompt'], 'evidence_identity': identity(json_bytes(evidence))},
         'evidence': evidence, 'scope': 'this exact bounded generated maths corpus only',
         'reviewer': 'automated commissioned source/rights/oracle/split audit', 'reviewed_on': '2026-10-09',
         'outcome': 'admitted', 'limitations': 'numeric source admission, not human legal certification; visible finite-domain exploratory evaluation, no textbook or universal reasoning claim'}
-    manifest = {'schema': 'trinite.maths-admission.v1', 'dataset_identity': identity(raw), 'admission': admission,
-                'family_splits': assignments, 'counts': {s: sum(e['split'] == s for e in examples) for s in ('train', 'validation', 'test')},
+    manifest = {'schema': 'trinite.maths-admission.v2', 'dataset_identity': identity(raw), 'admission': admission,
+                'family_splits': assignments, 'split_policy': 'rank-stratified algebra; sole absolute-determinant-2 orbit train-only; other categories grouped hash rank.v2', 'counts': {s: sum(e['split'] == s for e in examples) for s in ('train', 'validation', 'test')},
                 'task_counts': {t: {s: sum(e['task'] == t and e['split'] == s for e in examples) for s in ('train', 'validation', 'test')} for t in TASKS}}
     if any(not c[s] for c in manifest['task_counts'].values() for s in ('train', 'validation', 'test')):
         raise ContractError('each maths task requires every split')
+    coverage = {s: {'unique_systems': 0, 'singular_systems': 0, 'rational_targets': 0} for s in ('train', 'validation', 'test')}
+    for e in examples:
+        if e['task'].startswith('solve'):
+            a, b, c, d = e['formal']['values'][:4]
+            coverage[e['split']]['unique_systems' if a*d-b*c else 'singular_systems'] += 1
+            coverage[e['split']]['rational_targets'] += int('/' in e['answer'])
+    if any(not c['unique_systems'] or not c['singular_systems'] for c in coverage.values()) or not coverage['train']['rational_targets']:
+        raise ContractError('maths split lacks unique/singular systems or rational training targets')
+    manifest['linear_system_coverage'] = coverage
     return raw, json_bytes(manifest)
 
 

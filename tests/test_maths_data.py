@@ -42,6 +42,14 @@ class MathsDataTests(unittest.TestCase):
         manifest = parse_json(self.manifest); manifest['admission']['rights_basis'] = 'internet textbook'
         with self.assertRaises(ContractError): audit_bytes(self.raw,json_bytes(manifest))
 
+    def test_unique_singular_and_rational_training_coverage_is_required(self):
+        coverage=self.receipt['linear_system_coverage']
+        for split in ('train','validation','test'):
+            self.assertGreater(coverage[split]['unique_systems'],0)
+            self.assertGreater(coverage[split]['singular_systems'],0)
+        self.assertEqual(coverage['train']['rational_targets'],64)
+        self.assertEqual(coverage['test']['rational_targets'],0)
+
     def test_known_rational_singular_boundary_and_rejections(self):
         for spec, expected in (({'task':'solve-0','values':[1,1,1,-1,1,0]}, '1/2'),
                                ({'task':'solve-1','values':[1,1,1,-1,1,0]}, '1/2'),

@@ -17,7 +17,7 @@ from .comparison_checkpoint import tensor_payload, progress, restore_tensors
 from .foundations import read_bytes, write, failure, score_examples
 from .observation import BundleObserver, verify_observation
 
-PROTOCOL_IDENTITY = 'sha256:a7794251740a42dc07c1d0cbcc97d05d9937b705abb31288751b9dcb2edec5ca'
+PROTOCOL_IDENTITY = 'sha256:95fb85d66f0c722e47612239e171bda800ebf0ee63e5bee8a2cc73cd6367f5ca'
 PROFILES = ('control', 'expanded')
 OUTPUTS = ('report.json', 'predictions.json', 'steps.json', 'tensors.safetensors', 'metadata.json')
 
