@@ -124,3 +124,8 @@ Reproduce the fixed three-pair characterization with:
 ```sh
 PYTHONPATH=src python scripts/benchmark_research_cpu.py --output /tmp/research-cpu-characterization
 ```
+
+The scalar-learning increment appends `tests/scalar` to current grouped discovery;
+the exact ordered standalone-equivalence gate includes that suite automatically.
+The retained 122-case timing packet remains the historical measurement, not a
+benchmark of the extended suite. No new speedup is claimed.

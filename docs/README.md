@@ -57,3 +57,5 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 
 - [Generalization diagnostics and scalar preparation](GENERALIZATION.md) — read-only verified failure/coverage analysis, inherited family splits and untrained scalar targets.
 - [Generalization protocol](GENERALIZATION-PROTOCOL.md) — frozen parent identities, diagnostic definitions and conservative gates.
+
+- [Scalar curriculum learning](SCALAR-LEARNING.md) and [frozen protocol](SCALAR-LEARNING-PROTOCOL.md) — matched scalar training, fresh gates and separate composed-output limits.

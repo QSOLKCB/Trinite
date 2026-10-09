@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'scripts'))
 from check_cpu import load_suites as load_native_suites
 
-RESEARCH_SUITES = ('comparison', 'foundations', 'convergence', 'budget', 'learning', 'generalization')
+RESEARCH_SUITES = ('comparison', 'foundations', 'convergence', 'budget', 'learning', 'generalization', 'scalar')
 
 
 def load_suites():

@@ -133,3 +133,16 @@ output paths, exclusive publication and partial failure retention. It never
 trains or unlocks geometry. `check_research_cpu.py` extends the historical native
 runner with exact ordered research-suite discovery; standalone and existing
 fresh-process probes remain available.
+
+## Implemented scalar curriculum learning
+
+`scalar_plan.py` delegates numerical/resource bounds to the budget profile.
+`scalar_training.py` owns fixed parent/projection exposure, native state construction,
+source/context requests and decision lineage over unchanged scalar admission.
+`scalar_checkpoint.py` composes the existing safe named-tensor/progress reader.
+`scalar_learning.py` owns fresh train/test evidence verification, matched authorization,
+source-bound reports and conservative scalar-only aggregation. Its gate wrapper
+validates the larger projection total and delegates unchanged per-task thresholds.
+`scripts/run_scalar_learning.py` owns bounded fixed fresh workers and retention.
+No numerical update loop or scorer is copied; original experiment source modules
+remain unchanged. The grouped research CI appends the scalar suite in order.
