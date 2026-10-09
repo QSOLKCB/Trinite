@@ -1,6 +1,8 @@
 from dataclasses import replace
 import importlib.util
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -107,3 +109,49 @@ class FoldExposureTests(unittest.TestCase):
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         for stage,cell in [('evaluate',None),('train',(0,3)),('summarize',(0,1))]:
             with self.assertRaises(ValueError):module.launch(stage,'r','i','o',None,cell)
+
+    def test_runner_retains_spawn_errors_and_attempts_every_cell(self):
+        spec=importlib.util.spec_from_file_location('fold_runner',ROOT/'scripts/run_fold_exposure.py')
+        runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)
+        for summary_spawn_fails in (False,True):
+            with self.subTest(summary_spawn_fails=summary_spawn_fails), tempfile.TemporaryDirectory() as d:
+                root=Path(d);request=root/'request.json';req=f.freeze_request(request)['request_identity']
+                output=root/'run';attempts=[]
+                failed_cell=f.cells()[0];failed_name=f.cell_name(*failed_cell)
+                def run(argv, **kwargs):
+                    stage=argv[argv.index('--worker')+1]
+                    cell=(int(argv[argv.index('--seed')+1]),int(argv[argv.index('--sum-repeats')+1])) if stage=='train' else None
+                    attempts.append((stage,cell))
+                    if cell==failed_cell:
+                        raise OSError('training spawn unavailable')
+                    if stage=='summarize':
+                        if summary_spawn_fails: raise OSError('summary spawn unavailable')
+                        errors=parse_json((output/'worker-errors.json').read_bytes(),canonical=True)
+                        f.summarize(output,request,req,errors)
+                    return subprocess.CompletedProcess(argv,0)
+                def verified(root,seed,repeats,request_identity):
+                    return {'seed':seed,'sum_repeats':repeats,'outcome':'completed',
+                        'report':{'training_gate_failures':[],'initialization_identity':'same'}}
+                argv=['run_fold_exposure.py','--request',str(request),'--request-identity',req,'--output',str(output)]
+                with patch.object(sys,'argv',argv),patch.object(runner.subprocess,'run',side_effect=run), \
+                        patch.object(f,'verify_cell',side_effect=verified),patch('builtins.print'):
+                    self.assertEqual(runner.main(),1)
+                self.assertEqual(attempts,[('train',cell) for cell in f.cells()]+[('summarize',None)])
+                self.assertEqual((output/'request.json').read_bytes(),request.read_bytes())
+                self.assertEqual(len(list(output.glob('*.log'))),10)
+                errors={failed_name:'OSError: training spawn unavailable'}
+                self.assertEqual(parse_json((output/'worker-errors.json').read_bytes(),canonical=True),errors)
+                if summary_spawn_fails:
+                    result=parse_json((output/'summary-worker-failure.json').read_bytes(),canonical=True)
+                    errors['summary']='OSError: summary spawn unavailable'
+                    self.assertFalse(result['integrity_verified'])
+                else:
+                    result=parse_json((output/'summary.json').read_bytes(),canonical=True)
+                    self.assertEqual(len(result['cells']),9)
+                    self.assertEqual([r['outcome'] for r in result['cells']],['failed']+['completed']*8)
+                    self.assertEqual(result['groups'],{})
+                    self.assertIsNone(result['selected_candidate'])
+                self.assertEqual(result['outcome'],'failed')
+                self.assertEqual(result['worker_errors'],errors)
+                self.assertFalse(result['held_out_scored'])
+                self.assertFalse(result['phase5_ready'])

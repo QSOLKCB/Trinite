@@ -90,6 +90,7 @@ def main():
                     r = launch('train', args.request, args.request_identity, args.output/name, log, cell)
                     if r.returncode: errors[name] = f'training worker exited {r.returncode}'
                 except subprocess.TimeoutExpired: errors[name] = 'training worker exceeded 600 seconds'
+                except OSError as error: errors[name] = type(error).__name__+': '+str(error)
             print(name+': '+errors.get(name, 'completed'), flush=True)
         write(args.output, 'worker-errors.json', errors)
         with (args.output/'summary.log').open('x') as log:
@@ -97,6 +98,7 @@ def main():
                 r = launch('summarize', args.request, args.request_identity, args.output, log)
                 if r.returncode: errors['summary'] = f'summary worker exited {r.returncode}'
             except subprocess.TimeoutExpired: errors['summary'] = 'summary worker exceeded 1200 seconds'
+            except OSError as error: errors['summary'] = type(error).__name__+': '+str(error)
         if 'summary' in errors:
             write(args.output, 'summary-worker-failure.json', {'outcome': 'failed', 'worker_errors': errors,
                 'integrity_verified': False, 'held_out_scored': False, 'phase5_ready': False})
