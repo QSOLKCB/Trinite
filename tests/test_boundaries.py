@@ -5,6 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
+    "maths_retention": {"contracts", "maths_learning", "maths_plan", "model", "training", "comparison_checkpoint", "foundations", "observation"},
     "maths_oracle": {"contracts"},
     "maths_data": {"contracts", "maths_oracle", "tokenizer"},
     "maths_plan": {"contracts", "budget_plan"},
