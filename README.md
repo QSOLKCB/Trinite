@@ -47,6 +47,6 @@ Start with the [getting-started guide](docs/GETTING_STARTED.md), [documentation 
 
 ## Milestone and rights
 
-The proposed **v0.1.0** tag is an *initial research/source checkpoint* covering merged PRs #1–#26, **not** a Phase 9 deployment certification, PyPI package version, released model-weights bundle or successful learning claim. The package metadata remains separately versioned until a deliberate packaging release. Keep immutable tags tied to the final reviewed commit; do not move historical evidence or tags.
+The proposed **v0.1.0** tag is an *initial research/source checkpoint* covering **25 merged PRs numbered #1–#26 (excluding the unmerged revert PR #11)**, **not** a Phase 9 deployment certification, PyPI package version, released model-weights bundle or successful learning claim. The package metadata remains separately versioned until a deliberate packaging release. Keep immutable tags tied to the final reviewed commit; do not move historical evidence or tags.
 
 Repository code: [MPL-2.0](LICENSE). Admitted data, imported upstream references, external assets and future weights each retain their own rights and provenance requirements.
