@@ -277,7 +277,7 @@ class BudgetAssuranceTests(unittest.TestCase):
                 tasks={task:{'examples':n,'correct':n,'baseline_correct':0} for task,n in counts.items()}
                 score={'examples':sum(counts.values()),'correct':sum(counts.values()),'tasks':tasks}
                 source['scores'][kind+'-final-train']=score
-                source['scores'][kind+'-initial-train']=score
+                source['scores'][kind+'-initial-train']=copy.deepcopy(score)
                 source['exposure'][kind]['example_visits']=source['steps']*4
             source['training_gate_failures']={'legacy':[],'maths':[]}
             receipt=experiment.receipt_for(self.request_id,self.verification_id,{},'replay')
