@@ -36,13 +36,13 @@ jobs:
           python -c "import importlib.metadata; assert importlib.metadata.version('pyarrow') == '21.0.0'"
       - name: Run bounded native-baseline/CNR experiment and verify exact replay
         run: |
-          python -m unittest discover -s tests -p 'test_cnr001.py' -v
-          python -m unittest discover -s tests/cnr -v
-          python scripts/run_cnr001.py --freeze-request "$RUNNER_TEMP/cnr-request.json" > "$RUNNER_TEMP/cnr-freeze-receipt.json"
+          python -m unittest discover -s tests -p 'test_cnr001.py' -v 2>&1 | tee "$RUNNER_TEMP/cnr-standardlib-tests.log"
+          python -m unittest discover -s tests/cnr -v 2>&1 | tee "$RUNNER_TEMP/cnr-real-data-tests.log"
+          python scripts/run_cnr001.py --freeze-request "$RUNNER_TEMP/cnr-request.json" > "$RUNNER_TEMP/cnr-freeze-receipt.json" 2> "$RUNNER_TEMP/cnr-freeze.log"
           REQUEST=$(python -c "import json,os; print(json.load(open(os.environ['RUNNER_TEMP']+'/cnr-freeze-receipt.json'))['request_identity'])")
-          python scripts/run_cnr001.py --run --request "$RUNNER_TEMP/cnr-request.json" --request-identity "$REQUEST" --output "$RUNNER_TEMP/cnr-analysis.json" > "$RUNNER_TEMP/cnr-run-receipt.json"
+          python scripts/run_cnr001.py --run --request "$RUNNER_TEMP/cnr-request.json" --request-identity "$REQUEST" --output "$RUNNER_TEMP/cnr-analysis.json" > "$RUNNER_TEMP/cnr-run-receipt.json" 2> "$RUNNER_TEMP/cnr-run.log"
           ANALYSIS=$(python -c "import json,os; print(json.load(open(os.environ['RUNNER_TEMP']+'/cnr-run-receipt.json'))['analysis_identity'])")
-          python scripts/run_cnr001.py --verify-only --request "$RUNNER_TEMP/cnr-request.json" --request-identity "$REQUEST" --output "$RUNNER_TEMP/cnr-analysis.json" --analysis-identity "$ANALYSIS" > "$RUNNER_TEMP/cnr-verification.json"
+          python scripts/run_cnr001.py --verify-only --request "$RUNNER_TEMP/cnr-request.json" --request-identity "$REQUEST" --output "$RUNNER_TEMP/cnr-analysis.json" --analysis-identity "$ANALYSIS" > "$RUNNER_TEMP/cnr-verification.json" 2> "$RUNNER_TEMP/cnr-verification.log"
           python - <<'PY'
           import json, os
           with open(os.environ['RUNNER_TEMP']+'/cnr-analysis.json') as stream: report=json.load(stream)
@@ -54,21 +54,13 @@ jobs:
           print('ETQ-303 full walk/event:',report['graph_provenance']['etq_diagnostics'])
           print('v0.1.0 baseline:',report['baseline'])
           PY
-          cp "$RUNNER_TEMP/cnr-request.json" cnr-request.json
-          cp "$RUNNER_TEMP/cnr-analysis.json" cnr-analysis.json
-          cp "$RUNNER_TEMP/cnr-freeze-receipt.json" cnr-freeze-receipt.json
-          cp "$RUNNER_TEMP/cnr-run-receipt.json" cnr-run-receipt.json
-          cp "$RUNNER_TEMP/cnr-verification.json" cnr-verification.json
       - name: Retain all research results, including failure logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cnr-001-retrospective-reports
           path: |
-            cnr-request.json
-            cnr-analysis.json
-            cnr-freeze-receipt.json
-            cnr-run-receipt.json
-            cnr-verification.json
+            ${{ runner.temp }}/cnr-*.json
+            ${{ runner.temp }}/cnr-*.log
           if-no-files-found: warn
           retention-days: 90
