@@ -88,6 +88,25 @@ class LatticeScaffoldTests(unittest.TestCase):
         with self.assertRaises(ContractError): verify(b'x' * (2 * 1024 * 1024 + 1))
         with self.assertRaises(ContractError): verify(json_bytes(original).replace(b'\n', b'  \n'))
 
+    def test_nested_module_boundary_and_packaged_protocol(self):
+        import ast
+        import sys
+        import tomllib
+        package = ROOT / 'src/trinite/lattice'
+        for file in package.glob('*.py'):
+            for node in ast.walk(ast.parse(file.read_text())):
+                if isinstance(node, ast.ImportFrom) and node.level:
+                    self.assertEqual((node.level, node.module), (2, 'contracts'))
+                elif isinstance(node, ast.ImportFrom):
+                    self.assertIn(node.module.split('.')[0], sys.stdlib_module_names)
+                elif isinstance(node, ast.Import):
+                    for name in node.names:
+                        self.assertIn(name.name.split('.')[0], sys.stdlib_module_names)
+                        self.assertNotIn(name.name, {'subprocess', 'socket', 'urllib', 'http'})
+        metadata = tomllib.loads((ROOT / 'pyproject.toml').read_text())
+        self.assertIn('lattice/protocol.json',
+                      metadata['tool']['setuptools']['package-data']['trinite'])
+
     def test_cli_exclusive_creation_readonly_and_symlink_rejection(self):
         script = ROOT / 'scripts/generate_lattice_scaffold.py'
         with tempfile.TemporaryDirectory() as temp:
