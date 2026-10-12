@@ -6,7 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from trinite.contracts import ContractError, identity, json_bytes
-from trinite.lattice_scaffold import construct, verify
+from trinite.lattice_scaffold import MAX_ARTIFACT_BYTES, construct, verify
 
 
 def safe_path(value):
@@ -27,7 +27,9 @@ def main(argv=None):
         if args.verify is not None:
             if args.output is not None:
                 raise ContractError('read-only verification cannot write output')
-            print(json_bytes(verify(safe_path(args.verify).read_bytes())).decode(), end='')
+            with safe_path(args.verify).open('rb') as stream:
+                raw = stream.read(MAX_ARTIFACT_BYTES + 1)
+            print(json_bytes(verify(raw)).decode(), end='')
         else:
             if args.output is None:
                 raise ContractError('generation requires --output')
