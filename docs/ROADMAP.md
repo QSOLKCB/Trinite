@@ -314,3 +314,89 @@ Requested by Trent Slade after PR #18 on 2026-10-09. [MATHS.md](MATHS.md) implem
 ## Fixed arithmetic rehearsal development
 
 After PR #19, the next separately frozen learning increment is [MATHS-RETENTION.md](MATHS-RETENTION.md): repeat the pooled maths pilot and compare four arithmetic/four maths examples in each batch with the same two seeds and update budget. All four cells completed and freshly verified. Rehearsal passes the arithmetic training criterion in both seeds but reduces maths accuracy; all maths training criteria remain failed. Both pooled safe tensors, histories and predictions reproduce PR #19 exactly. Actual visits, targets and training criteria remain visible. The reused test diagnostics are exploratory. No schedule is selected and historical learning adequacy, composed assessment, format selection, scaling and Phase 5 remain blocked.
+
+## Planned retention audit and joint-learning budget comparison
+
+Requested by Trent on 2026-10-12 after review of
+[PR #21 at 84b54d2](https://github.com/QSOLKCB/Trinite/pull/21).
+Status: planned follow-up; the assurance PR is still under review. Software
+verification, training performance, fresh generalization and release readiness
+are separate decisions. A successful replay does not clear an accuracy gate.
+
+The supplied independent review reports a complete four-cell production rerun
+on Ryzen/AVX2 with exact within-host optimizer replay and read-only verification,
+but its delivery contains the report alone. Preserve the complete audit as a
+lossless source-bound archive before treating those local records as a published
+evidence package: experiment request/digest, independently retained external
+verification request/digest, replay summary, all model/AdamW payloads, histories,
+predictions, custody, logs and an immutable member inventory. Retain the original
+EPYC/AVX512 producers and negative results unchanged. Different host counts do
+not justify changing an archived environment fingerprint.
+
+The next learning question is whether a larger balanced-rehearsal training
+budget improves finite maths learning while preserving arithmetic training
+performance. Freeze the protocol and publish its producer before target outcomes.
+
+| Arm | Updates | Arithmetic visits | Maths visits | Seeds |
+| --- | --- | --- | --- | --- |
+| Balanced rehearsal control | 4,096 | 16,384 | 16,384 | 0, 1 |
+| Balanced rehearsal candidate | 8,192 | 32,768 | 32,768 | 0, 1 |
+
+Both arms use the same four-arithmetic/four-maths batch composition, admitted
+corpus, native initialization, model, optimizer and constant learning rate.
+Rerun both arms under one new producer and declared environment. Freeze resource
+limits, diagnostic/checkpoint schedule and stop conditions in advance. Doubling
+updates increases both corpora's exposure and extends the optimizer trajectory;
+this tests the larger-budget recipe, not the causal effect of maths exposure
+alone, and is not a compute-matched superiority comparison.
+
+The current flat v1 `BudgetPlan`/`MathsPlan` rejects more than 4,096 updates.
+Introduce a separately versioned plan/protocol and complete runtime source
+closure; preserve the frozen v1 plan, fixtures and evidence. Reuse one
+authoritative updater, scorer, admission operation and safe tensor reader.
+
+Predeclare joint-training acceptance as at least 90% complete canonical
+answer-plus-EOS accuracy in each of the four arithmetic and 12 maths tasks, in
+every candidate seed. Use exact admitted task counts and integer thresholds;
+for arithmetic each task needs at least 60/66. All expected control and candidate
+cells must complete and verify for a complete matrix, while scientific failures
+and negative contrasts remain visible. Require all six v2 checks, including
+complete optimizer replay, for every full-replay claim. Retain actual visits,
+scored targets/input tokens, unique training diagnostics, majority comparisons,
+singular/unique solve counts and drift diagnostics.
+
+Recipe development and selection are training-only. Existing reused test
+diagnostics remain exploratory and cannot select the budget, ratio, checkpoint
+or winning seed. Prepare a genuinely fresh family-level confirmation protocol
+before later capability comparisons, with independent exact labels, exposure
+history and declared singular/unique-system and rational-solving coverage.
+Resplitting public examples is not a fresh benchmark.
+
+Original fold-sum and composed-answer adequacy need their own frozen experiments.
+Finite maths success cannot silently replace those tasks. Phase 5 still needs
+original learning adequacy and a separately reviewed geometry objective,
+quality/cost margins, matched geometry-off/on arms and controls. Format
+selection, scaling, independent replication, CPU export and release remain
+separate gates. Replace proposal language with actual verified outcomes after
+execution, including negative results; no candidate success is promised.
+
+## Future recursive 3×3×3 geometry scaffold
+
+Requested by Trent on 2026-10-12: investigate a bounded recursive 3×3×3
+Sierpiński-style cubic lattice as a concrete scaffold for representation mapping.
+Status: future hypothesis, not an implemented model mechanism or enabled loss.
+
+Freeze the exact cell-retention mask, recursion depth, integer coordinate/index
+convention, adjacency, family grouping and resource bounds before generating
+the scaffold. A Menger-style cubic construction is one candidate; the intended
+retained-cell rule must be specified explicitly rather than inferred from the
+name. Preserve recursive parent/child and occupancy identities.
+
+Define and freeze how selected model activations map to these anchors, including
+layer/token selection, normalization, dimension reduction or learned mapping,
+training-only fitting and held-out probes. Compare against matched nonrecursive,
+shuffled-hierarchy and random-anchor controls with declared counts and mapping
+capacity. A visually orderly map does not establish improved reasoning or a
+causal mechanism. Separate geometry measurement from any training intervention;
+geometry loss remains zero until its own reviewed Phase 5 protocol and learning
+prerequisites are met.
