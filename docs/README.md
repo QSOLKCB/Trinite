@@ -73,3 +73,5 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 [MATHS-RETENTION.md](MATHS-RETENTION.md): fixed balanced arithmetic rehearsal versus the unchanged pooled maths curriculum, explicit exposure accounting and fresh safe-state verification.
 
 [MATHS-RETENTION-V2.md](MATHS-RETENTION-V2.md): separate verification tiers, external artifact commitments, complete optimizer replay, strict admitted task counts and real integration coverage.
+
+- [Balanced rehearsal budget development](MATHS-RETENTION-BUDGET.md): training-only 4,096/8,192-update comparison and lossless replay archive.

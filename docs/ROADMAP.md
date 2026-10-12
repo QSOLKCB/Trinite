@@ -319,7 +319,9 @@ After PR #19, the next separately frozen learning increment is [MATHS-RETENTION.
 
 Requested by Trent on 2026-10-12 after review of
 [PR #21 at 84b54d2](https://github.com/QSOLKCB/Trinite/pull/21).
-Status: planned follow-up; the assurance PR is still under review. Software
+Status: assurance PR #21 merged; the next separately frozen budget comparison is
+implemented in [MATHS-RETENTION-BUDGET.md](MATHS-RETENTION-BUDGET.md), with production
+outcomes measured below. Software
 verification, training performance, fresh generalization and release readiness
 are separate decisions. A successful replay does not clear an accuracy gate.
 
@@ -379,6 +381,19 @@ quality/cost margins, matched geometry-off/on arms and controls. Format
 selection, scaling, independent replication, CPU export and release remain
 separate gates. Replace proposal language with actual verified outcomes after
 execution, including negative results; no candidate success is promised.
+
+The budget comparison is now measured: all four cells completed and passed all
+six replay/custody checks without pairing or worker errors on the newly declared
+Xeon/AVX512 host. Arithmetic passes all training tasks. Maths aggregate counts
+increase from 975 to 1,206 and 1,074 to 1,269 out of 1,998, but every maths task
+fails its 90% gate in both candidate seeds. No budget is selected; joint learning
+acceptance remains false. The complete source-bound packet and exact producer
+are retained in [MATHS-RETENTION-BUDGET.md](MATHS-RETENTION-BUDGET.md). A new separately
+frozen training-only decision is needed before further learning outcomes. Fresh
+confirmation, original fold/composed adequacy, format selection, geometry,
+scaling and release remain separate blocked gates. The originally reported full
+Ryzen audit still requires its own producer/artifacts; these new records do not
+replace it.
 
 ## Future recursive 3×3×3 geometry scaffold
 
