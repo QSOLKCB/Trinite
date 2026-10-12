@@ -70,3 +70,5 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 [MATHS.md](MATHS.md): admitted exact finite maths/algebra, independently checked oracles, family isolation, paired native-training control, full prediction/checkpoint/PROVENANCE retention and explicit exploratory limits.
 
 [MATHS-RETENTION.md](MATHS-RETENTION.md): fixed balanced arithmetic rehearsal versus the unchanged pooled maths curriculum, explicit exposure accounting and fresh safe-state verification.
+
+[MATHS-RETENTION-V2.md](MATHS-RETENTION-V2.md): separate verification tiers, external artifact commitments, complete optimizer replay, strict admitted task counts and real integration coverage.

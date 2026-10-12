@@ -1,6 +1,6 @@
 # Contributor and implementing-agent instructions
 
-Status: project operating plan. This is a documentation file, not a root AGENTS.md automatically applied to future source files. The root README directs contributors here explicitly.
+Status: detailed project operating plan. Root [AGENTS.md](../AGENTS.md) is the automatically loaded agent entrypoint and directs agents to this guide and the topic contracts.
 
 ## Before implementing
 
