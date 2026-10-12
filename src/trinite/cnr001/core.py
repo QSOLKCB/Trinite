@@ -17,9 +17,9 @@ from ..reference_geometry import decode_vector
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "fixtures/cnr-001-source"
-PROTOCOL_PATH = Path(__file__).parent / "protocol-v2.json"
+PROTOCOL_PATH = Path(__file__).parent / "protocol-v3.json"
 BASELINE_SHA = "a1cd03ba8d29f335bea29179663931bbd9c35927"
-PROTOCOL_GIT_BLOB = "e9fec8937416e40a28083fe07e16b13c3020a7d5"
+PROTOCOL_GIT_BLOB = "b024c446f25078074bacbee939f1c37fffd62ee0"
 SOURCE_PATHS = (
     "src/trinite/__init__.py", "src/trinite/contracts.py",
     "src/trinite/cnr001/__init__.py", "src/trinite/cnr001/core.py",
@@ -27,6 +27,7 @@ SOURCE_PATHS = (
     "src/trinite/lattice_observation/experiment.py",
     "src/trinite/lattice/scaffold.py", "src/trinite/e8_reference/etq.py",
     "src/trinite/e8_reference/__init__.py", "src/trinite/cnr001/protocol-v2.json",
+    "src/trinite/cnr001/protocol-v3.json",
     "src/trinite/reference_geometry.py", "src/trinite/reference_evidence.py",
     "src/trinite/reference_inputs.py", "src/trinite/lattice_observation/protocol.json",
     "src/trinite/lattice/protocol.json", "fixtures/cnr-001-source/metadata.json",
@@ -59,7 +60,7 @@ def protocol():
     if git_blob(raw) != PROTOCOL_GIT_BLOB:
         raise ContractError("CNR protocol differs from preregistered producer")
     p = parse_json(raw, canonical=True)
-    if (p["schema"] != "trinite.cnr-001-protocol.v2"
+    if (p["schema"] != "trinite.cnr-001-protocol.v3"
             or p["baseline_commit"] != BASELINE_SHA
             or p["baseline_reference_archive_sha256"] != ARCHIVE
             or p["seed"] != 29 or p["receiver_nodes"] != 20
@@ -75,6 +76,8 @@ def protocol():
     for name, expected in p["baseline_git_blobs"].items():
         if git_blob(read(ROOT / name)) != expected:
             raise ContractError("v0.1.0 reference source changed: " + name)
+    if p["analysis_schema"] != "trinite.cnr-001-analysis.v3" or p["pyarrow_21_record_sha256"] != "8061542273f4be2bcae377bcadf6d312bb0166da8f220a02d9a9b0306acff57a":
+        raise ContractError("foreign CNR v3 data/runtime contract")
     return p, identity(raw)
 
 
@@ -126,17 +129,55 @@ def source_data():
     return result, meta
 
 
+def attest_reader():
+    """Attest the installed reader bytes and actual import origins, not a version claim."""
+    import base64
+    import csv
+    import importlib.metadata
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    if importlib.metadata.version("pyarrow") != "21.0.0":
+        raise ContractError("foreign CNR Parquet reader version")
+    dist = importlib.metadata.distribution("pyarrow")
+    location = Path(dist.locate_file("")).resolve()
+    record_path = Path(dist._path).resolve() / "RECORD"
+    raw = read(record_path, 1024 * 1024)
+    expected = protocol()[0]["pyarrow_21_record_sha256"]
+    if hashlib.sha256(raw).hexdigest() != expected:
+        raise ContractError("foreign or modified CNR Parquet reader RECORD")
+    if (Path(pa.__file__).resolve() != location / "pyarrow/__init__.py"
+            or Path(pq.__file__).resolve() != location / "pyarrow/parquet/__init__.py"):
+        raise ContractError("CNR reader import root differs from hash-locked distribution")
+    hashed = 0
+    for path, digest, size in csv.reader(raw.decode("utf-8").splitlines()):
+        if not digest.startswith("sha256="):
+            continue
+        if path.startswith("/") or ".." in Path(path).parts:
+            raise ContractError("unsafe installed reader RECORD path")
+        member = (location / path).resolve()
+        if not member.is_relative_to(location) or not member.is_file():
+            raise ContractError("missing/unsafe reader distribution member")
+        expected_bytes = base64.urlsafe_b64decode(digest[7:] + "=" * (-len(digest[7:]) % 4))
+        sha = hashlib.sha256()
+        total = 0
+        with member.open("rb") as stream:
+            while part := stream.read(1024 * 1024):
+                sha.update(part)
+                total += len(part)
+        if sha.digest() != expected_bytes or (size and total != int(size)):
+            raise ContractError("installed Parquet reader differs from pinned wheel bytes")
+        hashed += 1
+    if hashed < 10:
+        raise ContractError("incomplete installed Parquet reader attestation")
+    return pa, pq
+
+
 def biological_graph():
     raw, meta = source_data()
     try:
-        import importlib.metadata
-        if importlib.metadata.version("pyarrow") != "21.0.0":
-            raise ContractError("CNR Parquet reader requires pinned pyarrow 21.0.0")
-        import pyarrow.parquet as pq
-        import pyarrow as pa
+        pa, pq = attest_reader()
     except ImportError as error:
-        raise ContractError("CNR biological ingestion requires separately hash-locked PyArrow") from error
-    import io
+        raise ContractError("missing separately pinned CNR Parquet reader") from error
     nodes = pq.read_table(pa.BufferReader(raw["nodes.parquet"]))
     edges = pq.read_table(pa.BufferReader(raw["edges.parquet"]))
     if ("node_id" not in nodes.column_names or
@@ -371,7 +412,7 @@ def analyze(bio=None):
         scores[layer] = {"baseline_from_v0_1_0": arms["baseline-menger"],
                          "arms": arms, "baseline_calibration": fit,
                          "no_unseen_model_evaluation": True}
-    return {"schema":"trinite.cnr-001-analysis.v1",
+    return {"schema":"trinite.cnr-001-analysis.v3",
             "protocol_identity": protocol_sha,"baseline":baseline_input,
             "biological_data_source_git_blobs":protocol_record["source_git_blobs"],
             "source":source_receipt(),"graph_provenance":provenance,"layers":scores,
