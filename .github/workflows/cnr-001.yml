@@ -37,6 +37,7 @@ jobs:
       - name: Run bounded native-baseline/CNR experiment and verify exact replay
         run: |
           python -m unittest discover -s tests -p 'test_cnr001.py' -v
+          python -m unittest discover -s tests/cnr -v
           python scripts/run_cnr001.py --freeze-request "$RUNNER_TEMP/cnr-request.json" > "$RUNNER_TEMP/cnr-freeze-receipt.json"
           REQUEST=$(python -c "import json,os; print(json.load(open(os.environ['RUNNER_TEMP']+'/cnr-freeze-receipt.json'))['request_identity'])")
           python scripts/run_cnr001.py --run --request "$RUNNER_TEMP/cnr-request.json" --request-identity "$REQUEST" --output "$RUNNER_TEMP/cnr-analysis.json" > "$RUNNER_TEMP/cnr-run-receipt.json"
