@@ -1,6 +1,8 @@
 """Adversarial and positive *signature* conformance; no empirical gate pass."""
 import base64
+import copy
 import os
+import stat
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import shutil
@@ -435,6 +437,127 @@ class Phase5AuthorizationPreflight(unittest.TestCase):
         self.assertFalse(record['phase5_authorized'])
         self.assertEqual((retained/'sentinel').read_bytes(),b'immutable')
         self.assertEqual(sorted(p.name for p in retained.iterdir()),['sentinel'])
+
+    def test_objective_strength_must_be_canonical_bounded_nonzero_decimal(self):
+        for value in ('0.02', '0.000001', '1'):
+            with self.subTest(valid=value):
+                packet = copy.deepcopy(self.packet)
+                packet['proposal']['objective']['weight'] = value
+                packet['request']['proposal_identity'] = identity(json_bytes(packet['proposal']))
+                validate_packet(packet)
+        for value in ('disabled', 'NaN', '-100', '0', '0.000000', '-0.01',
+                      '1.1', '2', '00.1', '.2', '0.02e0', '0.020', '0.0000001',
+                      0.02, True, None):
+            with self.subTest(invalid=value):
+                packet = copy.deepcopy(self.packet)
+                packet['proposal']['objective']['weight'] = value
+                with self.assertRaisesRegex(ContractError, 'objective weight'):
+                    validate_packet(packet)
+
+    def test_malformed_canonical_proposals_return_exit_two_without_receipt(self):
+        cli = preflight_cli()
+        base = Path(self.tmp.name)
+        signatures = base/'signatures.json'
+        policy = base/'policy.json'
+        signatures.write_bytes(json_bytes(self.signatures()))
+        policy.write_bytes(json_bytes(self.policy))
+        invalids = []
+        unexpected = copy.deepcopy(self.packet)
+        unexpected['proposal']['unexpected'] = True
+        invalids.append(unexpected)
+        weight = copy.deepcopy(self.packet)
+        weight['proposal']['objective']['weight'] = 'disabled'
+        invalids.append(weight)
+        missing = copy.deepcopy(self.packet)
+        missing['proposal']['matrix'].pop()
+        invalids.append(missing)
+        wrong_types = copy.deepcopy(self.packet)
+        wrong_types['proposal']['matrix'][0]['seed'] = False
+        invalids.append(wrong_types)
+        for idx, packet in enumerate(invalids):
+            with self.subTest(case=idx):
+                path = base/f'malformed-{idx}.json'
+                output = base/f'bad-receipt-{idx}.json'
+                path.write_bytes(json_bytes(packet))
+                with mock.patch.object(cli, 'tool_source_manifest', side_effect=AssertionError('must not retain malformed proposal')):
+                    returned = cli.main(['--packet', str(path), '--signatures', str(signatures),
+                        '--trust-policy', str(policy), '--trust-policy-identity', self.policy_identity,
+                        '--output', str(output)])
+                self.assertEqual(returned, 2)
+                self.assertFalse(output.exists())
+
+    def test_poisoned_tmpdir_and_child_scratch_cannot_touch_foundations_run(self):
+        cli = preflight_cli()
+        base = Path(self.tmp.name)
+        retained = base/'retained-foundations';retained.mkdir()
+        (retained/'original.json').write_bytes(b'important preserved evidence')
+        before = {p.name:p.read_bytes() for p in retained.iterdir()}
+        selected = []
+        def malicious_environment(*args, stdout, stderr, env, **kwargs):
+            for key in ('TMPDIR', 'TMP', 'TEMP'):
+                temp_root = Path(env[key])
+                self.assertNotEqual(temp_root, retained)
+                self.assertNotIn(retained, temp_root.parents)
+                self.assertTrue(temp_root.is_dir())
+            self.assertEqual(env['TMPDIR'], env['TMP'])
+            self.assertEqual(env['TMPDIR'], env['TEMP'])
+            selected.append(env['TMPDIR'])
+            with tempfile.TemporaryDirectory(dir=env['TMPDIR']) as child:
+                (Path(child)/'would-be-evidence').write_bytes(b'isolated')
+            stderr.write(b'valid intentional rejection')
+            stderr.flush()
+            return subprocess.CompletedProcess(args[0], 1)
+        with mock.patch.dict(os.environ, {'TMPDIR':str(retained),'TEMP':str(retained),'TMP':str(retained)}):
+            with mock.patch.object(cli.subprocess, 'run', side_effect=malicious_environment):
+                with self.assertRaises(cli.FoundationsVerifierFailure):
+                    cli.verify_foundations(retained, digest('request'), digest('summary'))
+        self.assertEqual(len(selected), 1)
+        self.assertFalse(Path(selected[0]).exists())
+        self.assertEqual(before, {p.name:p.read_bytes() for p in retained.iterdir()})
+
+    def test_receipt_parent_descriptor_blocks_swapped_symlink_race(self):
+        cli = preflight_cli()
+        base = Path(self.tmp.name)
+        retained = base/'immutable';retained.mkdir()
+        (retained/'original').write_bytes(b'original retained bytes')
+        directory = base/'untrusted';directory.mkdir()
+        moved = base/'untrusted-before-swap'
+        payload = json_bytes({'outcome':'blocked','phase5_authorized':False})
+        original_open = os.open
+        swapped = []
+        def intercept_open(path, flags, *args, **kwargs):
+            if path == 'receipt.json' and flags & os.O_CREAT:
+                self.assertIn('dir_fd', kwargs)
+                os.rename(directory, moved)
+                directory.symlink_to(retained, target_is_directory=True)
+                swapped.append(True)
+            return original_open(path, flags, *args, **kwargs)
+        with mock.patch.object(cli.os, 'open', side_effect=intercept_open):
+            cli.write_receipt(directory/'receipt.json', payload)
+        self.assertEqual(swapped, [True])
+        self.assertEqual((moved/'receipt.json').read_bytes(), payload)
+        self.assertFalse((retained/'receipt.json').exists())
+        self.assertEqual((retained/'original').read_bytes(), b'original retained bytes')
+        with self.assertRaises(OSError):
+            cli.write_receipt(directory/'another.json', payload)
+
+    def test_receipt_fsyncs_file_directory_and_new_ancestor_entries(self):
+        cli = preflight_cli()
+        base = Path(self.tmp.name)
+        output = base/'nested'/'nested-again'/'receipt.json'
+        payload = json_bytes({'outcome':'blocked'})
+        kinds = []
+        original_fsync = os.fsync
+        def track_fsync(fd):
+            kinds.append('directory' if stat.S_ISDIR(os.fstat(fd).st_mode) else 'file')
+            return original_fsync(fd)
+        with mock.patch.object(cli.os, 'fsync', side_effect=track_fsync):
+            cli.write_receipt(output, payload)
+        self.assertEqual(kinds[0], 'file')
+        self.assertGreaterEqual(kinds.count('directory'), 3)
+        self.assertEqual(output.read_bytes(), payload)
+        with self.assertRaises(FileExistsError):
+            cli.write_receipt(output, payload)
 
     def test_preflight_manifest_discloses_separate_tool_and_retained_foundations_sources(self):
         cli=preflight_cli()

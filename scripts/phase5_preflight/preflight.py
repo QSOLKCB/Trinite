@@ -125,9 +125,16 @@ def validate_protocol(protocol: object) -> None:
                                                    'weight', 'differentiability_receipt_identity'}, 'geometry objective')
     for k in ('implementation_identity', 'differentiability_receipt_identity'):
         exact_hash(objective[k], k)
-    for k in ('formula', 'control_formula', 'weight'):
+    for k in ('formula', 'control_formula'):
         if type(objective[k]) is not str or not 1 <= len(objective[k]) <= 512 or 'TODO' in objective[k].upper():
             raise ContractError('phase5 objective must be fully specified: '+k)
+    # This proposal is not a numerical proof, but intervention strength must
+    # at least be an unambiguous canonical scalar, not "NaN", "disabled", or
+    # a post-hoc arbitrary string. Freeze nonzero 0 < weight <= 1, with at most
+    # six decimal places, no exponent, leading/trailing zero ambiguity or sign.
+    if (type(objective['weight']) is not str or
+            re.fullmatch(r'(?:0\.[0-9]{0,5}[1-9]|1)', objective['weight']) is None):
+        raise ContractError('phase5 objective weight must be canonical in (0,1]')
     seeds = protocol['seeds']
     if type(seeds) is not list or not 2 <= len(seeds) <= 16 or len(set(map(str, seeds))) != len(seeds):
         raise ContractError('phase5 needs >=2 distinct paired seeds')

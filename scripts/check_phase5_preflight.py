@@ -12,7 +12,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from trinite.contracts import ContractError, exact_keys, identity, json_bytes, parse_json
-from phase5_preflight.preflight import assess, read_json, safe_read
+from phase5_preflight.preflight import assess, read_json, safe_read, validate_packet
 
 MAX_LOG_BYTES = 16384
 FOUNDATIONS_STDOUT_LIMIT = 1024 * 1024
@@ -59,6 +59,65 @@ def _log_record(path):
             'prefix_b64': base64.b64encode(preview).decode('ascii')}
 
 
+def _scratch_outside(foundations_root):
+    """Select a symlink-free scratch parent irrespective of user TMPDIR/TMP.
+
+    Never let a child verifier's temporary copy live inside the retained run.
+    These are Linux CPU-only tooling paths, not caller-supplied fallback roots.
+    """
+    for candidate in (Path('/tmp'), Path('/var/tmp')):
+        try:
+            candidate = safe_absolute(candidate)
+        except ContractError:
+            continue
+        if (candidate != foundations_root and foundations_root not in candidate.parents
+                and candidate.is_dir() and os.access(candidate, os.W_OK | os.X_OK)):
+            return candidate
+    raise ContractError('no safe temporary root outside retained foundations evidence')
+
+
+def write_receipt(output, content):
+    """Create an exclusive receipt using anchored, no-follow directory fds.
+
+    Only directories created for this output are introduced. Sync the receipt
+    bytes, then all dirty parent directory entries from leaf towards root,
+    before publishing an identity or reporting completion.
+    """
+    if not all(hasattr(os, key) for key in ('O_NOFOLLOW', 'O_DIRECTORY')):
+        raise ContractError('phase5 receipt requires no-follow directory descriptors')
+    output = Path(output)
+    if not output.is_absolute() or output.name in ('', '.', '..'):
+        raise ContractError('phase5 receipt requires an absolute filename')
+    dflags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, 'O_CLOEXEC', 0)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | getattr(os, 'O_CLOEXEC', 0)
+    descriptors = []
+    dirty = set()
+    try:
+        descriptors.append(os.open('/', dflags))
+        for part in output.parent.parts[1:]:
+            try:
+                next_fd = os.open(part, dflags, dir_fd=descriptors[-1])
+            except FileNotFoundError:
+                try:
+                    os.mkdir(part, mode=0o700, dir_fd=descriptors[-1])
+                except FileExistsError:
+                    pass  # Open with O_NOFOLLOW below or fail closed.
+                dirty.add(len(descriptors)-1)
+                next_fd = os.open(part, dflags, dir_fd=descriptors[-1])
+            descriptors.append(next_fd)
+        fd = os.open(output.name, flags, 0o600, dir_fd=descriptors[-1])
+        dirty.add(len(descriptors)-1)
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        for index in sorted(dirty, reverse=True):
+            os.fsync(descriptors[index])
+    finally:
+        for fd in reversed(descriptors):
+            os.close(fd)
+
+
 def verify_foundations(root, request_identity, summary_identity):
     """Invoke the *existing* verifier, retain child diagnostics without modifying run."""
     root = safe_absolute(root)
@@ -67,10 +126,17 @@ def verify_foundations(root, request_identity, summary_identity):
     runner = ROOT / 'scripts/verify_foundations_run.py'
     argv = [sys.executable, str(runner), str(root), '--request-identity', request_identity,
             '--summary-identity', summary_identity]
-    env = dict(os.environ, PYTHONPATH=str(ROOT/'src'), OMP_NUM_THREADS='1',
-               MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1')
-    with tempfile.TemporaryDirectory(prefix='trinite-p5-foundations-') as directory:
-        base = Path(directory)
+    scratch_parent = _scratch_outside(root)
+    with tempfile.TemporaryDirectory(prefix='trinite-p5-foundations-', dir=scratch_parent) as directory:
+        base = safe_absolute(directory)
+        if root == base or root in base.parents:
+            raise ContractError('phase5 scratch space overlaps foundations evidence')
+        # The historical verifier itself uses tempfile.TemporaryDirectory().
+        # Override all inherited temp hints so its disposable copy also stays
+        # outside the retained run, even if TMPDIR originally pointed inside.
+        env = dict(os.environ, PYTHONPATH=str(ROOT/'src'), OMP_NUM_THREADS='1',
+                   MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1',
+                   TMPDIR=str(base), TMP=str(base), TEMP=str(base))
         stdout_file, stderr_file = base / 'stdout.bin', base / 'stderr.bin'
         with stdout_file.open('xb') as stdout, stderr_file.open('xb') as stderr:
             try:
@@ -150,6 +216,10 @@ def main(argv=None):
         signature_bytes = safe_read(sources[1])
         signatures = parse_json(signature_bytes, canonical=True)
         policy = read_json(sources[2])
+        # Malformed schema is exit 2, not a scientifically meaningful denial
+        # (exit 1). Prevent arbitrary or tampered proposals from being archived
+        # as otherwise valid preflight packets.
+        validate_packet(packet)
         started = utc_now()
         result = assess(packet, signatures, policy, args.trust_policy_identity, now=started)
         prior, prior_error, diagnostic = None, None, None
@@ -180,16 +250,11 @@ def main(argv=None):
         manifest = tool_source_manifest()
         result['preflight_source_manifest'] = manifest
         result['preflight_source_manifest_identity'] = identity(json_bytes(manifest))
-        # Exclusive fail-closed retention; no old packet or evidence-root mutation.
-        output.parent.mkdir(parents=True, exist_ok=True)
-        safe_absolute(output)
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0)
-        fd = os.open(output, flags, 0o600)
-        with os.fdopen(fd, 'wb') as stream:
-            stream.write(json_bytes(result))
-            stream.flush()
-            os.fsync(stream.fileno())
-        print(json_bytes({'receipt_identity': identity(json_bytes(result)),
+        # Pin every parent component by descriptor; no path re-resolution
+        # between symlink checks and the file creation/open operation.
+        raw_receipt = json_bytes(result)
+        write_receipt(output, raw_receipt)
+        print(json_bytes({'receipt_identity': identity(raw_receipt),
                           'outcome': result['outcome'], 'phase5_authorized': False}).decode(), end='')
         return 1
     except (ContractError, OSError, KeyError, TypeError, ValueError, UnicodeError) as exc:

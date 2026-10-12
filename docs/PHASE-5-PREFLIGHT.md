@@ -27,7 +27,11 @@ packet and a separate externally SHA-256-pinned trust policy:
 - A complete ordered matrix of dense and ternary arms, each with geometry-off,
   geometry-on and auxiliary-null controls at **every** paired seed; shared
   per-cell update/token/wall ceilings, frozen objective/control identifiers,
-  margins and uncertainty method.
+  margins and uncertainty method. A proposal's geometry-loss weight must be a
+  **canonical decimal scalar** in `(0,1]` with at most six fractional digits,
+  no redundant trailing zeros, exponent, sign, `NaN`, `Infinity`, or freeform
+  sentinel strings. This is schema hygiene, **not** proof that the weight is
+  scientifically adequate or the objective differentiable.
 - Two **distinct, explicitly trusted Ed25519 public keys**: a protocol steward
   and an independent verifier. Both must validate detached OpenSSL signatures
   over the *same complete canonical packet*. A role label is not a signature,
@@ -67,7 +71,11 @@ PYTHONPATH=src python scripts/check_phase5_preflight.py \
 ```
 
 All JSON objects must use Trinite canonical JSON (sorted keys, no extra
-whitespace, trailing LF). The `signatures` file is an array with one object for
+whitespace, trailing LF). A **semantically malformed packet** (unknown schema
+field, incomplete matrix, boolean seed, invalid objective weight, etc.) exits
+with code **2 without writing a blocked research verdict**. A valid proposal
+that cannot satisfy the learning/authorization gate exits with code **1** and
+an exclusive blocked receipt. The `signatures` file is an array with one object for
 each required role: `role`, `key_identity`, `algorithm: ed25519`, and
 `signature_b64` (standard canonical Base64 over 64 raw Ed25519 signature bytes).
 The trusted public-key policy is a *different* file listing two corresponding
@@ -91,15 +99,25 @@ silently `strip()` output or trust a simulated score. If the verifier fails or
 times out, the blocked receipt retains its return status and **bounded** stdout
 and stderr previews (Base64), byte counts, SHA-256 digests, and truncation flags.
 The original run files and failure logs are not overwritten; complete unbounded
-child logs are not embedded in the receipt. Assessment timestamps and the exact
-signature-bundle identity are recorded, and the request expiry is rechecked on
-a fresh UTC clock **after** any foundations-verification subprocess.
+child logs are not embedded in the receipt. A dedicated private temporary
+workspace is selected independently of user `TMPDIR`/`TMP`/`TEMP` and is
+required to lie outside the retained foundations root. The child's temporary
+environment is overridden to that workspace, so **its** disposable copy cannot
+be created under the evidence directory either. Failure to identify safe scratch
+space is an error, never permission to modify the evidence root. Assessment
+timestamps and the exact signature-bundle identity are recorded, and the
+request expiry is rechecked on a fresh UTC clock **after** any
+foundations-verification subprocess.
 
 `--output` must be outside the retained `--foundations-run` root, including
-nested paths, `..` aliases, and symlink traversal. Receipts use exclusive
-creation with no-follow and 0600 permissions; an existing receipt is never
-replaced. The receipt also contains a canonical local tool/source manifest and
-its hash (CLI/helper, first-party sources, lock, foundations entrypoints).
+nested paths, `..` aliases, and symlink traversal. Receipts are created through
+pinned no-follow **directory descriptors** (not a second vulnerable pathname
+resolution) with exclusive creation and mode `0600`; an existing receipt is
+never replaced. The receipt file is synced, followed by its parent directory
+and every newly created ancestor's directory entry, **before** the identity is
+printed. If durability fails, the CLI reports error code 2 instead of success.
+The receipt also contains a canonical local tool/source manifest and its hash
+(CLI/helper, first-party sources, lock, foundations entrypoints).
 These are **disclosure identities of the verifier's local inputs**, not an
 externally signed guarantee that the local verifier is trusted. A separate
 reviewed trust/witness boundary must bind the verifier itself before executable
@@ -147,8 +165,11 @@ actual 64-byte ECDSA signatures mislabeled as Ed25519, RSA/Ed448 rejection,
 wrong external policy digest, duplicate signer, boolean matrix seeds,
 incomplete lane matrix, proposal/request mismatch, expiry and post-verifier
 expiry, strict historical stdout framing, bounded verifier diagnostics,
-foundations-run output overlap, forged apparent learning flags, exclusive
-receipt retention and a cryptographically valid proposal that remains blocked. They are cryptographic/software-conformance
+foundations-run output overlap, poisoned `TMPDIR` and child temp isolation,
+symlink-parent replacement during receipt creation, directory-entry syncing,
+malformed packet exit status, canonical bounded objective weight, forged
+apparent learning flags, exclusive receipt retention and a cryptographically
+valid proposal that remains blocked. They are cryptographic/software-conformance
 checks, not evidence that Phase 5 passed.
 
 **Affected invariants:** TRI-I02, I03, I07, I08, I09, I11, I12, I13, I14.
