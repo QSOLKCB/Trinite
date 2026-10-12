@@ -1,6 +1,5 @@
 """Independent structural tests of the frozen, training-free lattice scaffold."""
 import copy
-import itertools
 from pathlib import Path
 import subprocess
 import sys
@@ -84,6 +83,7 @@ class LatticeScaffoldTests(unittest.TestCase):
             with self.subTest(mutate=mutate), self.assertRaises(ContractError):
                 verify(json_bytes(r))
         self.assertIn('scripts/generate_lattice_scaffold.py', original['source'])
+        with self.assertRaises(ContractError): verify(b'x' * (2 * 1024 * 1024 + 1))
         with self.assertRaises(ContractError): verify(json_bytes(original).replace(b'\n', b'  \n'))
 
     def test_cli_exclusive_creation_readonly_and_symlink_rejection(self):
