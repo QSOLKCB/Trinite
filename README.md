@@ -24,7 +24,7 @@ Trinite is an open research workbench for asking what small, fully inspectable m
 | --- | --- | --- |
 | **Native CPU models** | Matched dense, ternary and classical four-state reference lanes; deterministic training, safe tensors and restart/replay | Reliable held-out performance, weight-format selection and packed inference |
 | **Exact learning tasks** | Admitted arithmetic, finite maths, folds, lattice traversal and QEC-related synthetic probes; frozen comparison protocols | Per-task learning adequacy, composed-output generalization and arithmetic retention together |
-| **Geometry observation** | Detached activations, pinned analysis, [E8/ETQ finite mapping](docs/E8-REFERENCE.md), [recursive 3×3×3 scaffold](docs/LATTICE-SCAFFOLD.md), [matched lattice controls](docs/ACTIVATION-LATTICE.md) | A demonstrated neural geometry mechanism or beneficial intervention |
+| **Geometry observation** | Detached activations, pinned analysis, [E8/ETQ finite mapping](docs/E8-REFERENCE.md), [recursive 3×3×3 scaffold](docs/LATTICE-SCAFFOLD.md), [matched lattice controls](docs/ACTIVATION-LATTICE.md), [post-v0.1.0 MaleCNS/ETQ-303 comparison](docs/CNR-001.md) | A demonstrated neural geometry mechanism or beneficial intervention |
 | **Verification** | Hash-bound sources and requests, strict input auditing, [PROVENANCE](docs/PROVENANCE.md) custody, independent checks and complete optimizer replay in the newer retention workflow | Independent-host replication and final release-readiness assessment |
 
 ### The results matter, including the failures
@@ -47,6 +47,6 @@ Start with the [getting-started guide](docs/GETTING_STARTED.md), [documentation 
 
 ## Milestone and rights
 
-The proposed **v0.1.0** tag is an *initial research/source checkpoint* covering **25 merged PRs numbered #1–#26 (excluding the unmerged revert PR #11)**, **not** a Phase 9 deployment certification, PyPI package version, released model-weights bundle or successful learning claim. The package metadata remains separately versioned until a deliberate packaging release. Keep immutable tags tied to the final reviewed commit; do not move historical evidence or tags.
+The immutable **v0.1.0** tag is an *initial research/source checkpoint* covering **25 merged PRs numbered #1–#26 (excluding the unmerged revert PR #11)**, **not** a Phase 9 deployment certification, PyPI package version, released model-weights bundle or successful learning claim. The package metadata remains separately versioned until a deliberate packaging release. Keep immutable tags tied to the final reviewed commit; do not move historical evidence or tags.
 
 Repository code: [MPL-2.0](LICENSE). Admitted data, imported upstream references, external assets and future weights each retain their own rights and provenance requirements.
