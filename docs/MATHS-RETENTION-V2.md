@@ -112,12 +112,21 @@ PYTHONPATH=src python scripts/run_maths_retention_v2.py --verify-only --tier rep
   --verification-request-identity sha256:VERIFICATION > /tmp/retention-v2-audit.json
 ```
 
-Workers use a fixed script/interpreter, closed stages/cells, no shell and a
-1,200-second deadline. Request files must be disjoint and outside the output;
+Workers use a fixed script/interpreter, closed stages/cells and no shell. Each
+training worker has the frozen 1,200-second complete-worker allowance. Summary
+and read-only verification workers process all four cells sequentially and have
+four such allowances (4,800 seconds), covering replay, scoring and custody IO;
+the numerical updater's per-cell research limit remains 480 seconds. Timeout
+errors record the actual subprocess deadline. Request files must be disjoint and outside the output;
 overwrite and symlink ancestors fail. Every fixed cell is attempted after timeout
 or spawn failure. Worker errors, logs, available computational artifacts, failed
 comparison receipts and all four records are retained. If summary cannot complete,
 a conservative controller failure inventory records four unverified cells.
+A nonzero summary-worker exit always fails the controller, including when a
+completed summary was written before the worker failed; that output is preserved
+alongside the conservative failure inventory. Before aggregation, every completed
+cell's current external commitments, upstream custody and root copies are checked
+again. A changed cell retains a failed receipt and suppresses matrix contrasts.
 Pairing failure suppresses contrasts while preserving the cells. Read-only
 verification writes no run artifacts; failed receipts are emitted to the caller's
 external output/log. Existing same-tier summaries must match fresh regeneration.
@@ -139,5 +148,19 @@ boundary, contextual mismatch, read-only CLI parity and observer filesystem
 failure. Controller-only process fakes cover complete inventories, pairing,
 spawn/timeout failures and fixed subprocess boundaries. The required CPU runner
 includes `tests/retention_v2`; standard-library discovery checks criteria,
-dependencies and unchanged v1 source closure. Completed checks and measured
-assurance runs will be recorded after execution; no future success is assumed.
+dependencies and unchanged v1 source closure.
+
+Local review-fix validation on Linux x86_64, CPython 3.12.14 and the pinned
+Torch 2.8.0+cpu environment passed all 119 standard-library checks and all 192
+required CPU research checks, including the 19 real v2 assurance cases. The v2
+suite also passed independently. Frozen upstream conformance passed 50 cases
+with its existing root-permission skip; dependency consistency, changed-document
+links and diff whitespace passed. These are software/smoke assurance checks;
+complete production research assurance outcomes and retained evidence remain
+pending, and no scientific gate is advanced.
+
+PR #21 review fixes affect TRI-I07/I08/I13/I14. Regressions reproduce nonzero
+and signal exits after a completed summary, assert both matrix-stage aggregate
+deadlines, and mutate an earlier cell's report or custody payload during later
+real replay. Protocol/schema identities, v1 source bytes and numerical semantics
+are preserved; changed v2 producers require newly source-bound requests.

@@ -186,6 +186,57 @@ class V2AssuranceTests(unittest.TestCase):
         value=parse_json((output/'controller-failure.json').read_bytes())
         self.assertEqual(len(value['cells']),4);self.assertFalse(value['learning_adequacy']);self.assertFalse(value['phase5_ready'])
 
+    def test_nonzero_summary_exit_rejects_even_a_completed_summary(self):
+        for code in (1, -9):
+            with self.subTest(returncode=code):
+                parent,_=self.copy_run();output=parent/'controller-exit';v=parent/'exit-verification.json'
+                def fake(stage,req,rid,verification,vid,root,tier,log,cell=None):
+                    if stage=='train':
+                        shutil.copytree(self.original/spec.cell_name(*cell),root)
+                        return subprocess.CompletedProcess([],0)
+                    evidence.write(root/('summary-'+tier+'.json'),{'outcome':'completed','contrasts':{}})
+                    return subprocess.CompletedProcess([],code)
+                with patch.object(runner,'launch',side_effect=fake):
+                    self.assertEqual(runner.matrix(self.request,self.request_id,v,output,'replay'),1)
+                value=parse_json((output/'controller-failure.json').read_bytes())
+                self.assertEqual(value['outcome'],'failed');self.assertEqual(len(value['cells']),4)
+                self.assertIn('summary worker exited '+str(code),value['error'])
+                self.assertTrue(all(c['outcome']=='failed' for c in value['cells']))
+                self.assertEqual(parse_json((output/'summary-replay.json').read_bytes())['outcome'],'completed')
+
+    def test_matrix_workers_have_the_aggregate_per_cell_deadline(self):
+        per_cell=spec.protocol()['worker_seconds']
+        for stage in ('summarize','verify'):
+            for tier in ('inference','replay'):
+                with self.subTest(stage=stage,tier=tier),patch.object(runner.subprocess,'run') as launch:
+                    runner.launch(stage,self.request,self.request_id,self.verification,self.verification_id,
+                                  self.original,tier,None)
+                    timeout=launch.call_args.kwargs['timeout']
+                    self.assertEqual(timeout,len(spec.cells())*per_cell)
+                    self.assertGreater(timeout,len(spec.cells())*spec.plan_for(0,'research').max_seconds)
+
+    def test_summary_rechecks_earlier_cell_commitments_and_custody_after_later_replay(self):
+        for mutation in ('report','custody'):
+            with self.subTest(mutation=mutation):
+                _,run=self.copy_run();first=run/spec.cell_name(*spec.cells()[0])
+                verify=experiment.verify_cell;calls=[]
+                def mutate_after_later_replay(root,seed,profile,*args,**kwargs):
+                    value=verify(root,seed,profile,*args,**kwargs);calls.append((seed,profile))
+                    if (seed,profile)==spec.cells()[1]:
+                        path=(first/'report.json' if mutation=='report' else
+                              next((first/'provenance/artifacts/sha256').iterdir()))
+                        path.write_bytes(b'{}\n')
+                    return value
+                with patch.object(experiment,'verify_cell',side_effect=mutate_after_later_replay):
+                    result=experiment.summarize(run,self.request,self.request_id,self.verification,
+                                                self.verification_id,tier='replay')
+                self.assertEqual(calls,list(spec.cells()))
+                self.assertEqual(result['outcome'],'failed');self.assertEqual(len(result['cells']),4)
+                self.assertFalse(result['contrasts']);self.assertEqual(result['cells'][0]['outcome'],'failed')
+                receipt=result['cells'][0]['verification']
+                self.assertEqual(receipt['outcome'],'failed');self.assertFalse(receipt['checks']['closed_custody'])
+                self.assertTrue(receipt['error']);self.assertFalse(result['learning_adequacy'])
+
     def test_new_commitment_cannot_bless_a_wrong_root_request_copy(self):
         parent,run=self.copy_run()
         (run/'request.json').write_bytes(b'{}\n')

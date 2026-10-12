@@ -298,6 +298,20 @@ def summarize(root, request, request_identity, verification, verification_identi
             receipt = getattr(error, 'receipt', receipt_for(request_identity, verification_identity, v['cells'][name], tier))
             if receipt['error'] is None: receipt['error'] = type(error).__name__+': '+str(error)
             records.append({'seed': seed, 'profile': profile, 'outcome': 'failed', 'error': receipt['error'], 'verification': receipt})
+    # A later cell's replay must not leave earlier successes trusted against
+    # changed retained bytes. Recheck commitments AND actual custody/root copies
+    # at the summary boundary without repeating numerical replay or caching IO.
+    for record in records:
+        if record['outcome'] != 'completed': continue
+        name = spec.cell_name(record['seed'], record['profile'])
+        try:
+            evidence.check_commitments(Path(root)/name, v['cells'][name], evidence.ARTIFACTS)
+            evidence.read_bound(Path(root)/name, spec.inputs(request_raw, packs))
+        except (ContractError, OSError, KeyError, TypeError, ValueError, OverflowError) as error:
+            receipt = record['verification']
+            receipt['outcome'] = 'failed'; receipt['checks']['closed_custody'] = False
+            receipt['error'] = 'summary boundary: '+type(error).__name__+': '+str(error)
+            record['outcome'] = 'failed'; record['error'] = receipt['error']
     evidence.check_commitments(root, v['root_artifacts'], evidence.ROOT_ARTIFACTS)
     recheck_request(request, request_identity, req, packs)
     return aggregate(records, errors, request_identity, verification_identity, tier)

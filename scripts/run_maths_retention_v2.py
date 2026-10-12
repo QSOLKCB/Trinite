@@ -9,6 +9,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'src'))
 
 
+def worker_timeout(stage):
+    from trinite.retention_v2 import spec
+    # The matrix stages verify all fixed cells sequentially, including scoring
+    # and custody IO. Give each cell the same complete-worker allowance as train.
+    return spec.protocol()['worker_seconds'] * (1 if stage == 'train' else len(spec.cells()))
+
+
 def launch(stage, request, request_identity, verification, verification_identity, output, tier, log, cell=None):
     if stage not in ('train', 'summarize', 'verify') or tier not in ('inference', 'replay'):
         raise ValueError('unknown fixed v2 worker/tier')
@@ -26,7 +33,7 @@ def launch(stage, request, request_identity, verification, verification_identity
         '--request', str(request), '--request-identity', request_identity, '--output', str(output),
         '--tier', tier, *verification_args, *selectors], cwd=ROOT, shell=False,
         env=dict(os.environ, PYTHONPATH=str(ROOT/'src'), OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1'),
-        stdout=log, stderr=subprocess.STDOUT, timeout=1200)
+        stdout=log, stderr=subprocess.STDOUT, timeout=worker_timeout(stage))
 
 
 def controller_failure(output, request_identity, verification_identity, errors, message):
@@ -50,7 +57,7 @@ def matrix(request, request_identity, verification, output, tier):
             try:
                 result = launch('train', request, request_identity, None, None, output/name, tier, log, cell)
                 if result.returncode: errors[name] = 'training worker exited '+str(result.returncode)
-            except subprocess.TimeoutExpired: errors[name] = 'training worker exceeded 1200 seconds'
+            except subprocess.TimeoutExpired as error: errors[name] = 'training worker exceeded '+str(error.timeout)+' seconds'
             except OSError as error: errors[name] = type(error).__name__+': '+str(error)
         print(name+': '+errors.get(name,'completed'), flush=True)
     evidence.write(output/'worker-errors.json', errors)
@@ -64,10 +71,10 @@ def matrix(request, request_identity, verification, output, tier):
     with (output/('summary-'+tier+'.log')).open('x') as log:
         try:
             result = launch('summarize',request,request_identity,verification,verification_identity,output,tier,log)
-            if not (output/('summary-'+tier+'.json')).exists():
+            if result.returncode or not (output/('summary-'+tier+'.json')).exists():
                 controller_failure(output,request_identity,verification_identity,errors,'summary worker exited '+str(result.returncode));return 1
-        except subprocess.TimeoutExpired:
-            controller_failure(output,request_identity,verification_identity,errors,'summary worker exceeded 1200 seconds');return 1
+        except subprocess.TimeoutExpired as error:
+            controller_failure(output,request_identity,verification_identity,errors,'summary worker exceeded '+str(error.timeout)+' seconds');return 1
         except OSError as error:
             controller_failure(output,request_identity,verification_identity,errors,'summary spawn: '+str(error));return 1
     summary = evidence.parse_json(evidence.read_bytes(output/('summary-'+tier+'.json')),canonical=True)
@@ -126,7 +133,7 @@ def main(argv=None):
         if args.verify_only:
             if not args.verification_request_identity:raise evidence.ContractError('v2 read-only verification needs externally supplied identity')
             try:return launch('verify',args.request,args.request_identity,args.verification_request,args.verification_request_identity,args.output,args.tier,None).returncode
-            except subprocess.TimeoutExpired as error:raise evidence.ContractError('v2 verifier exceeded 1200 seconds') from error
+            except subprocess.TimeoutExpired as error:raise evidence.ContractError('v2 verifier exceeded '+str(error.timeout)+' seconds') from error
         if args.verification_request_identity:raise evidence.ContractError('new v2 matrix freezes a new exclusive verification request')
         if args.verification_request.exists():raise evidence.ContractError('v2 matrix cannot overwrite verification request')
         return matrix(args.request,args.request_identity,args.verification_request,args.output,args.tier)
