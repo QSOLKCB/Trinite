@@ -302,7 +302,7 @@ def analyze(request_path, expected_identity):
         arms = {}
         for name, (anchors, edges) in records.items():
             arms[name] = {**score(values, normalized, anchors, edges),
-                          'anchor_identity': identity(json_bytes(anchors)),
+                          'anchor_identity': identity(json_bytes([list(point) for point in anchors])),
                           'edge_identity': identity(json_bytes(edges)),
                           'anchor_count': len(anchors), 'edge_count': len(edges)}
         result[layer] = {'calibration': fit, 'arms': arms,
