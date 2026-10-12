@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "fixtures/cnr-001-source"
 PROTOCOL_PATH = Path(__file__).parent / "protocol.json"
 BASELINE_SHA = "a1cd03ba8d29f335bea29179663931bbd9c35927"
+PROTOCOL_GIT_BLOB = "36a63b401a06811f669f538c343cef572f98c402"
 SOURCE_PATHS = (
     "src/trinite/__init__.py", "src/trinite/contracts.py",
     "src/trinite/cnr001/__init__.py", "src/trinite/cnr001/core.py",
@@ -34,6 +35,13 @@ BOUND = 2 * 1024 * 1024
 ARCHIVE = "sha256:666e8f4d5b49da60aada4a26acbfa6001a5a8b8b62447c1ddfd3a5613cfd8721"
 
 
+def safe_output(path):
+    path = Path(path)
+    if path.is_symlink() or any(parent.is_symlink() for parent in path.parents):
+        raise ContractError("unsafe CNR output path")
+    return path
+
+
 def read(path, limit=BOUND):
     path = Path(path)
     if path.is_symlink() or any(parent.is_symlink() for parent in path.parents):
@@ -47,6 +55,8 @@ def read(path, limit=BOUND):
 
 def protocol():
     raw = read(PROTOCOL_PATH, 8192)
+    if git_blob(raw) != PROTOCOL_GIT_BLOB:
+        raise ContractError("CNR protocol differs from preregistered producer")
     p = parse_json(raw, canonical=True)
     if (p["schema"] != "trinite.cnr-001-protocol.v1"
             or p["baseline_commit"] != BASELINE_SHA
