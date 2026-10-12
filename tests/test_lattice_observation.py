@@ -1,12 +1,13 @@
 """End-to-end retrospective analysis using the real published native activation packet."""
 import ast
+import io
+import zipfile
 import copy
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 
 from trinite.contracts import ContractError, identity, json_bytes, parse_json
 from trinite.lattice_observation import experiment as e
@@ -15,6 +16,39 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ActivationLatticeTests(unittest.TestCase):
+    def test_lossless_index_resolution_and_object_integrity(self):
+        request = json_bytes({'schema':'example-request'})
+        capture = json_bytes({'schema':'example-capture'})
+        def make_archive(changes=None):
+            objects = {identity(raw):raw for raw in (request,capture)}
+            files = {
+                'run/request.json':{'identity':identity(request),'bytes':len(request)},
+                'run/native/capture.json':{'identity':identity(capture),'bytes':len(capture)},
+            }
+            index = {'schema':'trinite.lossless-review-archive.v1','files':files}
+            if changes is not None: changes(index,objects)
+            raw = io.BytesIO()
+            with zipfile.ZipFile(raw, 'w') as z:
+                z.writestr('restore-index.json',json_bytes(index))
+                for key,payload in objects.items():
+                    z.writestr('objects/sha256/'+key[7:],payload)
+            raw.seek(0)
+            return raw
+        with zipfile.ZipFile(make_archive()) as z:
+            self.assertEqual(e.extract_native_packet(z),(request,capture))
+        def wrong_digest(index,objects):
+            objects[identity(capture)] = capture+b'changed'
+        with zipfile.ZipFile(make_archive(wrong_digest)) as z:
+            with self.assertRaises(ContractError):e.extract_native_packet(z)
+        def missing_capture(index,objects):
+            index['files'].pop('run/native/capture.json')
+        with zipfile.ZipFile(make_archive(missing_capture)) as z:
+            with self.assertRaises(ContractError):e.extract_native_packet(z)
+        def changed_object_size(index,objects):
+            index['files']['run/native/capture.json']['bytes'] += 1
+        with zipfile.ZipFile(make_archive(changed_object_size)) as z:
+            with self.assertRaises(ContractError):e.extract_native_packet(z)
+
     def test_frozen_protocol_and_actual_historical_native_capture_audit(self):
         rules = e.protocol()
         self.assertEqual(rules['anchor_depth'], 1)
@@ -62,6 +96,7 @@ class ActivationLatticeTests(unittest.TestCase):
                 self.assertEqual(set(layer['arms']), set(e.protocol()['controls']))
                 for arm in layer['arms'].values():
                     self.assertEqual(arm['anchor_count'], 20)
+                self.assertTrue(arm['anchor_identity'].startswith('sha256:'))
                     self.assertEqual(arm['evaluation_count'], 8)
                     self.assertEqual(sum(arm['graph_hops']), arm['graph_hops_sum'])
                     self.assertEqual(arm['unique_anchors'] + arm['anchor_collisions'], 8)
