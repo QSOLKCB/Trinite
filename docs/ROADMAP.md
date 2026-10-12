@@ -319,7 +319,9 @@ After PR #19, the next separately frozen learning increment is [MATHS-RETENTION.
 
 Requested by Trent on 2026-10-12 after review of
 [PR #21 at 84b54d2](https://github.com/QSOLKCB/Trinite/pull/21).
-Status: planned follow-up; the assurance PR is still under review. Software
+Status: assurance PR #21 merged; the next separately frozen budget comparison is
+implemented in [MATHS-RETENTION-BUDGET.md](MATHS-RETENTION-BUDGET.md), with production
+outcomes pending. Software
 verification, training performance, fresh generalization and release readiness
 are separate decisions. A successful replay does not clear an accuracy gate.
 
