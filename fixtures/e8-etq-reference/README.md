@@ -26,10 +26,13 @@ the original canonical fixture (including its absence of a trailing newline),
 and `donor/LICENSE` retains the upstream licence. These copies were acquired at
 the pinned commit and checked against its Git tree; no donor source was edited.
 
-`donor-runtime-evidence-v2.json` binds those files, the Python comparison source
-closure and Node driver, both original records, and the complete live stdout by
-byte length and SHA-256. `donor-runtime-output.json` is that exact stdout, produced
-under Node v24.19.0. The driver invokes the upstream algorithms and serializer;
+`donor-runtime-evidence-v2.json` is retained unchanged. It bound those files and
+stdout but did not bind the live Node version, and its old verifier normalized
+record bytes before comparison. It is superseded by the separately authored
+`donor-runtime-evidence-v3.json`, which binds the current comparison source,
+Node driver, all original records including v2, exact stdout, and live Node
+version. `donor-runtime-output.json` remains the identical stdout under Node
+v24.19.0. The driver invokes the upstream algorithms and serializer;
 the verifier compares full payloads and all seven published hashes to Python.
 Tests require Node and run in the separate ETQ donor CI job:
 
@@ -39,6 +42,11 @@ PYTHONPATH=src python -m unittest discover -s tests/etq_upstream -v
 ```
 
 Verification executes the donor anew and never refreshes these files. Missing
-Node or inconsistent source, records or output is a failure. The v2 record is
-new conformance evidence, not a reconstruction of the original invocation or
-SONIFICATION's full implementation/custody receipt.
+Node, a version mismatch, or inconsistent source, records or output is a failure.
+The v3 record is compared as exact canonical bytes (one final LF), while v2 must
+be canonical and match its v3-bound byte identity. Neither whitespace changes
+nor a foreign runtime with identical output can verify against this evidence.
+Failed version probes, donor exits and timeouts surface captured stdout/stderr
+and exit/timeout details in the caller's error log, preserving arbitrary bytes
+as escapes. The v3 record is new conformance evidence, not a reconstruction of
+the original invocation or SONIFICATION's full implementation/custody receipt.

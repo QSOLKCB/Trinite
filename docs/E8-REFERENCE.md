@@ -208,9 +208,11 @@ lifted graph field/edge and every site registry entry agree with Python. Its
 identifies the source blobs and Node version. This is cross-language finite
 software conformance, not an independent neural or empirical replication.
 
-The original v1 comparison record is preserved as historical evidence. The
-review fix adds [v2 execution evidence](../fixtures/e8-etq-reference/donor-runtime-evidence-v2.json)
-and [complete donor stdout](../fixtures/e8-etq-reference/donor-runtime-output.json).
+The original v1 comparison record and
+[v2 execution evidence](../fixtures/e8-etq-reference/donor-runtime-evidence-v2.json)
+are preserved unchanged as historical evidence. The current verifier uses
+[v3 execution evidence](../fixtures/e8-etq-reference/donor-runtime-evidence-v3.json)
+and the unchanged [complete donor stdout](../fixtures/e8-etq-reference/donor-runtime-output.json).
 The exact three donor modules, published canonical fixture and MPL-2.0 licence
 are retained under `fixtures/e8-etq-reference/donor/`. The offline verifier checks
 their Git blob identities before executing those snapshot bytes in a temporary
@@ -232,12 +234,25 @@ payloads, incorrect historical flags, changed producer identities or altered
 retained output fail the check; there is no skip or fixture-refresh fallback.
 Every verification runs Node anew, compares full event bytes, every graph field
 and registry entry with Python, validates all seven hashes, and checks the v1
-record against those results. The v2 record binds donor and comparison-producer
-files, the original records and complete stdout with byte lengths and SHA-256.
+record against those results. The v3 record binds donor and comparison-producer
+files, the original records (including v2) and complete stdout with byte lengths
+and SHA-256. It additionally binds the live `node --version` value. A different
+Node version fails verification even if the finite output is identical; a future
+foreign-runtime run needs separately identified evidence, not a refreshed fixture.
+The v3 file is compared as raw bytes against the freshly computed canonical
+record, with exactly one final LF. The historical v2 file must also be canonical
+and match its identity bound into v3. Extra newlines, spacing, key reordering and
+other byte changes are rejected.
 It is a read-only conformance check, not a signed custody receipt or a replay of
-the unretained original invocation. The current Node version is printed separately
-from the historical v1 version. This strengthens TRI-I07/I08/I14 evidence;
+the unretained original invocation. This strengthens TRI-I07/I08/I14 evidence;
 the finite map and all historical training/geometry producers stay compatible.
+
+Both the version probe and donor execution surface captured stdout/stderr in
+failure tracebacks, alongside the argv and exit code or timeout duration. Byte
+escapes preserve invalid UTF-8 diagnostics. A timeout retains partial output;
+nonzero exits or unexpected stderr cannot disappear behind `check=True`.
+These failure diagnostics are emitted to the caller/CI log without rewriting
+successful evidence files.
 
 Ten additional ETQ checks preserve the published commitments, internal/fibre
 separation, complete phase/order closure, exact address inverses, graph
@@ -245,10 +260,13 @@ product/triality invariance, symbolic note bijection, input domains, immutabilit
 large-power composition and the actual offline canonical exporter. Fixtures
 are retained expectations; tests never regenerate them.
 
-The separate nine-test donor suite includes real upstream execution and
+The separate fourteen-test donor suite includes real upstream execution and
 corruption cases for every donor blob, copied commitments, historical flags and
 metadata, producer/output identities, retained stdout, complete payloads with
-unchanged hash labels, and missing Node. Neither suite rewrites expected evidence.
+unchanged hash labels, missing/foreign Node, exact v2/v3 bytes, failed version
+probes/driver invocations and timeout diagnostics. Controller fakes only test
+failure handling; positive parity uses the real pinned upstream runtime.
+Neither suite rewrites expected evidence.
 
 This port covers the finite map, not SONIFICATION's full implementation-identity
 bundle, receipt/export pipeline, D4-TIA covariant engine, continuous generator

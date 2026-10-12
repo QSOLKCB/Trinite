@@ -34,14 +34,43 @@ def byte_identity(raw):
     return {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
 
 
-def read_json(path):
+def parse_json(raw):
     def pairs(items):
         result = {}
         for key, value in items:
             require(key not in result, 'duplicate JSON key: ' + key)
             result[key] = value
         return result
-    return json.loads(path.read_bytes(), object_pairs_hook=pairs)
+    return json.loads(raw, object_pairs_hook=pairs)
+
+
+def read_json(path):
+    return parse_json(path.read_bytes())
+
+
+class DonorProcessError(RuntimeError):
+    """Keep captured bytes available to callers and visible in CLI tracebacks."""
+    def __init__(self, argv, *, returncode=None, timeout=None, stdout=None, stderr=None):
+        self.argv = list(argv)
+        self.returncode, self.timeout = returncode, timeout
+        self.stdout, self.stderr = stdout or b'', stderr or b''
+        # repr preserves non-UTF-8 bytes as escapes rather than losing diagnostics.
+        super().__init__(f'donor process failed: argv={self.argv!r}; '
+                         f'returncode={returncode!r}; timeout={timeout!r}\n'
+                         f'stdout={self.stdout!r}\nstderr={self.stderr!r}')
+
+
+def run_node(argv, *, env, cwd, timeout):
+    try:
+        result = subprocess.run(argv, env=env, cwd=cwd, capture_output=True,
+                                check=False, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        raise DonorProcessError(argv, timeout=error.timeout,
+                                stdout=error.stdout, stderr=error.stderr) from error
+    if result.returncode != 0 or result.stderr:
+        raise DonorProcessError(argv, returncode=result.returncode,
+                                stdout=result.stdout, stderr=result.stderr)
+    return result
 
 
 def compare_output(raw, published):
@@ -70,6 +99,8 @@ def compare_output(raw, published):
 
 def compare(fixture=FIXTURE, node='node'):
     """Execute verified snapshot bytes in a temporary directory on every call."""
+    prior = (fixture / 'donor-runtime-evidence-v2.json').read_bytes()
+    require(prior == json_bytes(parse_json(prior)), 'historical v2 evidence is not canonical')
     blobs, actual_blobs = {}, {}
     for path, expected in DONOR_BLOBS.items():
         raw = (fixture / 'donor' / path).read_bytes()
@@ -97,11 +128,9 @@ def compare(fixture=FIXTURE, node='node'):
             target.write_bytes(raw)
         driver = work / 'export.mjs'
         driver.write_bytes(producer['scripts/etq_donor_export.mjs'])
-        version = subprocess.run([node, '--version'], env=env, cwd=work,
-                                 capture_output=True, check=True, timeout=10).stdout.decode().strip()
-        result = subprocess.run([node, str(driver)], env=env, cwd=work,
-                                capture_output=True, check=True, timeout=30)
-    require(not result.stderr, 'unexpected donor stderr: ' + result.stderr.decode(errors='replace'))
+        version = run_node([node, '--version'], env=env, cwd=work,
+                           timeout=10).stdout.decode().strip()
+        result = run_node([node, str(driver)], env=env, cwd=work, timeout=30)
     checks = compare_output(result.stdout, published)
     checks['exact_source_blobs'] = actual_blobs == DONOR_BLOBS
     old = read_json(fixture / 'donor-runtime-comparison.json')
@@ -112,7 +141,9 @@ def compare(fixture=FIXTURE, node='node'):
     require(json_bytes(old['checks']) == json_bytes(checks), 'historical checks mismatch')
     require(json_bytes(old['commitments']) == json_bytes(published), 'historical commitments mismatch')
     record = {
-        'schema': 'trinite.etq-donor-runtime-evidence.v2',
+        'schema': 'trinite.etq-donor-runtime-evidence.v3',
+        'node_version': version,
+        'historical_evidence_v2': byte_identity(prior),
         'donor_commit': etq.SONIFICATION_COMMIT,
         'donor_files': {path: dict(byte_identity(raw), git_blob=DONOR_BLOBS[path])
                         for path, raw in blobs.items()},
@@ -125,12 +156,16 @@ def compare(fixture=FIXTURE, node='node'):
 
 
 def verify(fixture=FIXTURE, node='node'):
+    expected_raw = (fixture / 'donor-runtime-evidence-v3.json').read_bytes()
+    expected = parse_json(expected_raw)
+    require(expected_raw == json_bytes(expected), 'retained runtime evidence mismatch: noncanonical bytes')
     record, stdout, version = compare(fixture, node)
-    require(json_bytes(read_json(fixture / 'donor-runtime-evidence-v2.json')) == json_bytes(record),
-            'retained runtime evidence mismatch')
+    require(version == expected['node_version'],
+            f"Node version mismatch: expected {expected['node_version']!r}, actual {version!r}")
+    require(expected_raw == json_bytes(record), 'retained runtime evidence mismatch')
     require((fixture / 'donor-runtime-output.json').read_bytes() == stdout,
             'retained donor stdout mismatch')
-    return {'node_version': version, **record}
+    return record
 
 
 if __name__ == '__main__':
