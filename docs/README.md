@@ -82,3 +82,9 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 [LATTICE-SCAFFOLD.md](LATTICE-SCAFFOLD.md): frozen integer Menger-style
 parent/child geometry and exact face adjacency, source-bound reproducible
 artifact verification, independent tests and blocked neural-mapping gates.
+
+## Trained activation-to-lattice observation
+
+[ACTIVATION-LATTICE.md](ACTIVATION-LATTICE.md): source-bound retrospective
+64→3 projection of retained real native trained captures, four edge/cardinality
+matched lattice controls, split-restricted normalization and no new training.
