@@ -42,8 +42,8 @@ jobs:
 
   model-conformance:
     runs-on: ubuntu-24.04
-    # Include hash-locked acquisition and real v2 evidence/replay integration tests.
-    timeout-minutes: 25
+    # Include acquisition plus real assurance, budget replay and archive integration tests.
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:

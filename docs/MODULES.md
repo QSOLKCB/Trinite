@@ -210,3 +210,16 @@ Its numerical dependencies remain the authoritative existing operations.
 `run_maths_retention_v2.py` owns fixed workers and complete failure inventories.
 No numerical kernel, dynamic executable selection or success cache is added.
 See [MATHS-RETENTION-V2.md](MATHS-RETENTION-V2.md).
+
+## Balanced rehearsal budget development
+
+`retention_v2/budget/plan.py` validates separately versioned larger resource bounds.
+`spec.py` delegates frozen admission/native state construction and defines the
+fixed four-plus-four schedule and train-only scoring views. `experiment.py`
+composes the authoritative updater, scorer, safe tensor reader and shared v2
+evidence/criteria/exposure operations under new schemas. `archive.py` preserves
+complete verified runs, externally bound requests and exact producer source with
+a lossless member inventory. The fixed `run_maths_retention_budget.py` and
+`archive_maths_retention_budget.py` scripts own process/archival entrypoints.
+Original flat v1 and v2 producers remain byte-identical. See
+[MATHS-RETENTION-BUDGET.md](MATHS-RETENTION-BUDGET.md).
