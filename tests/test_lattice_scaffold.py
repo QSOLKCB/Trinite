@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 from trinite.contracts import ContractError, identity, json_bytes, parse_json
-from trinite.lattice_scaffold import CHILDREN, construct, protocol, verify
+from trinite.lattice.scaffold import CHILDREN, construct, protocol, verify
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -83,6 +83,8 @@ class LatticeScaffoldTests(unittest.TestCase):
             with self.subTest(mutate=mutate), self.assertRaises(ContractError):
                 verify(json_bytes(r))
         self.assertIn('scripts/generate_lattice_scaffold.py', original['source'])
+        self.assertIn('src/trinite/lattice/scaffold.py', original['source'])
+        self.assertIn('src/trinite/lattice/protocol.json', original['source'])
         with self.assertRaises(ContractError): verify(b'x' * (2 * 1024 * 1024 + 1))
         with self.assertRaises(ContractError): verify(json_bytes(original).replace(b'\n', b'  \n'))
 
