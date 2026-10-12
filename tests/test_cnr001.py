@@ -21,6 +21,10 @@ class CNR001Contracts(unittest.TestCase):
     def test_frozen_release_protocol_source_and_genuine_dataset_bytes(self):
         p, digest = core.protocol()
         self.assertEqual(p["baseline_commit"], core.BASELINE_SHA)
+        self.assertEqual(p["schema"], "trinite.cnr-001-protocol.v2")
+        self.assertEqual(p["evidence_revision"].split(";")[0], "v2-source-bound-correction")
+        for path, expected in p["baseline_git_blobs"].items():
+            self.assertEqual(core.git_blob(core.read(core.ROOT/path)), expected)
         self.assertEqual(p["run_class"], "retrospective-exploratory-training-exposed-observation-not-held-out")
         self.assertEqual(p["edge_budget"], 24)
         self.assertEqual(p["geometry_loss"], "0")
@@ -34,7 +38,10 @@ class CNR001Contracts(unittest.TestCase):
             self.assertEqual(core.git_blob(value),p["source_git_blobs"][name])
         source = core.source_receipt()
         self.assertIn("src/trinite/lattice_observation/experiment.py", source)
-        self.assertIn("src/trinite/cnr001/protocol.json", source)
+        self.assertIn("src/trinite/cnr001/protocol-v2.json", source)
+        self.assertIn("src/trinite/e8_reference/__init__.py", source)
+        self.assertIn("src/trinite/lattice_observation/experiment.py", source)
+        self.assertIn(".github/workflows/cnr-001.yml", source)
         self.assertIn("scripts/run_cnr001.py", source)
 
     def test_biological_source_tampering_is_rejected_before_any_ingestion(self):
@@ -72,6 +79,15 @@ class CNR001Contracts(unittest.TestCase):
         self.assertEqual(len(rebuilt),24)
         self.assertEqual(core.degrees(rebuilt),core.degrees(control))
         self.assertGreaterEqual(count,0)
+        self.assertEqual(bool(count), rebuilt != control)
+        # A pair of edges sharing their source cannot be counted as a swap
+        # when the only proposed output is the same pair of edges.
+        rigid = [[0, i] for i in range(1, 20)]
+        rigid += [[1, j] for j in range(2, 7)]
+        self.assertEqual(len(rigid),24)
+        rigid_after, rigid_count = core.rewired(sorted(rigid))
+        self.assertEqual(rigid_count, 0)
+        self.assertEqual(rigid_after, sorted(rigid))
         self.assertEqual(len(set(map(tuple,rebuilt))),24)
         self.assertEqual(len(core.random_edges()),24)
         _,edges,_=synthetic_sample()
@@ -103,6 +119,10 @@ class CNR001Contracts(unittest.TestCase):
                 self.assertEqual(arm["edge_count"],24)
                 self.assertEqual(arm["receiver_identity"],layer["arms"]["baseline-menger"]["receiver_identity"])
                 self.assertEqual(sum(arm["graph_hops"]),arm["graph_hops_sum"])
+        for arm in ("male-cns20","etq101-20","etq303-20"):
+            receipt = r["graph_provenance"]["rewire_swaps"][arm]
+            self.assertEqual(receipt["eligible_control"],
+                             receipt["effective_swaps"] > 0 and receipt["distinct_final_topology"])
         self.assertEqual(r["graph_provenance"]["biological_provenance"]["dataset"],
                          "test-synthetic-nonbiological")
         self.assertFalse(r["phase5_ready"])
