@@ -67,24 +67,75 @@ def source_receipt():
     return {name: identity(bounded(ROOT / name, 256 * 1024)) for name in sorted(selected)}
 
 
+def extract_native_packet(archive):
+    """Read original named files from authenticated lossless restore-index objects."""
+    names = archive.namelist()
+    if len(names) > 4096 or len(set(names)) != len(names):
+        raise ContractError('duplicate/oversized historical archive inventory')
+    if 'restore-index.json' not in names:
+        raise ContractError('missing lossless restore index')
+    if archive.getinfo('restore-index.json').file_size > 1024 * 1024:
+        raise ContractError('oversized lossless restore index')
+    index = parse_json(archive.read('restore-index.json'))
+    exact_keys(index, {'schema', 'files'}, 'lossless restore index')
+    if index['schema'] != 'trinite.lossless-review-archive.v1':
+        raise ContractError('unsupported historical restore schema')
+    files = index['files']
+    if type(files) is not dict or not 1 <= len(files) <= 4096:
+        raise ContractError('invalid historical restore inventory')
+    wanted = ('run/request.json', 'run/native/capture.json')
+    if any(name not in files for name in wanted):
+        raise ContractError('historical restore index lacks native capture/request')
+    objects, total = {}, 0
+    for name, record in files.items():
+        # Match the original bounded restorer: refuse arbitrary member names and
+        # incompatible object sizes. Never construct filesystem paths from ZIP data.
+        if (type(name) is not str or '\\' in name or '\x00' in name
+                or name.startswith('/') or not (name == 'members.json'
+                    or name.startswith(('run/', 'producer/')))
+                or any(segment in ('', '.', '..') for segment in name.split('/'))):
+            raise ContractError('unsafe historical archive file name')
+        exact_keys(record, {'bytes', 'identity'}, 'historical object record')
+        size, key = record['bytes'], record['identity']
+        integer(size, 'historical member size', 0, 32 * 1024 * 1024)
+        if type(key) is not str or len(key) != 71 or not key.startswith('sha256:') \
+                or any(c not in '0123456789abcdef' for c in key[7:]):
+            raise ContractError('invalid historical object identity')
+        total += size
+        member = 'objects/sha256/' + key[7:]
+        if member in objects and objects[member] != size:
+            raise ContractError('contradictory deduplicated object size')
+        objects[member] = size
+    if total > 512 * 1024 * 1024 or set(names) != {'restore-index.json', *objects}:
+        raise ContractError('incomplete/extra historical ZIP content')
+    for name in wanted:
+        if files[name]['bytes'] > MAX_INPUT:
+            raise ContractError('oversized native observation input')
+    selected = {}
+    wanted_objects = {files[name]['identity'] for name in wanted}
+    for member, size in objects.items():
+        if archive.getinfo(member).file_size != size:
+            raise ContractError('historical object size differs from index')
+        # Freshly verify every retained content-addressed object, not just the
+        # two inputs subsequently read by the observation.
+        raw = archive.read(member)
+        if len(raw) != size or identity(raw) != 'sha256:' + member.rsplit('/', 1)[1]:
+            raise ContractError('historical archive object digest mismatch')
+        key = identity(raw)
+        if key in wanted_objects:
+            selected[key] = raw
+    return tuple(selected[files[name]['identity']] for name in wanted)
+
+
 def packet():
     raw = bounded(ROOT / PACKET)
     if identity(raw) != ARCHIVE_IDENTITY:
         raise ContractError('historical reference packet identity changed')
-    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-        wanted = ('run/request.json', 'run/native/capture.json')
-        if len(set(archive.namelist())) != len(archive.namelist()):
-            raise ContractError('duplicate archived names')
-        try:
-            if any(archive.getinfo(name).file_size > MAX_INPUT for name in wanted):
-                raise ContractError('oversized archived observation input')
-            request, capture = (archive.read(name) for name in wanted)
-        except KeyError as error:
-            raise ContractError('historical packet lacks native capture') from error
-    if len(request) > MAX_INPUT or len(capture) > MAX_INPUT:
-        raise ContractError('observation archive member exceeded limit')
-    return request, capture
-
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            return extract_native_packet(archive)
+    except (zipfile.BadZipFile, EOFError, KeyError) as error:
+        raise ContractError('invalid or incomplete historical lossless archive') from error
 
 def inputs():
     rules = protocol()
