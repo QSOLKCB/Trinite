@@ -1,5 +1,9 @@
 """CNR-001 offline contract and topology tests; never certify biological source by fake rows."""
 from pathlib import Path
+import io
+import hashlib
+import json
+import tarfile
 import tempfile
 import unittest
 
@@ -43,6 +47,37 @@ class CNR001Contracts(unittest.TestCase):
         self.assertIn("src/trinite/lattice_observation/experiment.py", source)
         self.assertIn(".github/workflows/cnr-001.yml", source)
         self.assertIn("scripts/run_cnr001.py", source)
+
+    def test_permanent_v1_v2_archive_and_external_commitments(self):
+        packet = ROOT / "fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz"
+        raw = packet.read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                         "be7ec8ade4c19c05bff5f11741a2b48b4a7760e8ec8fa811c263a021354f18df")
+        with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as archive:
+            entries = archive.getmembers()
+            self.assertEqual(len({e.name for e in entries}), len(entries))
+            self.assertTrue(all(e.isfile() and e.size < 256 * 1024
+                                and ".." not in e.name.split("/")
+                                and not e.name.startswith("/") for e in entries))
+            files = {e.name: archive.extractfile(e).read() for e in entries}
+        manifest = json.loads(files["MANIFEST.json"])
+        self.assertEqual(manifest["schema"], "trinite.cnr-001-evidence-archive.v1")
+        self.assertEqual(set(manifest["entries"]), set(files)-{"MANIFEST.json"})
+        for name, record in manifest["entries"].items():
+            self.assertEqual(len(files[name]), record["bytes"])
+            self.assertEqual(hashlib.sha256(files[name]).hexdigest(), record["sha256"])
+        self.assertEqual(hashlib.sha256(files["v1/cnr-request.json"]).hexdigest(),
+                         "5363b6e5548579e1581434756e7c73a02729ee6d0e7056e4776f319c07d80b86")
+        self.assertEqual(hashlib.sha256(files["v1/cnr-analysis.json"]).hexdigest(),
+                         "0753d5d538aa2c18715b659148190e67d76b460996490def7c6e8c4b1230a11b")
+        self.assertEqual(hashlib.sha256(files["v2/cnr-request.json"]).hexdigest(),
+                         "2d402c2786968e8ce9b844ae9b8e8aafca293500ee2bb2088b3fc9ddc7bcc6ab")
+        self.assertEqual(hashlib.sha256(files["v2/cnr-analysis.json"]).hexdigest(),
+                         "58477fb9ac31eb39063c17953164afc230b0142aa5a264fed9e67fc0169a2711")
+        self.assertEqual(json.loads(files["v1/cnr-request.json"])["protocol"]["schema"],
+                         "trinite.cnr-001-protocol.v1")
+        self.assertEqual(json.loads(files["v2/cnr-request.json"])["protocol"]["schema"],
+                         "trinite.cnr-001-protocol.v2")
 
     def test_biological_source_tampering_is_rejected_before_any_ingestion(self):
         original = core.DATA
