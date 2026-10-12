@@ -18,13 +18,11 @@ class ActivationLatticeTests(unittest.TestCase):
     def test_frozen_protocol_and_actual_historical_native_capture_audit(self):
         rules = e.protocol()
         self.assertEqual(rules['anchor_depth'], 1)
-        self.assertEqual(rules['original_reference_request_identity'], e.inputs()[0]['request_identity']
-                         if 'request_identity' in e.inputs()[0] else identity(e.inputs()[2]))
+        self.assertEqual(rules['original_reference_request_identity'], identity(e.inputs()[2]))
         req, capture, raw_request, raw_capture = e.inputs()
         self.assertEqual(len(capture['rows']), 16)
         self.assertEqual(identity(raw_request), rules['original_reference_request_identity'])
-        self.assertEqual(identity(raw_capture), capture['request_identity']
-                         if capture['request_identity'] == identity(raw_capture) else identity(raw_capture))
+        self.assertEqual(capture['request_identity'], identity(raw_request))
         self.assertEqual(capture['condition'], 'native')
 
     def test_all_controls_match_anchor_and_edge_budgets(self):
@@ -159,8 +157,8 @@ class ActivationLatticeTests(unittest.TestCase):
         receipt = e.source_receipt()
         self.assertIn('scripts/run_lattice_observation.py', receipt)
         self.assertIn('src/trinite/lattice_observation/protocol.json', receipt)
-        self.assertEqual(e.source_receipt_scaffold()['src/trinite/lattice/scaffold.py'],
-                         e.source_receipt_scaffold()['src/trinite/lattice/scaffold.py'])
+        from trinite.lattice.scaffold import source_receipt as original_receipt
+        self.assertEqual(e.source_receipt_scaffold(), original_receipt())
 
 
 if __name__ == '__main__':
