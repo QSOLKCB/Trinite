@@ -259,3 +259,13 @@ source-bound artifact or independently reconstructs it for read-only verificatio
 This pure-standard-library module owns no trained mapping, activation fitting,
 loss, geometry intervention or existing producer. See
 [LATTICE-SCAFFOLD.md](LATTICE-SCAFFOLD.md).
+
+## Retrospective native activation / lattice research
+
+`lattice_observation/experiment.py` is a separately versioned, standard-library
+only read-only analysis of the retained native trained reference capture. It
+uses the existing original capture auditor and exact v1 Menger scaffold, with
+source-bound requests and an external result-identity verifier. A separate
+`run_lattice_observation.py` performs immutable freeze, run and verification.
+No native model, loss, admission, optimizer, prior reference producer or
+historical packet is modified. See [ACTIVATION-LATTICE.md](ACTIVATION-LATTICE.md).
