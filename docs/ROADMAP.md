@@ -541,3 +541,14 @@ neurobiological homology, new learning, held-out generalization or a causal
 geometry mechanism. Do not unlock Phase 5, format selection, device
 benchmarks, scaling or release readiness. The historical v0.1.0 producer
 and its earlier negative records remain unchanged.
+
+
+CNR-001 v4 corrects installed-package baseline pin resolution and rejects
+injected samples from official analyses. The real wheel boundary, authentic
+v4 run/replay and historical v3 replay passed in
+[run 38295236828](https://github.com/QSOLKCB/Trinite/actions/runs/38295236828).
+Its [separate permanent packet](../fixtures/cnr-001-evidence/cnr001-v4.tar.gz)
+retains the complete new request, analysis and receipts; original v1/v2/v3
+packets remain unchanged. V4 reproduces the same negative/saturated scores,
+with no model, graph-algorithm or research-gate advancement. See
+[CNR-001](CNR-001.md#v4-package-and-authentic-input-boundary-correction).

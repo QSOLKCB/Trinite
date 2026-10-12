@@ -110,6 +110,28 @@ class CNR001Contracts(unittest.TestCase):
         self.assertEqual(json.loads(contents["v3/cnr-analysis.json"])["schema"],
                          "trinite.cnr-001-analysis.v3")
 
+    def test_permanent_v4_packet_has_independent_commitments(self):
+        raw = (ROOT / "fixtures/cnr-001-evidence/cnr001-v4.tar.gz").read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                         "95d16ee195270aa9d41d08be1b63382ae9db804f9306cb2791740f81c0b733a4")
+        with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as archive:
+            members = archive.getmembers()
+            self.assertEqual(len({m.name for m in members}), len(members))
+            self.assertTrue(all(m.isfile() and m.size < 256 * 1024 for m in members))
+            files = {m.name: archive.extractfile(m).read() for m in members}
+        manifest = json.loads(files["MANIFEST.json"])
+        self.assertEqual(manifest["schema"], "trinite.cnr-001-evidence-archive.v4")
+        self.assertEqual(manifest["producer_run"], "38295236828")
+        self.assertEqual(set(manifest["entries"]), set(files) - {"MANIFEST.json"})
+        for name, entry in manifest["entries"].items():
+            self.assertEqual(len(files[name]), entry["bytes"])
+            self.assertEqual(hashlib.sha256(files[name]).hexdigest(), entry["sha256"])
+        request = json.loads(files["v4/cnr-request.json"])
+        report = json.loads(files["v4/cnr-analysis.json"])
+        self.assertEqual(request["schema"], "trinite.cnr-001-request.v4")
+        self.assertEqual(report["schema"], "trinite.cnr-001-analysis.v4")
+        self.assertEqual(report["request_identity"], identity(files["v4/cnr-request.json"]))
+
     def test_biological_source_tampering_is_rejected_before_any_ingestion(self):
         original = core.DATA
         with tempfile.TemporaryDirectory() as temp:

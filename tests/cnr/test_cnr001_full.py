@@ -1,5 +1,6 @@
 """Mandatory authentic MaleCNS-v1.0 Parquet execution: separate pinned CI lane."""
 from pathlib import Path
+import tarfile
 import tempfile
 import unittest
 
@@ -47,6 +48,10 @@ class CNR001FullBiology(unittest.TestCase):
             self.assertEqual(got["status"], "passed")
             self.assertTrue(got["read_only"])
             self.assertEqual(before, (rpath.read_bytes(), apath.read_bytes()))
+            with tarfile.open(ROOT / "fixtures/cnr-001-evidence/cnr001-v4.tar.gz", "r:gz") as archive:
+                self.assertEqual(before[0], archive.extractfile("v4/cnr-request.json").read())
+                self.assertEqual(before[1], archive.extractfile("v4/cnr-analysis.json").read())
+                self.assertEqual(json_bytes(got), archive.extractfile("v4/cnr-verification.json").read())
             with self.assertRaises(FileExistsError):
                 module.freeze(rpath)
             apath.write_bytes(before[1] + b" ")
