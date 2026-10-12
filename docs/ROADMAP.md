@@ -497,3 +497,22 @@ are candidate diagnostics, with shuffled-order/orbit/anchor and matched random
 receivers as declared controls. Exact symmetry or a pleasing projection does
 not establish a learned representation. Phase 5 and its original learning
 prerequisites still govern any geometry-on training experiment.
+
+## Post-v0.1.0 CNR-001: measured connectome and ETQ-303 topology
+
+The separately frozen [CNR-001 experiment](CNR-001.md) is a retrospective
+measurement increment **after** immutable v0.1.0, never a replacement for
+its failed and pending learning experiments. It compares the identical retained
+trained-native 16-probe captures and original baseline scorer under eight
+20-receiver/24-edge graph conditions: Menger v0.1.0, biological MaleCNS,
+ETQ-101, ETQ-303, degree-preserving controls, and a seeded random graph.
+The original MaleCNS 100-neuron, 3,630-connection biased subset is copied
+under CC BY 4.0, source blobs pinned, and the authentic ingestion tested in
+its isolated hash-locked reader workflow. Full ETQ-303 303-state event/phase
+closure is verified separately from a true 303-step lifted-graph walk.
+
+This is a topology/observation test with arbitrary receiver slot placement,
+not a neurobiological model, new learning, held-out generalization, causal
+mechanism or geometry-on intervention. Record both positive/negative outcomes
+and baseline differences from the same capture; do not silently unlock Phase 5,
+format selection, device benchmarking, scaling or release-readiness gates.
