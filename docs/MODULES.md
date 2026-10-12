@@ -194,3 +194,19 @@ Historical fold-exposure modules and evidence remain unchanged. See
 ## Maths retention development
 
 `maths_retention.py` composes the existing admitted pooled state with two ranked training streams and a separately frozen rehearsal protocol. It owns source/request/schedule/checkpoint context, actual exposure diagnostics and fresh report assembly. Admission, initialization, numerical updates, safe tensor/progress handling, prompt-only scoring, drift diagnostics and closed PROVENANCE verification delegate to their existing authoritative operations. `scripts/run_maths_retention.py` owns fixed fresh workers and failure retention. The unique training diagnostic view stays separate from scheduled rehearsal visits. See [MATHS-RETENTION.md](MATHS-RETENTION.md).
+
+
+## Retention evidence v2
+
+The isolated `retention_v2/` package preserves v1's flat source closure. `spec.py`
+owns the frozen specification, explicit research/smoke profile, invocation-local
+immutable admission, scoring views and adapter to the unchanged v1 schedule.
+`criteria.py` owns strict exact task/count checks using only contracts and stdlib.
+`evidence.py` shares bounded immutable byte binding and fresh closed name-index
+verification; it imports contracts and observation, never model/training.
+`experiment.py` composes requests, safe progress/tensors, prompt-only scoring,
+full native update replay, scope-aware receipts and conservative aggregation.
+Its numerical dependencies remain the authoritative existing operations.
+`run_maths_retention_v2.py` owns fixed workers and complete failure inventories.
+No numerical kernel, dynamic executable selection or success cache is added.
+See [MATHS-RETENTION-V2.md](MATHS-RETENTION-V2.md).

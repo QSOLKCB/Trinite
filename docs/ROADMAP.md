@@ -314,3 +314,16 @@ Requested by Trent Slade after PR #18 on 2026-10-09. [MATHS.md](MATHS.md) implem
 ## Fixed arithmetic rehearsal development
 
 After PR #19, the next separately frozen learning increment is [MATHS-RETENTION.md](MATHS-RETENTION.md): repeat the pooled maths pilot and compare four arithmetic/four maths examples in each batch with the same two seeds and update budget. All four cells completed and freshly verified. Rehearsal passes the arithmetic training criterion in both seeds but reduces maths accuracy; all maths training criteria remain failed. Both pooled safe tensors, histories and predictions reproduce PR #19 exactly. Actual visits, targets and training criteria remain visible. The reused test diagnostics are exploratory. No schedule is selected and historical learning adequacy, composed assessment, format selection, scaling and Phase 5 remain blocked.
+
+
+## Retention assurance and agent entrypoint
+
+Following the supplied 2026-10-12 PR #20 review, [AGENTS.md](../AGENTS.md) makes
+the repository operating/verification rules discoverable to implementing agents.
+The separately frozen [v2 assurance increment](MATHS-RETENTION-V2.md) preserves
+v1 source/evidence and its exact numerical schedule. It adds explicit limited
+inference/full replay receipts, externally bound artifact expectations, strict
+admitted task/count criteria and real evidence/controller integration coverage.
+It changes assurance and maintainability; validation outcomes are pending. No
+accuracy improvement, sequential forgetting, schedule winner or learning
+adequacy is inferred. Original gates and Phase 5 remain blocked.
