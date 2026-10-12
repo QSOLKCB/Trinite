@@ -76,3 +76,9 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 
 - [Balanced rehearsal budget development](MATHS-RETENTION-BUDGET.md): training-only 4,096/8,192-update comparison and lossless replay archive.
 - [Task-balanced maths scheduling](MATHS-TASK-BALANCE.md): separately frozen training-only task exposure comparison at 8,192 updates in both arms.
+
+## Recursive 3×3×3 scaffold
+
+[LATTICE-SCAFFOLD.md](LATTICE-SCAFFOLD.md): frozen integer Menger-style
+parent/child geometry and exact face adjacency, source-bound reproducible
+artifact verification, independent tests and blocked neural-mapping gates.
