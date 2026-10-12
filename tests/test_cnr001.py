@@ -80,6 +80,35 @@ class CNR001Contracts(unittest.TestCase):
         self.assertEqual(json.loads(files["v2/cnr-request.json"])["protocol"]["schema"],
                          "trinite.cnr-001-protocol.v2")
 
+    def test_separate_immutable_v3_packet_and_versioned_schema(self):
+        packet = ROOT / "fixtures/cnr-001-evidence/cnr001-v3.tar.gz"
+        raw = packet.read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                         "fcec1f268a3985aeb921899d2cfcd8886ec91d53598faa6184761eb800a5ef5a")
+        with tarfile.open(fileobj=io.BytesIO(raw),mode="r:gz") as archive:
+            entries=archive.getmembers()
+            self.assertEqual(len({item.name for item in entries}),len(entries))
+            self.assertTrue(all(item.isfile() and item.size < 256*1024 and
+                                not item.name.startswith("/") and
+                                ".." not in item.name.split("/") for item in entries))
+            contents={item.name:archive.extractfile(item).read() for item in entries}
+        manifest=json.loads(contents["MANIFEST.json"])
+        self.assertEqual(manifest["schema"],"trinite.cnr-001-evidence-archive.v3")
+        self.assertEqual(manifest["historical_v1_v2_sha256"],
+                         "be7ec8ade4c19c05bff5f11741a2b48b4a7760e8ec8fa811c263a021354f18df")
+        self.assertEqual(set(manifest["entries"]),set(contents)-{"MANIFEST.json"})
+        for name, entry in manifest["entries"].items():
+            self.assertEqual(len(contents[name]),entry["bytes"])
+            self.assertEqual(hashlib.sha256(contents[name]).hexdigest(),entry["sha256"])
+        self.assertEqual(hashlib.sha256(contents["v3/cnr-request.json"]).hexdigest(),
+                         "30ec9f8eb2e8ef2b0c4b4e0dc7276337a589003c47bcbcd7367816d078c5cf6f")
+        self.assertEqual(hashlib.sha256(contents["v3/cnr-analysis.json"]).hexdigest(),
+                         "6d6b8574ab89720d0b3124e4333e2b26be8d0ccae15539a9533075da7b1a9de1")
+        self.assertEqual(json.loads(contents["v3/cnr-request.json"])["schema"],
+                         "trinite.cnr-001-request.v3")
+        self.assertEqual(json.loads(contents["v3/cnr-analysis.json"])["schema"],
+                         "trinite.cnr-001-analysis.v3")
+
     def test_biological_source_tampering_is_rejected_before_any_ingestion(self):
         original = core.DATA
         with tempfile.TemporaryDirectory() as temp:
