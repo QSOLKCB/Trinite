@@ -75,3 +75,4 @@ its frozen [protocol](CONVERGENCE-PROTOCOL.md).
 [MATHS-RETENTION-V2.md](MATHS-RETENTION-V2.md): separate verification tiers, external artifact commitments, complete optimizer replay, strict admitted task counts and real integration coverage.
 
 - [Balanced rehearsal budget development](MATHS-RETENTION-BUDGET.md): training-only 4,096/8,192-update comparison and lossless replay archive.
+- [Task-balanced maths scheduling](MATHS-TASK-BALANCE.md): separately frozen training-only task exposure comparison at 8,192 updates in both arms.

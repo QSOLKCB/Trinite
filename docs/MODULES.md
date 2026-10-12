@@ -236,3 +236,16 @@ a lossless member inventory. The fixed `run_maths_retention_budget.py` and
 `archive_maths_retention_budget.py` scripts own process/archival entrypoints.
 Original flat v1 and v2 producers remain byte-identical. See
 [MATHS-RETENTION-BUDGET.md](MATHS-RETENTION-BUDGET.md).
+
+## Task-balanced maths scheduling
+
+`retention_v2/task_balance/schedule.py` owns bounded integer scheduling over
+admitted rows: an unchanged ranked-row control and a round-robin maths-task
+candidate. `spec.py` composes the unchanged budget plan/native state, substitutes
+only scheduled training visits, and binds the complete prior and new source
+closures. `experiment.py` and `archive.py` isolate the new request/checkpoint/
+report/evidence identities while reusing the authoritative updater, scorer,
+safe tensor reader, admission, criteria and custody operations. The fixed
+`run_maths_task_balance.py` and `archive_maths_task_balance.py` scripts own the
+process and archival entrypoints. No existing producer is modified or rebound.
+See [MATHS-TASK-BALANCE.md](MATHS-TASK-BALANCE.md).
