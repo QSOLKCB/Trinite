@@ -7,7 +7,7 @@ from pathlib import Path
 import zipfile
 
 from ..contracts import ContractError, exact_keys, identity, integer, json_bytes, parse_json
-from ..lattice.scaffold import construct, source_receipt
+from ..lattice.scaffold import construct, source_receipt as scaffold_source_receipt
 from ..reference_evidence import audit
 from ..reference_geometry import decode_vector
 
@@ -108,7 +108,7 @@ def core(reference, capture):
 
 
 def source_receipt_scaffold():
-    return source_receipt()
+    return scaffold_source_receipt()
 
 
 def freeze(path):
@@ -174,7 +174,7 @@ def signed_projection(rows, seed):
                        for sign in signs) for row in rows]
     calibration = projected[:8]
     extrema = [(min(row[a] for row in calibration), max(row[a] for row in calibration)) for a in range(3)]
-    normalized, clipped = [], 0
+    normalized = []
     for row in projected:
         coords = []
         for axis, x in enumerate(row):
@@ -183,7 +183,6 @@ def signed_projection(rows, seed):
                 coords.append(1.0)
             else:
                 v = 2 * (x - lo) / (hi - lo)
-                clipped += int(v < 0 or v > 2)
                 coords.append(max(0.0, min(2.0, v)))
         normalized.append(tuple(coords))
     return normalized, {'axis_range_hex': [[a.hex(), b.hex()] for a, b in extrema],
