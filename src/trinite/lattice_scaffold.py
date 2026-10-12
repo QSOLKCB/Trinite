@@ -9,6 +9,7 @@ from .contracts import ContractError, identity, integer, json_bytes, parse_json
 
 PROTOCOL_IDENTITY = 'sha256:3fb56ed2e0ce54872b8e8e63e5e22d044913ff891c742379ba07ae1b3b21f4f0'
 CHILDREN = tuple(c for c in product(range(3), repeat=3) if sum(d == 1 for d in c) <= 1)
+MAX_ARTIFACT_BYTES = 2 * 1024 * 1024
 SOURCE_FILES = ('src/trinite/contracts.py', 'src/trinite/lattice_scaffold.py',
                 'src/trinite/lattice-scaffold-protocol.json', 'scripts/generate_lattice_scaffold.py')
 
@@ -73,6 +74,8 @@ def construct(depth):
 
 def verify(raw):
     """Read-only, byte-exact regeneration; rejects stale source/protocol and edits."""
+    if type(raw) is not bytes or len(raw) > MAX_ARTIFACT_BYTES:
+        raise ContractError('lattice artifact exceeds frozen byte budget')
     value = parse_json(raw, canonical=True)
     if type(value) is not dict or type(value.get('depth')) is not int:
         raise ContractError('invalid lattice artifact or depth')
