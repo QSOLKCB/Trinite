@@ -400,3 +400,43 @@ capacity. A visually orderly map does not establish improved reasoning or a
 causal mechanism. Separate geometry measurement from any training intervention;
 geometry loss remains zero until its own reviewed Phase 5 protocol and learning
 prerequisites are met.
+
+## Future RES=RAG / CSNP measurement integration
+
+Requested by Trent on 2026-10-12. Evaluate
+[RES=RAG / CSNP v1.1.0](https://github.com/QSOLKCB/res-rag/releases/tag/v1.1.0),
+pinned to commit `053bf73d7493ec745f31806a99e522e9818c0f27`, as a future
+operational measurement and receipt reference. Its RES/RAG names denote
+receptive/context-grounded and generative dynamics in that specification.
+Status: planned research adapter; no new training mechanism or calibrated
+control is enabled.
+
+A Trinite study must define its own observable proxies for the two states,
+their common representation space, ground metric, Wasserstein estimator,
+sampling windows and local calibration before measuring discrepancy. Bind
+layer/token selections, any projection or lattice-anchor mapping, input/output
+identities and temporal alignment in a versioned metric profile. Compare the
+recursive scaffold with the matched alternative mappings rather than assuming
+that the donor theory explains model behavior.
+
+Retain signed temporal displacement `T_RAG - T_RES` separately from its
+absolute magnitude, with explicit clock/units and missing-data rules. Keep
+provenance-labelled research claims separate from operational thresholds;
+values such as 0.42, 0.66 and approximately 2.14 need explicit reproducible local
+calibration before any control use. Freeze any positive rate-pressure
+denominator floor and its reciprocal-time units.
+
+A future adapter should test the pinned RFC 8785/JCS SHA-256 receipt semantics,
+version compatibility and actual verifier against declared positive/negative
+cases, while retaining Trinite's existing PROVENANCE custody separately.
+The donor verifier constrains a producer-labelled `governable` receipt one way;
+it does not derive the entire classification label space. The four-stage
+semantic cycle is an operational state model, with no consciousness inference.
+An eventual `multitask_brake` experiment needs predeclared controls, timing,
+estimators, observation windows, quality/cost measures and falsifiable success
+criteria; its stabilizing effect is a hypothesis.
+
+Honor the donor's CC BY 4.0 attribution and contribution records for any adapted
+material. Training intake still requires Trinite's file-level rights, source and
+exposure admission. Measurement, intervention, numerical calibration, security,
+learning adequacy and release claims remain separate reviewed gates.
