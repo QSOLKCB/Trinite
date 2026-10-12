@@ -511,15 +511,23 @@ under CC BY 4.0, source blobs pinned, and the authentic ingestion tested in
 its isolated hash-locked reader workflow. Full ETQ-303 303-state event/phase
 closure is verified separately from a true 303-step lifted-graph walk.
 
-The authentic retrospective run [38287654300](https://github.com/QSOLKCB/Trinite/actions/runs/38287654300)
-passed full CNR replay and retained complete results. **No biological or ETQ arm
-beat the v0.1.0 lattice:** block.0 hop sums all zero with only two distinct
-occupied anchors; at final, Menger/ETQ-101/ETQ-303/random all score 2,
-biological scores 4 and rewired biological scores 8. Five of eight final
-vectors also collide at receivers. ETQ's 303 exact event steps are all
-nonedges of its Cartesian lift, while a separate 303-step true graph walk
-visited 179 states. This is a strongly saturation-limited **negative
-descriptive outcome**, not an advantage for any structural hypothesis.
+The authoritative corrected [CNR-001 v2 run 38290658293](https://github.com/QSOLKCB/Trinite/actions/runs/38290658293)
+passed full genuine-input execution and read-only replay. The earlier
+[historical v1 run 38288002645](https://github.com/QSOLKCB/Trinite/actions/runs/38288002645)
+is retained separately: Codex exposed spurious no-op degree rewires in its
+control producer. Both exact requests and analyses are now permanently
+stored in the [lossless v1/v2 evidence packet](../fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz)
+with explicit immutable byte commitments, not just expiring Actions artifacts.
+The corrected v2 protocol pins original v0.1.0 scorer/E8 basis Git blobs and
+the transitive source closure. **No biological or ETQ arm beats the baseline:**
+all block.0 hop sums remain zero with only two occupied anchors; final
+Menger/ETQ-101/ETQ-303/random tie at 2, MaleCNS/revised rewired MaleCNS/
+rewired ETQ-303 score 4. **The ETQ-101 rewired control is ineligible**:
+its graph permits no effective rewiring under the frozen procedure.
+Five of eight final vectors collide at receivers. ETQ's exact 303 event
+steps are all nonedges of the Cartesian lift; the distinct genuine graph
+walk visits 179 states. These are strongly saturation-limited **negative
+descriptive findings**, not advantages for any structural hypothesis.
 
 This topology observation uses arbitrary receiver slot placement, not
 neurobiological homology, new learning, held-out generalization or a causal
