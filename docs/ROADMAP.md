@@ -23,6 +23,8 @@ Authorised by Trent Slade on 2026-10-09 after OPT: defer Phase 5 again to implem
 
 ## Next roadmap phase
 
+A separate [Phase 5 authorization preflight](PHASE-5-PREFLIGHT.md) now validates prospective source/data/protocol bindings, a complete paired geometry-off/on/null-control matrix, external trust-policy digest and distinct Ed25519 steward/verifier signatures. It produces only an immutable **blocked** receipt: neither a positive learning gate, full optimizer replay, independent confirmation, objective conformance, nor a geometry runner exists in this increment. No `phase5_ready` state is unlocked; measured prerequisites and explicit future authorization remain necessary.
+
 After the foundations learning-adequacy gate is measured and passes under a separately frozen protocol, scope Phase 5's controlled intervention: freeze the differentiable objective and acceptable quality/cost margins, then evaluate matched dense/ternary geometry-off/on lanes and auxiliary-loss controls. The first Phase 4 contrasts are negative, and reversal of both paths is an orientation-invariance diagnostic; neither supplies evidence of a reasoning benefit. Any revised order-scrambling or confirmatory observation needs a new protocol frozen before its target outcomes. Geometric loss remains zero until that reviewed increment. Curriculum intake still requires a separate source-admission and evaluation/exposure increment; no wholesale repository import.
 
 Each phase should be a reviewable increment with stated requirements, completed checks, and unresolved gates. A software fixture does not close an empirical milestone. “Implemented” and “measured” are separate statuses.
