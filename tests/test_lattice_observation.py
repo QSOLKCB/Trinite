@@ -96,7 +96,7 @@ class ActivationLatticeTests(unittest.TestCase):
                 self.assertEqual(set(layer['arms']), set(e.protocol()['controls']))
                 for arm in layer['arms'].values():
                     self.assertEqual(arm['anchor_count'], 20)
-                self.assertTrue(arm['anchor_identity'].startswith('sha256:'))
+                    self.assertTrue(arm['anchor_identity'].startswith('sha256:'))
                     self.assertEqual(arm['evaluation_count'], 8)
                     self.assertEqual(sum(arm['graph_hops']), arm['graph_hops_sum'])
                     self.assertEqual(arm['unique_anchors'] + arm['anchor_collisions'], 8)
