@@ -1,0 +1,27 @@
+{
+  "checks": {
+    "all_seven_published_commitments": true,
+    "complete_lifted_graph": true,
+    "complete_site_registry": true,
+    "event_document_canonical_bytes": true,
+    "exact_source_blobs": true
+  },
+  "commitments": {
+    "eventDocumentSha256": "d0ab60df11084a230e641d737ec22b2b2ca7d3a3ba5b8759ba669ac4d5254dc0",
+    "eventsSha256": "24190612457279577625c0dd2dd4df45bb41c820ee221b31a80f70fde165e3dc",
+    "liftedEdgesSha256": "7c2c820468e3492932ea2d97331114a0c9644d28f9048b864bc81abca84202cf",
+    "preservedV2AdjacencyFixtureSha256": "29ae0af5b1090c9de30f1efc25789060fb1791eb175d2afcd6888847f7fe6324",
+    "preservedV2BasisFixtureSha256": "97cfd1f087745422fd66d3640c7b86c3209593c4b53741018c08a5e9cdb15f6f",
+    "preservedV2DegreePotentialNumeratorsFixtureSha256": "517b9b86e07a1788cabc446be93e573d21719af3c1e0eeaedae00b81689c4468",
+    "siteRegistrySha256": "482ff966b77f02cc28b9d4d0fa4bcfc5e355af97dd35dfebafce4b28637cb05d"
+  },
+  "donor_commit": "27cfea99a3bab445c74b1aba5c38993fe931f568",
+  "donor_git_blobs": {
+    "etq-model.mjs": "47a4bbc26012344079380c7037b9ad91d4d4e6ca",
+    "etq-v3-canonical.mjs": "1540f59bb2913d122fb295ee428096cf4c5067f1",
+    "etq-v3-core.mjs": "7ea74655afdf3154e967de1618e82706bf0505ee"
+  },
+  "node_version": "v24.19.0",
+  "schema": "trinite.etq-donor-runtime-comparison.v1",
+  "scope": "Cross-language exact finite reference conformance; no neural observation or independent empirical replication."
+}

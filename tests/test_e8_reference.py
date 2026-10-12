@@ -24,14 +24,19 @@ def dot(a, b):
 class E8ReferenceTests(unittest.TestCase):
     def test_isolated_package_has_only_declared_standard_library_dependencies(self):
         package = ROOT / 'src/trinite/e8_reference'
-        self.assertEqual({p.name for p in package.glob('*.py')}, {'__init__.py'})
-        for node in ast.walk(ast.parse((package / '__init__.py').read_text())):
-            if isinstance(node, ast.ImportFrom) and node.level:
-                self.assertEqual((node.level, node.module), (2, 'contracts'))
-            elif isinstance(node, (ast.Import, ast.ImportFrom)):
-                names = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module]
-                for name in names:
-                    self.assertIn(name.split('.')[0], {'fractions', 'itertools'})
+        allowed = {'__init__': {(2, 'contracts')},
+                   'etq': {(2, 'contracts'), (1, 'root_orbits')}}
+        self.assertEqual({p.stem for p in package.glob('*.py')}, set(allowed))
+        for path in package.glob('*.py'):
+            for node in ast.walk(ast.parse(path.read_text())):
+                if isinstance(node, ast.ImportFrom) and node.level:
+                    names = [node.module] if node.module else [a.name for a in node.names]
+                    for name in names:
+                        self.assertIn((node.level, name), allowed[path.stem])
+                elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                    names = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module]
+                    for name in names:
+                        self.assertIn(name.split('.')[0], {'fractions', 'itertools', 'types'})
 
     def test_root_counts_norms_parity_and_negation(self):
         roots = roots_doubled()
@@ -136,7 +141,7 @@ class E8ReferenceTests(unittest.TestCase):
         self.assertEqual(report['second_difference_example']['order_2_hex'], [[2.0.hex(), 0.0.hex(), 0.0.hex()]])
         self.assertEqual(report['learning_benefit'], 'not measured')
         result = subprocess.run([sys.executable, '-S', '-c',
-                                 'import trinite.e8_reference; import sys; '
+                                 'import trinite.e8_reference.etq; import sys; '
                                  'assert not any(x in sys.modules for x in '
                                  '("torch", "numpy", "random", "trinite.model", "trinite.training"))'],
                                 env=env, capture_output=True, text=True, timeout=15)

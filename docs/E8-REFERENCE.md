@@ -1,7 +1,7 @@
 # E8 triality reference and second-difference proposal
 
 Requested by Trent on 2026-10-12, from the idea headed “E8 Triality + theta=pi/2
-+ [1,-2,1]” dated 23 July 2026. Status: exact reference calculator implemented;
++ [1,-2,1]” dated 23 July 2026. Status: exact reference calculator and ETQ-101/303 map implemented;
 neural mapping, target activation study and training intervention pending.
 
 ## What runs now
@@ -11,10 +11,16 @@ PYTHONPATH=src python scripts/run_e8_reference.py
 PYTHONPATH=src python -m unittest discover -s tests -p test_e8_reference.py -v
 ```
 
-Both commands work offline with the standard library. The calculator emits
+Print the complete ETQ-compatible finite map as canonical JSON:
+
+```sh
+PYTHONPATH=src python scripts/run_e8_reference.py --etq-map > etq-map.json
+```
+
+All commands work offline with the standard library. The calculator emits
 `trinite.e8-reference.v1` / `TRI-E8-REF-001`, labelled `ANALYTIC_REFERENCE`. It
 prints exact root/orbit counts, the declared triality numerator, an explicit
-3D receiver, the quarter-turn example and a synthetic second difference using
+3D receiver, the quarter-turn example the ETQ reference commitments and a synthetic second difference using
 the existing pinned geometry kernel. It does not load a checkpoint or inspect
 neural activations. This output is mathematical conformance, not a source-bound
 neural experiment, PROVENANCE assurance receipt or learning result.
@@ -127,8 +133,8 @@ specifically its `e8-core.js` and `docs/MATHEMATICAL_RECEIVERS.md`. This is a ne
 Python implementation of the declared formulas, not a vendored JavaScript
 runtime. Donor and Trinite are MPL-2.0; Trent Slade / QSOL-IMC attribution and
 SPDX notices are retained in the new source. No donor material is admitted as
-training data, and no ETQ selector, sonification, physics or quantum protection
-claim is imported.
+training data. The compatible finite ETQ selector/events below are reference
+software; no rendered audio, physics or quantum protection claim is imported.
 
 Affected requirements: TRI-I01/I05/I09/I12/I14. Numerical model, native training,
 existing `TRI-GEO-OBS-001` metrics/controls and their byte-bound producers remain
@@ -138,9 +144,95 @@ imports only contracts and
 standard-library exact arithmetic; existing model/training modules acquire no
 new imports. Root discovery and the existing CPU CI include the reference tests.
 
-The eleven new checks cover root families/parity/norms, all root images and all
+The eleven E8 checks cover root families/parity/norms, all root images and all
 57,600 pairwise inner products, exact full-space order/orthogonality, a known
 vector/spinor cycle, complete disjoint orbits, quarter-turn closure, lossy
 projection, input bounds/immutability, analytic stencil cases and the actual
 launcher without optional site packages. These establish software conformance,
 not an improvement in AI reasoning.
+
+## ETQ-compatible state map
+
+Trent requested SONIFICATION compatibility on 2026-10-12. The additional
+`e8_reference/etq.py` implements the finite ETQ map from
+[SONIFICATION at 27cfea9](https://github.com/QSOLKCB/SONIFICATION/tree/27cfea99a3bab445c74b1aba5c38993fe931f568).
+Its documentation is v3.0.1; the event runtime contract remains **v3.0.0** and
+its preserved base is **ETQ-101 v2.0.0**. This is a new Python implementation
+using the already implemented exact root/triality functions. Runtime remains
+standard-library only and imports no donor JavaScript, model or RNG.
+
+| Layer | Exact map now implemented | Meaning |
+| --- | --- | --- |
+| Selected roots | First two fixed roots, then first 33 complete triality triples | 101 distinct root labels in the donor's canonical order |
+| Internal sectors | `j=0,1` are singlets; `j=2+3m+q`, `m=0..32`, `q=0..2` | `C² direct-sum (C³³ tensor C³)`; 33 direct-sum blocks |
+| SCL operator | Singlets zero, each internal block `diag(1,−2,1)` | A diagonal observable, distinct from a row stencil on trajectory samples |
+| Phase and cycle | `F_3=X_3 exp(−i pi D_3/2)` | Phase first, then cyclic label shift; multipliers `[-i,−1,−i]` |
+| External fibre | `tensorIndex=3j+a`, `a=0,1,2` for every site | Independent fibre, including on the two internal singlets; 303 states |
+| Support traversal | `(j,a) -> (j+1 mod101,a+1 mod3)` | Selector-order shift; exact order 303, with phase closure |
+| Root graph | Selected adjacency from doubled inner product 4; Cartesian lift with `C_3` | 1,687 base edges, 5,364 lifted edges, lifted degrees 24–57 |
+| Symbolic note code | Singlets 13/113; internal `(m,q)` gives `14+33q+m` | Preserved integer labels; no acoustic tuning or audio renderer |
+
+This supplies the precise ETQ meaning of the proposed combination:
+
+```text
+D_3 = diag(1,−2,1)
+U_D(pi/2) = diag(−i,−1,−i)
+F_3 |q> = exp(−i pi d_q/2) |q+1 mod3>
+F_3³ = I, since (−i)(−1)(−i) = 1.
+```
+
+Here theta is a **phase angle**, distinct from the spatial z quarter-turn in
+the earlier demonstration. Phase labels are exact Gaussian-unit exponents
+`[3,2,3]` modulo four; no rounded complex arithmetic is needed. The internal
+`F_Q` fixes both singlets. ETQ-303 instead uses the separate selector-order
+ring shift `R_101 tensor F_3`; it is not the internal root triality permutation.
+The CRT inverse `n=j+101*(2*(a−j mod3) mod3)` reconstructs the event index.
+
+The compatible event document contains all 101 labelled sites and all 303
+events, with internal q and external a kept distinct. It does not assert that
+the 303-event ordering is a graph walk. The lifted graph is available through
+`etq.lifted_graph()`. The canonical JSON serializer delegates to Trinite's
+strict integer-only serializer and removes its final LF for ETQ compatibility;
+the existing serializer/protocol bytes are unchanged.
+
+All **seven** published SONIFICATION commitments match: selected basis,
+adjacency, labelled degree-potential numerators, site registry, event sequence,
+lifted edge list and the complete canonical event document. The latter has the
+published domain-separated SHA-256
+`d0ab60df11084a230e641d737ec22b2b2ca7d3a3ba5b8759ba669ac4d5254dc0`.
+The [donor commitments](../fixtures/e8-etq-reference/donor-commitments.json) bind
+the exact upstream canonical fixture path and Git blob. The actual unmodified
+pinned donor Node runtime was also executed: canonical event bytes, every
+lifted graph field/edge and every site registry entry agree with Python. Its
+[comparison record](../fixtures/e8-etq-reference/donor-runtime-comparison.json)
+identifies the source blobs and Node version. This is cross-language finite
+software conformance, not an independent neural or empirical replication.
+
+Ten additional ETQ checks preserve the published commitments, internal/fibre
+separation, complete phase/order closure, exact address inverses, graph
+product/triality invariance, symbolic note bijection, input domains, immutability,
+large-power composition and the actual offline canonical exporter. Fixtures
+are retained expectations; tests never regenerate them.
+
+This port covers the finite map, not SONIFICATION's full implementation-identity
+bundle, receipt/export pipeline, D4-TIA covariant engine, continuous generator
+simulation or physical dynamics. Its SONIFICATION **event payload** matches;
+a Trinite producer would have a separate source identity and custody receipt.
+
+### Later neural coupling
+
+An AI hidden vector does not automatically have 101 ETQ amplitudes or 303 tensor
+coordinates. A future adapter must explicitly define a read-only encoder from
+selected hidden states to site scores/amplitudes, its dimension/capacity and
+normalization, and whether/how it is fitted on training-only inputs. Keep the
+101 root labels, internal q and independent external a typed throughout; a
+303-output encoder is a separate capacity choice, not a free reinterpretation
+of a 101-output encoder. Preserve native hidden-state diagnostics and compare
+matched shuffled-label and non-E8 receivers.
+
+Applying a phase kick alone leaves diagonal populations unchanged. A phase
+experiment therefore needs a declared phase-sensitive observable or subsequent
+noncommuting operation; population differences cannot be attributed to the
+kick itself. Any learned head, auxiliary loss or changed forward operation
+requires a separately frozen intervention protocol with quality/cost controls.
+No such encoder, fitting, training or activation observation is enabled here.

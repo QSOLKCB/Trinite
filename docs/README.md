@@ -25,7 +25,7 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [PHASE-2.md](PHASE-2.md) | Reference-model interfaces, numerical checks, and limits |
 | [PHASE-3.md](PHASE-3.md) | Native-training protocol, replay/observer evidence, and limits |
 | [GEOMETRY-PROTOCOL.md](GEOMETRY-PROTOCOL.md) | Protocol frozen before the first target geometry outcomes |
-| [E8-REFERENCE.md](E8-REFERENCE.md) | Exact embedded D4 triality, declared display rotation and second-difference proposal; no neural intervention |
+| [E8-REFERENCE.md](E8-REFERENCE.md) | Exact E8/ETQ-101/303 map, phase cycles and second-difference proposal; no neural intervention |
 | [GEOMETRY.md](GEOMETRY.md) | Capture, numerical adapter, request binding, and artifact contracts |
 | [PHASE-4.md](PHASE-4.md) | Geometry conformance, observed contrasts, and control limitations |
 | [OPTIMIZATION.md](OPTIMIZATION.md) | Exact reuse, CI coverage, local timing evidence and rollback contracts |
