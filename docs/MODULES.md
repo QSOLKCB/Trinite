@@ -196,6 +196,17 @@ Historical fold-exposure modules and evidence remain unchanged. See
 `maths_retention.py` composes the existing admitted pooled state with two ranked training streams and a separately frozen rehearsal protocol. It owns source/request/schedule/checkpoint context, actual exposure diagnostics and fresh report assembly. Admission, initialization, numerical updates, safe tensor/progress handling, prompt-only scoring, drift diagnostics and closed PROVENANCE verification delegate to their existing authoritative operations. `scripts/run_maths_retention.py` owns fixed fresh workers and failure retention. The unique training diagnostic view stays separate from scheduled rehearsal visits. See [MATHS-RETENTION.md](MATHS-RETENTION.md).
 
 
+## Exact E8 reference
+
+`e8_reference.py` owns bounded exact root generation, the embedded D4 × D4
+triality, complete root orbits and a declared display projection/quarter-turn.
+It imports only contracts and the standard library. `run_e8_reference.py` prints
+analytic reference examples and delegates the synthetic second difference to
+the existing pinned `geometry.metrics`. No model capture, neural mapping,
+training dependency or new geometry kernel is introduced. See
+[E8-REFERENCE.md](E8-REFERENCE.md).
+
+
 ## Retention evidence v2
 
 The isolated `retention_v2/` package preserves v1's flat source closure. `spec.py`
