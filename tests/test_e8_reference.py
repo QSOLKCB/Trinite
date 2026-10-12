@@ -1,3 +1,4 @@
+import ast
 import copy
 from fractions import Fraction
 import json
@@ -21,6 +22,17 @@ def dot(a, b):
 
 
 class E8ReferenceTests(unittest.TestCase):
+    def test_isolated_package_has_only_declared_standard_library_dependencies(self):
+        package = ROOT / 'src/trinite/e8_reference'
+        self.assertEqual({p.name for p in package.glob('*.py')}, {'__init__.py'})
+        for node in ast.walk(ast.parse((package / '__init__.py').read_text())):
+            if isinstance(node, ast.ImportFrom) and node.level:
+                self.assertEqual((node.level, node.module), (2, 'contracts'))
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                names = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module]
+                for name in names:
+                    self.assertIn(name.split('.')[0], {'fractions', 'itertools'})
+
     def test_root_counts_norms_parity_and_negation(self):
         roots = roots_doubled()
         self.assertEqual(len(roots), 240)

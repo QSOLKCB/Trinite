@@ -9,7 +9,7 @@ Roots use doubled integer coordinates; general linear actions use Fractions.
 from fractions import Fraction
 from itertools import combinations, product
 
-from .contracts import ContractError
+from ..contracts import ContractError
 
 DONOR_COMMIT = '292cc9a41dd08bb8bc48b060c9e36157dbe3d1f0'
 REFERENCE_ID = 'TRI-E8-REF-001'

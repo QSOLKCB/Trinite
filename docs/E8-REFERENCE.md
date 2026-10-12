@@ -19,7 +19,7 @@ the existing pinned geometry kernel. It does not load a checkpoint or inspect
 neural activations. This output is mathematical conformance, not a source-bound
 neural experiment, PROVENANCE assurance receipt or learning result.
 
-`src/trinite/e8_reference.py` owns the new exact rational algebra. The thin
+`src/trinite/e8_reference/__init__.py` owns the new exact rational algebra. The thin
 launcher delegates order-two differences to `geometry.metrics`; no alternative
 geometry kernel, neural updater or scorer is introduced. The model, optimizer,
 old geometry protocol, producer snapshots and retained outcomes are unchanged.
@@ -133,11 +133,12 @@ claim is imported.
 Affected requirements: TRI-I01/I05/I09/I12/I14. Numerical model, native training,
 existing `TRI-GEO-OBS-001` metrics/controls and their byte-bound producers remain
 compatible and unchanged. This reference has a separate identity; it does not
-revise that historical protocol. The new module imports only contracts and
+revise that historical protocol. The isolated nested package preserves the frozen flat v1 source inventory and
+imports only contracts and
 standard-library exact arithmetic; existing model/training modules acquire no
 new imports. Root discovery and the existing CPU CI include the reference tests.
 
-The ten new checks cover root families/parity/norms, all root images and all
+The eleven new checks cover root families/parity/norms, all root images and all
 57,600 pairwise inner products, exact full-space order/orthogonality, a known
 vector/spinor cycle, complete disjoint orbits, quarter-turn closure, lossy
 projection, input bounds/immutability, analytic stencil cases and the actual

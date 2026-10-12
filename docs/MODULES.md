@@ -198,7 +198,7 @@ Historical fold-exposure modules and evidence remain unchanged. See
 
 ## Exact E8 reference
 
-`e8_reference.py` owns bounded exact root generation, the embedded D4 × D4
+`e8_reference/` owns bounded exact root generation, the embedded D4 × D4
 triality, complete root orbits and a declared display projection/quarter-turn.
 It imports only contracts and the standard library. `run_e8_reference.py` prints
 analytic reference examples and delegates the synthetic second difference to
