@@ -85,6 +85,8 @@ class LatticeScaffoldTests(unittest.TestCase):
         self.assertIn('scripts/generate_lattice_scaffold.py', original['source'])
         self.assertIn('src/trinite/lattice/scaffold.py', original['source'])
         self.assertIn('src/trinite/lattice/protocol.json', original['source'])
+        self.assertIn('src/trinite/__init__.py', original['source'])
+        self.assertIn('src/trinite/lattice/__init__.py', original['source'])
         with self.assertRaises(ContractError): verify(b'x' * (2 * 1024 * 1024 + 1))
         with self.assertRaises(ContractError): verify(json_bytes(original).replace(b'\n', b'  \n'))
 
