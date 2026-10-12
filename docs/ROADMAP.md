@@ -455,3 +455,26 @@ Honor the donor's CC BY 4.0 attribution and contribution records for any adapted
 material. Training intake still requires Trinite's file-level rights, source and
 exposure admission. Measurement, intervention, numerical calibration, security,
 learning adequacy and release claims remain separate reviewed gates.
+
+
+## E8/ETQ reference map and future neural observation
+
+Requested by Trent on 2026-10-12. The [exact reference calculator](E8-REFERENCE.md)
+implements the 240 doubled-coordinate roots and the pinned E8 laboratory's
+embedded D4 × D4 order-three action, preserving all roots/inner products. It
+declares a separate 3D receiver and +pi/2 z display rotation. The `[1,−2,1]`
+stencil reuses the existing second-difference metric in a synthetic example.
+The ETQ-compatible extension preserves SONIFICATION's canonical 101-site
+selector and 303-state independent-fibre map, exact phase cycles, graph lift,
+symbolic note labels and all seven published finite-payload commitments.
+Actual donor-runtime event/graph/registry comparison agrees exactly. Status:
+analytic software reference/map implemented; no neural observation or learning
+benefit measured. Existing geometry and learning gates stay unchanged.
+
+A neural study needs a separately frozen source-bound capture/projection
+protocol with training-only fitting, units/alignment and matched controls before
+target outcomes. Native second differences and an explicit E8 anchor receiver
+are candidate diagnostics, with shuffled-order/orbit/anchor and matched random
+receivers as declared controls. Exact symmetry or a pleasing projection does
+not establish a learned representation. Phase 5 and its original learning
+prerequisites still govern any geometry-on training experiment.
