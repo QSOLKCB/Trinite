@@ -6,7 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from trinite.contracts import ContractError, identity, json_bytes
-from trinite.lattice_scaffold import MAX_ARTIFACT_BYTES, construct, verify
+from trinite.lattice.scaffold import MAX_ARTIFACT_BYTES, construct, verify
 
 
 def safe_path(value):
