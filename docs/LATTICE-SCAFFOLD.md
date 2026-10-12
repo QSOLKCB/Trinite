@@ -6,7 +6,7 @@ projection, training, geometry loss or evidence of reasoning benefit.
 
 ## Frozen construction
 
-- Protocol: `src/trinite/lattice-scaffold-protocol.json`
+- Protocol: `src/trinite/lattice/protocol.json`
 - Identity: `sha256:3fb56ed2e0ce54872b8e8e63e5e22d044913ff891c742379ba07ae1b3b21f4f0`
 - Geometry: **Menger-style 20/27 retention**. Children have digits
   `(x,y,z)` from `0..2`; retain a child if *at most one digit is 1*.
@@ -26,6 +26,10 @@ projection, training, geometry loss or evidence of reasoning benefit.
   diagonal/corner/long-range edges. `edge_identity` hashes the exact
   canonical edge list. Integer degree histograms and level counts are
   retained for independent checking.
+
+The scaffold lives in the standalone `trinite.lattice` subpackage. It adds no
+flat `src/trinite/*.py` or `src/trinite/*.json` file: these filename sets
+belong to preserved historical request source closures and MUST remain exact.
 
 The full source receipt binds the existing Trinite canonical JSON/identity
 contract, the new construction, its canonical protocol and the fixed launcher.
