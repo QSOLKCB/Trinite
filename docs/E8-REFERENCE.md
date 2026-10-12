@@ -208,11 +208,47 @@ lifted graph field/edge and every site registry entry agree with Python. Its
 identifies the source blobs and Node version. This is cross-language finite
 software conformance, not an independent neural or empirical replication.
 
+The original v1 comparison record is preserved as historical evidence. The
+review fix adds [v2 execution evidence](../fixtures/e8-etq-reference/donor-runtime-evidence-v2.json)
+and [complete donor stdout](../fixtures/e8-etq-reference/donor-runtime-output.json).
+The exact three donor modules, published canonical fixture and MPL-2.0 licence
+are retained under `fixtures/e8-etq-reference/donor/`. The offline verifier checks
+their Git blob identities before executing those snapshot bytes in a temporary
+directory. Its small JavaScript driver calls the upstream selector, graph,
+registry, event builder, serializer and hash functions directly. No npm package
+or network access is used. The seven expectations come from the byte-verified
+upstream fixture, rather than trusting the separately transcribed commitments.
+
+```sh
+PYTHONPATH=src python scripts/check_etq_donor.py
+PYTHONPATH=src python -m unittest discover -s tests/etq_upstream -v
+```
+
+These **additional evidence checks require Node** (the retained execution and
+CI use v24.19.0); the Python calculator/exporter and original root suite remain
+standard-library only. A separate `ETQ donor runtime conformance` job runs on
+every PR. Missing Node, execution failure, altered source, differing complete
+payloads, incorrect historical flags, changed producer identities or altered
+retained output fail the check; there is no skip or fixture-refresh fallback.
+Every verification runs Node anew, compares full event bytes, every graph field
+and registry entry with Python, validates all seven hashes, and checks the v1
+record against those results. The v2 record binds donor and comparison-producer
+files, the original records and complete stdout with byte lengths and SHA-256.
+It is a read-only conformance check, not a signed custody receipt or a replay of
+the unretained original invocation. The current Node version is printed separately
+from the historical v1 version. This strengthens TRI-I07/I08/I14 evidence;
+the finite map and all historical training/geometry producers stay compatible.
+
 Ten additional ETQ checks preserve the published commitments, internal/fibre
 separation, complete phase/order closure, exact address inverses, graph
 product/triality invariance, symbolic note bijection, input domains, immutability,
 large-power composition and the actual offline canonical exporter. Fixtures
 are retained expectations; tests never regenerate them.
+
+The separate nine-test donor suite includes real upstream execution and
+corruption cases for every donor blob, copied commitments, historical flags and
+metadata, producer/output identities, retained stdout, complete payloads with
+unchanged hash labels, and missing Node. Neither suite rewrites expected evidence.
 
 This port covers the finite map, not SONIFICATION's full implementation-identity
 bundle, receipt/export pipeline, D4-TIA covariant engine, continuous generator
