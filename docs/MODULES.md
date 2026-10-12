@@ -249,3 +249,13 @@ safe tensor reader, admission, criteria and custody operations. The fixed
 `run_maths_task_balance.py` and `archive_maths_task_balance.py` scripts own the
 process and archival entrypoints. No existing producer is modified or rebound.
 See [MATHS-TASK-BALANCE.md](MATHS-TASK-BALANCE.md).
+
+## Recursive integer geometry reference
+
+`lattice_scaffold.py` independently implements the frozen 3×3×3 Menger-style
+address hierarchy, 20-child occupancy rule and exact six-neighbour leaf graph.
+The standalone `generate_lattice_scaffold.py` exclusively creates a canonical
+source-bound artifact or independently reconstructs it for read-only verification.
+This pure-standard-library module owns no trained mapping, activation fitting,
+loss, geometry intervention or existing producer. See
+[LATTICE-SCAFFOLD.md](LATTICE-SCAFFOLD.md).
