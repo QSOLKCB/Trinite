@@ -511,8 +511,18 @@ under CC BY 4.0, source blobs pinned, and the authentic ingestion tested in
 its isolated hash-locked reader workflow. Full ETQ-303 303-state event/phase
 closure is verified separately from a true 303-step lifted-graph walk.
 
-This is a topology/observation test with arbitrary receiver slot placement,
-not a neurobiological model, new learning, held-out generalization, causal
-mechanism or geometry-on intervention. Record both positive/negative outcomes
-and baseline differences from the same capture; do not silently unlock Phase 5,
-format selection, device benchmarking, scaling or release-readiness gates.
+The authentic retrospective run [38287654300](https://github.com/QSOLKCB/Trinite/actions/runs/38287654300)
+passed full CNR replay and retained complete results. **No biological or ETQ arm
+beat the v0.1.0 lattice:** block.0 hop sums all zero with only two distinct
+occupied anchors; at final, Menger/ETQ-101/ETQ-303/random all score 2,
+biological scores 4 and rewired biological scores 8. Five of eight final
+vectors also collide at receivers. ETQ's 303 exact event steps are all
+nonedges of its Cartesian lift, while a separate 303-step true graph walk
+visited 179 states. This is a strongly saturation-limited **negative
+descriptive outcome**, not an advantage for any structural hypothesis.
+
+This topology observation uses arbitrary receiver slot placement, not
+neurobiological homology, new learning, held-out generalization or a causal
+geometry mechanism. Do not unlock Phase 5, format selection, device
+benchmarks, scaling or release readiness. The historical v0.1.0 producer
+and its earlier negative records remain unchanged.
