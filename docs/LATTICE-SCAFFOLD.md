@@ -44,6 +44,7 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_lattice_scaffold.py
 ```
 
 Generation exclusively creates the output and refuses overwrites. Verification
+reads at most 2 MiB and rejects larger/unbounded input before JSON parsing. Verification
 is read-only and reconstructs the whole expected canonical artifact from its
 depth and **current exact source/protocol bytes**; a mutated edge, parent,
 count, source receipt, claim flag or noncanonical JSON fails. CLI symlink paths
