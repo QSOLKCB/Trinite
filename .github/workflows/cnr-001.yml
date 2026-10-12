@@ -54,6 +54,92 @@ jobs:
           print('ETQ-303 full walk/event:',report['graph_provenance']['etq_diagnostics'])
           print('v0.1.0 baseline:',report['baseline'])
           PY
+      - name: Emit authenticated permanent evidence packet for review
+        if: success()
+        env:
+          CNR_HISTORY_TOKEN: {{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64, gzip, hashlib, io, json, os, tarfile, urllib.request, zipfile
+          from pathlib import Path
+
+          def sha(data):
+              return hashlib.sha256(data).hexdigest()
+
+          store = Path("fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz")
+          run_temp = Path(os.environ["RUNNER_TEMP"])
+          new_names = ("cnr-request.json", "cnr-analysis.json",
+                       "cnr-freeze-receipt.json", "cnr-run-receipt.json",
+                       "cnr-verification.json")
+          v2 = {"v2/" + n: (run_temp / n).read_bytes() for n in new_names}
+
+          # Once the packet is retained, verify it against the current replay
+          # and reuse it without relying on a future-expiring Actions artifact.
+          if store.is_file():
+              packed = store.read_bytes()
+              with tarfile.open(fileobj=io.BytesIO(packed), mode="r:gz") as tar:
+                  entries = {e.name: tar.extractfile(e).read() for e in tar if e.isfile()}
+              for name, raw in v2.items():
+                  if entries.get(name) != raw:
+                      raise RuntimeError("archived CNR v2 evidence differs from fresh source-bound replay: "+name)
+              meta = json.loads(entries["MANIFEST.json"])
+              if any(sha(entries[name]) != record["sha256"] or
+                     len(entries[name]) != record["bytes"]
+                     for name, record in meta["entries"].items()):
+                  raise RuntimeError("archived CNR digest manifest changed")
+          else:
+              url = ("https://api.github.com/repos/" + os.environ["GITHUB_REPOSITORY"]
+                     + "/actions/artifacts/11763893133/zip")
+              # Do not forward the private read token to GitHub's external
+              # redirected artifact-storage host.
+              class NoRedirect(urllib.request.HTTPRedirectHandler):
+                  def redirect_request(self, req, fp, code, msg, headers, target):
+                      return None
+              opener = urllib.request.build_opener(NoRedirect)
+              req = urllib.request.Request(url, headers={
+                  "Authorization": "Bearer " + os.environ["CNR_HISTORY_TOKEN"],
+                  "Accept": "application/vnd.github+json"})
+              try:
+                  opener.open(req)
+                  raise RuntimeError("unexpected direct artifact response")
+              except urllib.error.HTTPError as error:
+                  if error.code != 302 or not error.headers.get("Location"):
+                      raise RuntimeError("historical CNR artifact unavailable") from error
+                  location = error.headers["Location"]
+              if not location.startswith("https://"):
+                  raise RuntimeError("unsafe historical artifact redirect")
+              with urllib.request.urlopen(location, timeout=30) as response:
+                  old_raw = response.read(1024*1024+1)
+              if len(old_raw) > 1024*1024:
+                  raise RuntimeError("oversize historical packet")
+              with zipfile.ZipFile(io.BytesIO(old_raw)) as old_zip:
+                  original = {i.filename: old_zip.read(i.filename)
+                              for i in old_zip.infolist()}
+              if (sha(original["cnr-request.json"]) !=
+                  "5363b6e5548579e1581434756e7c73a02729ee6d0e7056e4776f319c07d80b86"
+                  or sha(original["cnr-analysis.json"]) !=
+                  "0753d5d538aa2c18715b659148190e67d76b460996490def7c6e8c4b1230a11b"):
+                  raise RuntimeError("historical CNR v1 identity changed")
+              entries = {"v1/"+name: raw for name,raw in original.items() if name in new_names}
+              entries.update(v2)
+              manifest = {"schema":"trinite.cnr-001-evidence-archive.v1",
+                          "history":{"v1_workflow":38288002645,"v2_workflow":os.environ["GITHUB_RUN_ID"]},
+                          "entries":{name:{"bytes":len(raw),"sha256":sha(raw)}
+                                     for name,raw in sorted(entries.items())}}
+              entries["MANIFEST.json"] = (json.dumps(manifest,sort_keys=True,
+                                                       separators=(",",":"))+"\n").encode()
+              out = io.BytesIO()
+              with gzip.GzipFile(fileobj=out,mode="wb",mtime=0,filename="") as gz:
+                  with tarfile.open(fileobj=gz,mode="w|") as tar:
+                      for name,raw in sorted(entries.items()):
+                          ti = tarfile.TarInfo(name)
+                          ti.size=len(raw); ti.mtime=0
+                          ti.mode=0o644; ti.uid=ti.gid=0
+                          tar.addfile(ti,io.BytesIO(raw))
+              packed=out.getvalue()
+          print("CNR_EVIDENCE_SHA256:"+sha(packed))
+          print("CNR_EVIDENCE_B64:"+base64.b64encode(packed).decode("ascii"))
+          PY
       - name: Retain all research results, including failure logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
