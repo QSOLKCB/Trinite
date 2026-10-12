@@ -35,6 +35,27 @@ class CNR001FullBiology(unittest.TestCase):
         self.assertEqual(core.protocol()[0]["schema"],"trinite.cnr-001-protocol.v3")
         self.assertEqual(report["schema"],"trinite.cnr-001-analysis.v3")
         self.assertEqual(core.attest_reader()[0].__name__,"pyarrow")
+        # The newly frozen v3 archive must regenerate bit-for-bit under the
+        # current true hash-locked reader and complete source contract.
+        from importlib.util import spec_from_file_location, module_from_spec
+        from trinite.contracts import json_bytes
+        import hashlib
+        spec=spec_from_file_location("cnr001_runner",ROOT/"scripts/run_cnr001.py")
+        module=module_from_spec(spec);spec.loader.exec_module(module)
+        with tarfile.open(ROOT/"fixtures/cnr-001-evidence/cnr001-v3.tar.gz","r:gz") as archived:
+            request=archived.extractfile("v3/cnr-request.json").read()
+            analysis=archived.extractfile("v3/cnr-analysis.json").read()
+            receipt=archived.extractfile("v3/cnr-verification.json").read()
+        self.assertEqual(request,json_bytes(module.expected_request()))
+        req_id="sha256:"+hashlib.sha256(request).hexdigest()
+        expected=core.analyze();expected["request_identity"]=req_id
+        self.assertEqual(analysis,json_bytes(expected))
+        with tempfile.TemporaryDirectory() as tmp:
+            rpath=Path(tmp)/"request.json"; apath=Path(tmp)/"analysis.json"
+            rpath.write_bytes(request); apath.write_bytes(analysis)
+            got=module.verify(rpath,req_id,apath,"sha256:"+hashlib.sha256(analysis).hexdigest())
+            self.assertEqual(json_bytes(got),receipt)
+
 
 
 if __name__=="__main__":
