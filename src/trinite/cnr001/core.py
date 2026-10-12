@@ -30,7 +30,7 @@ SOURCE_PATHS = (
     "src/trinite/reference_geometry.py", "src/trinite/reference_evidence.py",
     "src/trinite/reference_inputs.py", "src/trinite/lattice_observation/protocol.json",
     "src/trinite/lattice/protocol.json", "fixtures/cnr-001-source/metadata.json",
-    "requirements.connectome.lock",
+    "requirements.connectome.lock", ".github/workflows/cnr-001.yml",
 )
 BOUND = 2 * 1024 * 1024
 ARCHIVE = "sha256:666e8f4d5b49da60aada4a26acbfa6001a5a8b8b62447c1ddfd3a5613cfd8721"
