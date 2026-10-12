@@ -411,17 +411,18 @@ outcomes must follow publication of the frozen producer. This increment does
 not clear original fold/composed adequacy, fresh confirmation, Phase 5, format,
 scaling or release gates. Previous negative results and producers stay intact.
 
-## Future recursive 3×3×3 geometry scaffold
+## Exact recursive 3×3×3 geometry scaffold
 
-Requested by Trent on 2026-10-12: investigate a bounded recursive 3×3×3
-Sierpiński-style cubic lattice as a concrete scaffold for representation mapping.
-Status: future hypothesis, not an implemented model mechanism or enabled loss.
+Requested by Trent on 2026-10-12. The separately frozen [integer-only lattice scaffold](LATTICE-SCAFFOLD.md)
+implements a bounded Menger-style 20/27 retention rule at depths 0–3,
+parent/child occupancy identities, face adjacency and read-only source-bound
+verification. **This is an analytic address/graph reference, not a neural
+mapping or enabled geometry loss.**
 
-Freeze the exact cell-retention mask, recursion depth, integer coordinate/index
-convention, adjacency, family grouping and resource bounds before generating
-the scaffold. A Menger-style cubic construction is one candidate; the intended
-retained-cell rule must be specified explicitly rather than inferred from the
-name. Preserve recursive parent/child and occupancy identities.
+The mask, recursion depth, integer coordinate/index order, parent groups,
+face adjacency and resource ceiling are now fixed in lattice protocol v1;
+the scaffold is deterministically reconstructible without training or Torch.
+Other masks or control geometries require separate versioned specifications.
 
 Define and freeze how selected model activations map to these anchors, including
 layer/token selection, normalization, dimension reduction or learned mapping,
