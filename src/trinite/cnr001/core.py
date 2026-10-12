@@ -6,7 +6,7 @@ bounded input decoder and never a numerical learning backend.
 """
 from collections import deque
 import hashlib
-import math
+import json
 from pathlib import Path
 
 from ..contracts import ContractError, exact_keys, identity, integer, json_bytes, parse_json
@@ -88,12 +88,30 @@ def source_data():
         if git_blob(raw) != expected:
             raise ContractError("MaleCNS source blob changed: " + name)
         result[name] = raw
-    meta = parse_json(result["metadata.json"])
+    # Third-party JSON includes a finite min_confidence decimal (0.5).
+    # The upstream bytes are already pinned by Git blob. Preserve decimals as
+    # exact strings rather than weakening Trinite's integer-only JSON contract.
+    def unique_pairs(pairs):
+        out = {}
+        for key, value in pairs:
+            if key in out:
+                raise ContractError("duplicate upstream metadata key")
+            out[key] = value
+        return out
+    try:
+        meta = json.loads(result["metadata.json"].decode("utf-8"),
+                          object_pairs_hook=unique_pairs,
+                          parse_float=lambda value: value,
+                          parse_constant=lambda value: (_ for _ in ()).throw(
+                              ContractError("nonfinite upstream metadata")))
+    except (ValueError, UnicodeDecodeError) as error:
+        raise ContractError("invalid upstream MaleCNS metadata") from error
     if (meta["schema_version"] != 1 or meta["num_nodes"] != 100
             or meta["num_edges"] != 3630
             or meta["provenance"]["dataset"] != "male-cns:v1.0"
             or meta["provenance"]["license"] != "CC-BY-4.0"
-            or meta["provenance"]["filters"]["min_synapses"] != 5):
+            or meta["provenance"]["filters"]["min_synapses"] != 5
+            or meta["provenance"]["filters"]["min_confidence"] != "0.5"):
         raise ContractError("foreign MaleCNS source metadata")
     return result, meta
 
@@ -204,7 +222,7 @@ def rewired(edges, seed=29):
             selected.difference_update((a, b))
             selected.update(candidate); swaps += 1
     result = sorted([list(x) for x in selected])
-    if len(result) != len(edges) or sorted(degrees(result)) != sorted(degrees(edges)):
+    if len(result) != len(edges) or degrees(result) != degrees(edges):
         raise ContractError("rewiring broke edge count or degree multiset")
     return result, swaps
 
