@@ -424,14 +424,16 @@ face adjacency and resource ceiling are now fixed in lattice protocol v1;
 the scaffold is deterministically reconstructible without training or Torch.
 Other masks or control geometries require separate versioned specifications.
 
-Define and freeze how selected model activations map to these anchors, including
-layer/token selection, normalization, dimension reduction or learned mapping,
-training-only fitting and held-out probes. Compare against matched nonrecursive,
-shuffled-hierarchy and random-anchor controls with declared counts and mapping
-capacity. A visually orderly map does not establish improved reasoning or a
-causal mechanism. Separate geometry measurement from any training intervention;
-geometry loss remains zero until its own reviewed Phase 5 protocol and learning
-prerequisites are met.
+The next separately frozen [activation-to-lattice observation](ACTIVATION-LATTICE.md)
+uses the exact previously retained *trained native* reference capture packet,
+fixed signed 64→3 projection, calibration restricted to the first source family,
+and second-family measurement. It compares 20-anchor/edge-matched Menger,
+nonrecursive, shuffled-topology and random-anchor conditions. This
+**retrospective, training-exposed** experiment is exploratory rather than
+prospective or independent, and does not train a neural mapping. Equal/negative
+results and every control remain visible. A visually orderly mapping does not
+establish reasoning or a mechanism; Phase 5 geometry loss stays zero until
+fresh learning adequacy and a separately reviewed intervention protocol.
 
 ## Future RES=RAG / CSNP measurement integration
 
