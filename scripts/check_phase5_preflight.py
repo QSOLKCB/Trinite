@@ -12,7 +12,8 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from trinite.contracts import ContractError, exact_keys, identity, json_bytes, parse_json
-from phase5_preflight.preflight import assess, read_json, safe_read, validate_packet
+from phase5_preflight.preflight import (assess, read_json, safe_read, validate_packet,
+    validate_signer_inputs, recheck_request_window)
 
 MAX_LOG_BYTES = 16384
 FOUNDATIONS_STDOUT_LIMIT = 1024 * 1024
@@ -220,8 +221,13 @@ def main(argv=None):
         # (exit 1). Prevent arbitrary or tampered proposals from being archived
         # as otherwise valid preflight packets.
         validate_packet(packet)
+        validate_signer_inputs(signatures, policy)
+        # The signature subprocess must not inherit TMPDIR from retained
+        # evidence, and cannot use a different root from the foundation worker.
+        scratch_parent = _scratch_outside(foundations_root)
         started = utc_now()
-        result = assess(packet, signatures, policy, args.trust_policy_identity, now=started)
+        result = assess(packet, signatures, policy, args.trust_policy_identity,
+                        now=started, scratch_parent=scratch_parent)
         prior, prior_error, diagnostic = None, None, None
         if foundations_root and all(result['checks'][key] for key in (
                 'protocol_and_matrix', 'external_policy_identity', 'signature_quorum', 'request_window')):
@@ -235,21 +241,21 @@ def main(argv=None):
                 prior_error = str(exc)
             # A slow verifier cannot preserve an approval window that has expired.
             result = assess(packet, signatures, policy, args.trust_policy_identity,
-                            now=utc_now(), foundations_result=prior)
-        # Always recompute on a fresh UTC clock, including after a slow verifier.
-        assessed = utc_now()
-        result = assess(packet, signatures, policy, args.trust_policy_identity,
-                        now=assessed, foundations_result=prior)
+                            now=utc_now(), foundations_result=prior, scratch_parent=scratch_parent)
+        # Do not run signatures *after* recording completion. The final
+        # time check occurs after ALL crypto work and manifest acquisition.
         if prior_error:
             result['errors'].append('foundations verification: ' + prior_error)
         if diagnostic is not None:
             result['foundations_diagnostics'] = diagnostic
-        result['assessment_started_at'] = started.isoformat().replace('+00:00', 'Z')
-        result['assessment_completed_at'] = assessed.isoformat().replace('+00:00', 'Z')
         result['signature_bundle_identity'] = identity(signature_bytes)
         manifest = tool_source_manifest()
         result['preflight_source_manifest'] = manifest
         result['preflight_source_manifest_identity'] = identity(json_bytes(manifest))
+        assessed = utc_now()  # after last signature subprocess and source scan
+        recheck_request_window(packet, result, assessed)
+        result['assessment_started_at'] = started.isoformat().replace('+00:00', 'Z')
+        result['assessment_completed_at'] = assessed.isoformat().replace('+00:00', 'Z')
         # Pin every parent component by descriptor; no path re-resolution
         # between symlink checks and the file creation/open operation.
         raw_receipt = json_bytes(result)

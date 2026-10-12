@@ -36,7 +36,14 @@ packet and a separate externally SHA-256-pinned trust policy:
   and an independent verifier. Both must validate detached OpenSSL signatures
   over the *same complete canonical packet*. A role label is not a signature,
   the signatures are not trusted because they are present in the packet, and
-  the policy digest **must** come from an out-of-band source.
+  the policy digest **must** come from an out-of-band source. The verifier is
+  fixed to a root-owned, non-group/world-writable `/usr/bin/openssl` on the
+  declared Linux CPU host: its exact binary SHA-256 and byte size are recorded
+  in `signature_verifier`, and execution uses the already-verified open file
+  descriptor (`/proc/self/fd/N`), not inherited `PATH`. The subprocess receives
+  only a minimal, fixed environment (no `LD_PRELOAD` or `OPENSSL_CONF`). This
+  is an inspectable **local** trusted-binary policy, not an independent
+  attestation of the operating system or shared libraries.
 - An optional invocation of the existing authoritative
   `scripts/verify_foundations_run.py` against an explicitly identified retained
   root. It checks the unchanged source/environment, custody, scores and
@@ -72,9 +79,12 @@ PYTHONPATH=src python scripts/check_phase5_preflight.py \
 
 All JSON objects must use Trinite canonical JSON (sorted keys, no extra
 whitespace, trailing LF). A **semantically malformed packet** (unknown schema
-field, incomplete matrix, boolean seed, invalid objective weight, etc.) exits
+field, incomplete matrix, boolean seed, invalid objective weight, etc.) **or
+malformed signer/trust-policy structure** (extra/unknown fields, duplicate
+roles/keys, invalid Base64/PEM or wrong algorithm label) exits
 with code **2 without writing a blocked research verdict**. A valid proposal
-that cannot satisfy the learning/authorization gate exits with code **1** and
+with well-formed but cryptographically invalid detached signatures, or
+that cannot satisfy the learning/authorization gate, exits with code **1** and
 an exclusive blocked receipt. The `signatures` file is an array with one object for
 each required role: `role`, `key_identity`, `algorithm: ed25519`, and
 `signature_b64` (standard canonical Base64 over 64 raw Ed25519 signature bytes).
@@ -101,13 +111,19 @@ and stderr previews (Base64), byte counts, SHA-256 digests, and truncation flags
 The original run files and failure logs are not overwritten; complete unbounded
 child logs are not embedded in the receipt. A dedicated private temporary
 workspace is selected independently of user `TMPDIR`/`TMP`/`TEMP` and is
-required to lie outside the retained foundations root. The child's temporary
-environment is overridden to that workspace, so **its** disposable copy cannot
+required to lie outside the retained foundations root. **Signature verification
+also uses that same explicitly selected scratch parent** (or a fixed `/tmp`
+parent when called independently), never the caller's `TMPDIR`; neither the
+private signing-packet copy nor public-key/signature files can land in retained
+custody merely because temporary environment variables are poisoned.
+The child's temporary environment is overridden to that workspace, so **its** disposable copy cannot
 be created under the evidence directory either. Failure to identify safe scratch
 space is an error, never permission to modify the evidence root. Assessment
 timestamps and the exact signature-bundle identity are recorded, and the
-request expiry is rechecked on a fresh UTC clock **after** any
-foundations-verification subprocess.
+request expiry is rechecked on a fresh UTC clock **after** all signature
+verification subprocesses and the source-manifest scan, immediately before
+retaining the receipt. `assessment_completed_at` denotes this **post-crypto**
+assessment time, not the moment the final signature attempt was initiated.
 
 `--output` must be outside the retained `--foundations-run` root, including
 nested paths, `..` aliases, and symlink traversal. Receipts are created through
@@ -167,7 +183,9 @@ incomplete lane matrix, proposal/request mismatch, expiry and post-verifier
 expiry, strict historical stdout framing, bounded verifier diagnostics,
 foundations-run output overlap, poisoned `TMPDIR` and child temp isolation,
 symlink-parent replacement during receipt creation, directory-entry syncing,
-malformed packet exit status, canonical bounded objective weight, forged
+malformed packet **and signer/policy** exit status, fake `openssl` path
+spoofing, pinned binary identity, poisoned signature scratch directory,
+post-signature expiry, canonical bounded objective weight, forged
 apparent learning flags, exclusive receipt retention and a cryptographically
 valid proposal that remains blocked. They are cryptographic/software-conformance
 checks, not evidence that Phase 5 passed.

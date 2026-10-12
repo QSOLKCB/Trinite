@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
+import os
+import stat
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import tempfile
 
@@ -188,11 +191,54 @@ def validate_packet(packet: object) -> None:
         exact_hash(v, k)
 
 
-def verify_quorum(packet: dict, signatures: object, policy: dict) -> None:
-    """Verify independent Ed25519 signatures over *exact* canonical packet bytes.
+# The baseline runs on Linux CPU. Never invoke a PATH-selected or user-owned
+# signature verifier, and never inherit LD_PRELOAD/OPENSSL_CONF into that child.
+# The verified descriptor is passed to exec, preventing a path replacement race.
+OPENSSL_PATH = Path('/usr/bin/openssl')
+MAX_OPENSSL_BYTES = 32 * 1024 * 1024
 
-    Trust policy identity is checked separately by the caller against an
-    externally held digest; the packet may not self-declare trusted keys.
+
+def _trusted_openssl():
+    """Return an open, root-owned verifier and its exact executable identity."""
+    if not sys.platform.startswith('linux') or not Path('/proc/self/fd').is_dir():
+        raise ContractError('phase5 verifier requires Linux /proc/self/fd')
+    for path in (Path('/usr'), Path('/usr/bin')):
+        info = path.lstat()
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+            raise ContractError('phase5 OpenSSL executable path must be root-controlled')
+    fd = None
+    try:
+        fd = os.open(OPENSSL_PATH, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, 'O_CLOEXEC', 0))
+        info = os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or
+                info.st_mode & 0o022 or not info.st_mode & 0o111 or
+                not 0 < info.st_size <= MAX_OPENSSL_BYTES):
+            raise ContractError('phase5 OpenSSL binary is not a trusted bounded executable')
+        h = hashlib.sha256()
+        length = 0
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            length += len(chunk)
+            if length > MAX_OPENSSL_BYTES:
+                raise ContractError('phase5 OpenSSL binary exceeds bound')
+            h.update(chunk)
+        if length != info.st_size or os.fstat(fd).st_size != info.st_size:
+            raise ContractError('phase5 OpenSSL executable changed during hashing')
+        return fd, {'path': str(OPENSSL_PATH), 'identity': 'sha256:' + h.hexdigest(),
+                    'bytes': length, 'execution': 'pinned-linux-file-descriptor.v1'}
+    except (OSError, ContractError):
+        if fd is not None:
+            os.close(fd)
+        raise
+
+
+def validate_signer_inputs(signatures: object, policy: object) -> dict:
+    """Validate signer and trust-policy *structure*, without claiming signatures valid.
+
+    Malformed schema/encoding fails before the CLI archives a research verdict.
+    Well-formed, incorrect cryptographic signatures remain an exit-1 denial.
     """
     exact_keys(policy, {'schema', 'keys', 'required_roles'}, 'phase5 trust policy')
     if policy['schema'] != POLICY_SCHEMA or policy['required_roles'] != list(ROLES):
@@ -200,14 +246,13 @@ def verify_quorum(packet: dict, signatures: object, policy: dict) -> None:
     keys = policy['keys']
     if type(keys) is not list or len(keys) != len(ROLES):
         raise ContractError('phase5 requires two distinct trusted key records')
-    allowed = {}
-    mathematical_keys = set()
+    allowed, mathematical_keys = {}, set()
     for key in keys:
         exact_keys(key, {'role', 'key_identity', 'public_key_pem'}, 'phase5 trusted key')
         role, pem = key['role'], key['public_key_pem']
-        if (type(role) is not str or role not in ROLES or role in allowed or
-                type(key['key_identity']) is not str):
+        if type(role) is not str or role not in ROLES or role in allowed:
             raise ContractError('invalid/duplicate phase5 trusted key')
+        require_identity(key['key_identity'])
         der = public_key_der(pem)
         if identity(pem.encode('ascii')) != key['key_identity']:
             raise ContractError('phase5 trusted key PEM identity mismatch')
@@ -219,47 +264,96 @@ def verify_quorum(packet: dict, signatures: object, policy: dict) -> None:
         raise ContractError('phase5 independent signer roles required')
     if type(signatures) is not list or len(signatures) != len(ROLES):
         raise ContractError('phase5 requires independent signature quorum')
-    openssl = shutil.which('openssl')
-    if not openssl:
-        raise ContractError('OpenSSL required to verify phase5 signatures')
-    with tempfile.TemporaryDirectory(prefix='trinite-p5-verify-') as directory:
-        root = Path(directory)
-        payload_path = root/'packet.json'
-        payload_path.write_bytes(json_bytes(packet))
-        verified = set()
-        for row in signatures:
-            exact_keys(row, {'role', 'key_identity', 'algorithm', 'signature_b64'}, 'phase5 signature')
-            role = row['role']
-            if role not in allowed or role in verified or row['algorithm'] != 'ed25519':
-                raise ContractError('phase5 unsupported/duplicate signer role')
-            if row['key_identity'] != allowed[role]['key_identity']:
-                raise ContractError('phase5 signature key is not in external trust policy')
-            try:
-                signature = base64.b64decode(row['signature_b64'], validate=True)
-            except (binascii.Error, TypeError, ValueError) as err:
-                raise ContractError('phase5 signature is not canonical base64') from err
-            if len(signature) != 64 or base64.b64encode(signature).decode('ascii') != row['signature_b64']:
-                raise ContractError('phase5 Ed25519 signature bytes invalid')
-            pub = root/'public.pem'
-            sig = root/'signature.bin'
-            pub.write_bytes(allowed[role]['public_key_pem'].encode('ascii'))
-            sig.write_bytes(signature)
-            try:
-                run = subprocess.run([openssl, 'pkeyutl', '-verify', '-pubin', '-inkey', str(pub),
-                    '-rawin', '-in', str(payload_path), '-sigfile', str(sig)],
-                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    check=False, timeout=20)
-            except (OSError, subprocess.TimeoutExpired) as err:
-                raise ContractError('phase5 signature verifier failed') from err
-            if run.returncode != 0:
-                raise ContractError('phase5 cryptographic signature verification failed')
-            verified.add(role)
-    if verified != set(ROLES):
+    seen = set()
+    for row in signatures:
+        exact_keys(row, {'role', 'key_identity', 'algorithm', 'signature_b64'}, 'phase5 signature')
+        role = row['role']
+        if type(role) is not str or role not in ROLES or role in seen or row['algorithm'] != 'ed25519':
+            raise ContractError('phase5 unsupported/duplicate signer role')
+        seen.add(role)
+        require_identity(row['key_identity'])
+        if type(row['signature_b64']) is not str:
+            raise ContractError('phase5 signature must have canonical Base64 encoding')
+        try:
+            sig = base64.b64decode(row['signature_b64'], validate=True)
+        except (binascii.Error, ValueError) as err:
+            raise ContractError('phase5 signature is not canonical base64') from err
+        if len(sig) != 64 or base64.b64encode(sig).decode('ascii') != row['signature_b64']:
+            raise ContractError('phase5 Ed25519 signature bytes invalid')
+    if seen != set(ROLES):
         raise ContractError('phase5 signer threshold unmet')
+    return allowed
+
+
+def verify_quorum(packet: dict, signatures: object, policy: dict, *, scratch_parent=None) -> dict:
+    """Verify independent Ed25519 signatures over exact canonical packet bytes.
+
+    A fixed trusted Linux OpenSSL executable is hash-bound to the receipt and
+    invoked through its *verified file descriptor*, never inherited PATH.
+    Every temporary artifact uses an explicit scratch parent, ignoring TMPDIR.
+    """
+    allowed = validate_signer_inputs(signatures, policy)
+    parent = Path('/tmp') if scratch_parent is None else Path(scratch_parent)
+    if (not parent.is_absolute() or not parent.is_dir() or
+            any(x.is_symlink() for x in (parent, *parent.parents))):
+        raise ContractError('phase5 signature scratch parent must be safe and absolute')
+    fd, executable = _trusted_openssl()
+    try:
+        with tempfile.TemporaryDirectory(prefix='trinite-p5-verify-', dir=parent) as directory:
+            root = Path(directory)
+            payload_path = root/'packet.json'
+            payload_path.write_bytes(json_bytes(packet))
+            verified = set()
+            for row in signatures:
+                role = row['role']
+                if row['key_identity'] != allowed[role]['key_identity']:
+                    raise ContractError('phase5 signature key is not in external trust policy')
+                signature = base64.b64decode(row['signature_b64'], validate=True)
+                pub = root/'public.pem'
+                sig = root/'signature.bin'
+                pub.write_bytes(allowed[role]['public_key_pem'].encode('ascii'))
+                sig.write_bytes(signature)
+                try:
+                    run = subprocess.run([f'/proc/self/fd/{fd}', 'pkeyutl', '-verify',
+                        '-pubin', '-inkey', str(pub), '-rawin', '-in', str(payload_path),
+                        '-sigfile', str(sig)], pass_fds=(fd,),
+                        env={'PATH': '/usr/bin:/bin', 'LANG': 'C', 'LC_ALL': 'C'},
+                        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        check=False, timeout=20)
+                except (OSError, subprocess.TimeoutExpired) as err:
+                    raise ContractError('phase5 signature verifier failed') from err
+                if run.returncode != 0:
+                    raise ContractError('phase5 cryptographic signature verification failed')
+                verified.add(role)
+            if verified != set(ROLES):
+                raise ContractError('phase5 signer threshold unmet')
+        return executable
+    finally:
+        os.close(fd)
+
+
+def require_request_window(packet: dict, current: datetime) -> None:
+    if current.tzinfo is None or current.utcoffset().total_seconds() != 0:
+        raise ContractError('UTC evaluation clock required')
+    start = aware_utc(packet['request']['issued_at'], 'issued_at')
+    end = aware_utc(packet['request']['expires_at'], 'expires_at')
+    if not start <= current <= end:
+        raise ContractError('phase5 request expired or not yet issued')
+
+
+def recheck_request_window(packet: dict, receipt: dict, current: datetime) -> None:
+    """Downgrade an earlier true window after the last signature subprocess."""
+    if receipt['checks']['request_window']:
+        try:
+            require_request_window(packet, current)
+        except (ContractError, ValueError, TypeError) as err:
+            receipt['checks']['request_window'] = False
+            receipt['errors'].append(str(err) + ' at final assessment completion')
 
 
 def assess(packet: dict, signatures: object, policy: dict, policy_identity: str,
-           *, now: datetime | None = None, foundations_result: dict | None = None) -> dict:
+           *, now: datetime | None = None, foundations_result: dict | None = None,
+           scratch_parent: Path | None = None) -> dict:
     """Generate a deterministic rejection receipt, never a release authorization.
 
     foundations_result may only come from the authoritative read-only verifier,
@@ -269,6 +363,7 @@ def assess(packet: dict, signatures: object, policy: dict, policy_identity: str,
         'request_window', 'foundations_learning', 'optimizer_full_replay', 'fresh_confirmation',
         'fold_composed_adequacy', 'preregistration_witness', 'geometry_execution_authorized')}
     errors = []
+    signature_verifier = None
     try:
         validate_packet(packet)
         checks['protocol_and_matrix'] = True
@@ -280,19 +375,14 @@ def assess(packet: dict, signatures: object, policy: dict, policy_identity: str,
             raise ContractError('external trust policy digest mismatch')
         checks['external_policy_identity'] = True
         if checks['protocol_and_matrix']:
-            verify_quorum(packet, signatures, policy)
+            signature_verifier = verify_quorum(packet, signatures, policy, scratch_parent=scratch_parent)
             checks['signature_quorum'] = True
     except (ContractError, TypeError, ValueError, UnicodeError, OverflowError) as err:
         errors.append(str(err))
     if checks['protocol_and_matrix']:
         current = now if now is not None else datetime.now(timezone.utc)
         try:
-            if current.tzinfo is None or current.utcoffset().total_seconds() != 0:
-                raise ContractError('UTC evaluation clock required')
-            start = aware_utc(packet['request']['issued_at'], 'issued_at')
-            end = aware_utc(packet['request']['expires_at'], 'expires_at')
-            if not start <= current <= end:
-                raise ContractError('phase5 request expired or not yet issued')
+            require_request_window(packet, current)
             checks['request_window'] = True
         except (ContractError, TypeError, ValueError) as err:
             errors.append(str(err))
@@ -326,5 +416,6 @@ def assess(packet: dict, signatures: object, policy: dict, policy_identity: str,
         errors.append(reason)
     return {'schema': RECEIPT_SCHEMA, 'outcome': 'blocked', 'phase5_authorized': False,
             'phase5_outcome_accepted': False, 'request_identity': identity(json_bytes(packet)),
-            'trust_policy_identity': policy_identity, 'checks': checks, 'errors': errors,
+            'trust_policy_identity': policy_identity, 'signature_verifier': signature_verifier,
+            'checks': checks, 'errors': errors,
             'scope': 'read-only prospective preflight; not a geometry-on execution token'}

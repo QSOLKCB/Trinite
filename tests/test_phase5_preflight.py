@@ -573,5 +573,134 @@ class Phase5AuthorizationPreflight(unittest.TestCase):
 
 
 
+    def test_signature_temporary_workspace_ignores_poisoned_tmpdir(self):
+        cli = preflight_cli()
+        from phase5_preflight import preflight as verifier
+        base = Path(self.tmp.name)
+        retained = base/'immutable-run'; retained.mkdir()
+        (retained/'original.json').write_bytes(b'preexisting evidence')
+        before = {p.name:p.read_bytes() for p in retained.iterdir()}
+        for name, obj in [('packet.json', self.packet),
+                          ('signatures.json', self.signatures()), ('policy.json', self.policy)]:
+            (base/name).write_bytes(json_bytes(obj))
+        recorded = []
+        original_tempdir = tempfile.TemporaryDirectory
+
+        def observe_tempdir(*args, **kwargs):
+            if kwargs.get('prefix') == 'trinite-p5-verify-':
+                parent = Path(kwargs['dir'])
+                self.assertNotEqual(parent, retained)
+                self.assertNotIn(retained, parent.parents)
+                recorded.append(str(parent))
+            return original_tempdir(*args, **kwargs)
+
+        with mock.patch.dict(os.environ, {'TMPDIR':str(retained), 'TMP':str(retained),
+                                           'TEMP':str(retained)}):
+            with mock.patch.object(verifier.tempfile, 'TemporaryDirectory', side_effect=observe_tempdir):
+                with mock.patch.object(cli, 'verify_foundations', return_value=None):
+                    with mock.patch.object(cli,'tool_source_manifest',return_value={'test':digest('test')}):
+                        result = cli.main(['--packet',str(base/'packet.json'),
+                            '--signatures',str(base/'signatures.json'),
+                            '--trust-policy',str(base/'policy.json'),
+                            '--trust-policy-identity', self.policy_identity,
+                            '--foundations-run',str(retained),
+                            '--output',str(base/'blocked.json')])
+        self.assertEqual(result,1)
+        self.assertGreaterEqual(len(recorded),2)  # initial + post-foundations assessments
+        self.assertEqual(before,{p.name:p.read_bytes() for p in retained.iterdir()})
+        receipt=parse_json((base/'blocked.json').read_bytes(),canonical=True)
+        self.assertTrue(receipt['checks']['signature_quorum'])
+        self.assertFalse(receipt['phase5_authorized'])
+
+    def test_malformed_signer_schema_returns_two_but_bad_crypto_returns_one(self):
+        cli = preflight_cli()
+        base = Path(self.tmp.name)
+        signatures = self.signatures()
+        scenarios=[]
+        wrong_policy = copy.deepcopy(self.policy);wrong_policy['extra']=True
+        scenarios.append((signatures, wrong_policy))
+        wrong_signature = copy.deepcopy(signatures);wrong_signature[0]['extra']='unrecognized'
+        scenarios.append((wrong_signature, self.policy))
+        duplicate = copy.deepcopy(signatures);duplicate[1]['role']=duplicate[0]['role']
+        scenarios.append((duplicate, self.policy))
+        invalid_b64 = copy.deepcopy(signatures);invalid_b64[0]['signature_b64']='broken?'
+        scenarios.append((invalid_b64, self.policy))
+        invalid_policy_key = copy.deepcopy(self.policy)
+        invalid_policy_key['keys'][0]['public_key_pem']='not a PEM key'
+        scenarios.append((signatures, invalid_policy_key))
+        (base/'packet.json').write_bytes(json_bytes(self.packet))
+        for index,(rows,policy) in enumerate(scenarios):
+            (base/'signatures.json').write_bytes(json_bytes(rows))
+            (base/'policy.json').write_bytes(json_bytes(policy))
+            receipt=base/f'malformed-signer-{index}.json'
+            with self.subTest(index=index):
+                with mock.patch.object(cli,'tool_source_manifest',side_effect=AssertionError('no receipt for malformed signer structures')):
+                    outcome=cli.main(['--packet',str(base/'packet.json'),
+                        '--signatures',str(base/'signatures.json'),
+                        '--trust-policy',str(base/'policy.json'),
+                        '--trust-policy-identity',identity(json_bytes(policy)),
+                        '--output',str(receipt)])
+                self.assertEqual(outcome,2)
+                self.assertFalse(receipt.exists())
+        valid_shape=copy.deepcopy(signatures)
+        valid_shape[0]['signature_b64']=base64.b64encode(b'!'*64).decode('ascii')
+        (base/'signatures.json').write_bytes(json_bytes(valid_shape))
+        (base/'policy.json').write_bytes(json_bytes(self.policy))
+        with mock.patch.object(cli, 'tool_source_manifest',return_value={'test':digest('test')}):
+            outcome=cli.main(['--packet',str(base/'packet.json'),
+                '--signatures',str(base/'signatures.json'),
+                '--trust-policy',str(base/'policy.json'),
+                '--trust-policy-identity',self.policy_identity,
+                '--output',str(base/'crypto-denial.json')])
+        self.assertEqual(outcome,1)
+        denied=parse_json((base/'crypto-denial.json').read_bytes(),canonical=True)
+        self.assertFalse(denied['checks']['signature_quorum'])
+        self.assertFalse(denied['phase5_authorized'])
+
+    def test_fake_openssl_on_path_cannot_forge_signature_quorum(self):
+        base = Path(self.tmp.name)
+        fakebin = base/'spoof';fakebin.mkdir()
+        fake = fakebin/'openssl'
+        fake.write_text('#!/bin/sh\nexit 0\n')
+        fake.chmod(0o755)
+        forged = copy.deepcopy(self.signatures())
+        forged[0]['signature_b64'] = base64.b64encode(b'Z'*64).decode('ascii')
+        with mock.patch.dict(os.environ, {'PATH':str(fakebin)}):
+            result=assess(self.packet, forged, self.policy, self.policy_identity, now=self.now)
+        self.assertFalse(result['checks']['signature_quorum'])
+        self.assertIn('cryptographic signature', '\n'.join(result['errors']))
+        self.assertIsNone(result['signature_verifier'])
+        with mock.patch.dict(os.environ, {'PATH':str(fakebin)}):
+            actual=assess(self.packet, self.signatures(), self.policy,
+                          self.policy_identity, now=self.now)
+        self.assertTrue(actual['checks']['signature_quorum'])
+        verifier=actual['signature_verifier']
+        self.assertEqual(verifier['path'],'/usr/bin/openssl')
+        self.assertEqual(verifier['identity'],identity(Path('/usr/bin/openssl').read_bytes()))
+        self.assertEqual(verifier['execution'],'pinned-linux-file-descriptor.v1')
+
+    def test_expiry_rechecked_after_last_crypto_and_before_receipt(self):
+        cli=preflight_cli()
+        base=Path(self.tmp.name)
+        for name, value in [('packet.json',self.packet),
+                            ('signatures.json',self.signatures()),('policy.json',self.policy)]:
+            (base/name).write_bytes(json_bytes(value))
+        completed=self.now+timedelta(hours=2)
+        with mock.patch.object(cli,'utc_now',side_effect=[self.now,completed]):
+            with mock.patch.object(cli,'tool_source_manifest',return_value={'test':digest('test')}):
+                returned=cli.main(['--packet',str(base/'packet.json'),
+                    '--signatures',str(base/'signatures.json'),
+                    '--trust-policy',str(base/'policy.json'),
+                    '--trust-policy-identity',self.policy_identity,
+                    '--output',str(base/'receipt-post-crypto.json')])
+        self.assertEqual(returned,1)
+        result=parse_json((base/'receipt-post-crypto.json').read_bytes(),canonical=True)
+        self.assertTrue(result['checks']['signature_quorum'])
+        self.assertFalse(result['checks']['request_window'])
+        self.assertEqual(result['assessment_completed_at'],utc(completed))
+        self.assertIn('at final assessment completion','\n'.join(result['errors']))
+        self.assertFalse(result['phase5_authorized'])
+
+
 if __name__ == '__main__':
     unittest.main()
