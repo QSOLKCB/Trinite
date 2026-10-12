@@ -10,7 +10,8 @@ from ..contracts import ContractError, identity, integer, json_bytes, parse_json
 PROTOCOL_IDENTITY = 'sha256:3fb56ed2e0ce54872b8e8e63e5e22d044913ff891c742379ba07ae1b3b21f4f0'
 CHILDREN = tuple(c for c in product(range(3), repeat=3) if sum(d == 1 for d in c) <= 1)
 MAX_ARTIFACT_BYTES = 2 * 1024 * 1024
-SOURCE_FILES = ('src/trinite/contracts.py', 'src/trinite/lattice/scaffold.py',
+SOURCE_FILES = ('src/trinite/__init__.py', 'src/trinite/contracts.py',
+                'src/trinite/lattice/__init__.py', 'src/trinite/lattice/scaffold.py',
                 'src/trinite/lattice/protocol.json', 'scripts/generate_lattice_scaffold.py')
 
 
