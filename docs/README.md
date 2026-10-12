@@ -88,3 +88,10 @@ artifact verification, independent tests and blocked neural-mapping gates.
 [ACTIVATION-LATTICE.md](ACTIVATION-LATTICE.md): source-bound retrospective
 64→3 projection of retained real native trained captures, four edge/cardinality
 matched lattice controls, split-restricted normalization and no new training.
+
+## Post-v0.1.0 CNR-001 structural study
+
+[CNR-001.md](CNR-001.md): CC BY MaleCNS source, v0.1.0 native activation
+replay, ETQ-101/303 reduced graph comparisons, exact full 303-state cycle and
+actual lifted-graph walk, degree-preserving controls and separate read-only
+research evidence. No trained model changes or Phase 5 claim.
