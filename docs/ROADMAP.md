@@ -497,3 +497,58 @@ are candidate diagnostics, with shuffled-order/orbit/anchor and matched random
 receivers as declared controls. Exact symmetry or a pleasing projection does
 not establish a learned representation. Phase 5 and its original learning
 prerequisites still govern any geometry-on training experiment.
+
+## Post-v0.1.0 CNR-001: measured connectome and ETQ-303 topology
+
+The separately frozen [CNR-001 experiment](CNR-001.md) is a retrospective
+measurement increment **after** immutable v0.1.0, never a replacement for
+its failed and pending learning experiments. It compares the identical retained
+trained-native 16-probe captures and original baseline scorer under eight
+20-receiver/24-edge graph conditions: Menger v0.1.0, biological MaleCNS,
+ETQ-101, ETQ-303, degree-preserving controls, and a seeded random graph.
+The original MaleCNS 100-neuron, 3,630-connection biased subset is copied
+under CC BY 4.0, source blobs pinned, and the authentic ingestion tested in
+its isolated hash-locked reader workflow. Full ETQ-303 303-state event/phase
+closure is verified separately from a true 303-step lifted-graph walk.
+
+The corrected [CNR-001 v2 run 38290658293](https://github.com/QSOLKCB/Trinite/actions/runs/38290658293)
+passed full genuine-input execution and read-only replay. A further
+separately frozen [v3 run 38291828194](https://github.com/QSOLKCB/Trinite/actions/runs/38291828194)
+passed complete pinned-reader module/import-byte attestation, original
+decoder/source pins, new versioned request and analysis schema and full
+read-only replay. V3 reproduced v2's negative/saturated graph-hop scores. The earlier
+[historical v1 run 38288002645](https://github.com/QSOLKCB/Trinite/actions/runs/38288002645)
+is retained separately: Codex exposed spurious no-op degree rewires in its
+control producer. Both exact requests and analyses are now permanently
+stored in the [lossless v1/v2 evidence packet](../fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz)
+with explicit immutable byte commitments, alongside the separate
+[v3 full evidence packet](../fixtures/cnr-001-evidence/cnr001-v3.tar.gz)
+(SHA-256 fcec1f268a3985aeb921899d2cfcd8886ec91d53598faa6184761eb800a5ef5a).
+The original v0.1.0 source and all three research records stay unchanged.
+The corrected v2 protocol pins original v0.1.0 scorer/E8 basis Git blobs and
+the transitive source closure. **No biological or ETQ arm beats the baseline:**
+all block.0 hop sums remain zero with only two occupied anchors; final
+Menger/ETQ-101/ETQ-303/random tie at 2, MaleCNS/revised rewired MaleCNS/
+rewired ETQ-303 score 4. **The ETQ-101 rewired control is ineligible**:
+its graph permits no effective rewiring under the frozen procedure.
+Five of eight final vectors collide at receivers. ETQ's exact 303 event
+steps are all nonedges of the Cartesian lift; the distinct genuine graph
+walk visits 179 states. These are strongly saturation-limited **negative
+descriptive findings**, not advantages for any structural hypothesis.
+
+This topology observation uses arbitrary receiver slot placement, not
+neurobiological homology, new learning, held-out generalization or a causal
+geometry mechanism. Do not unlock Phase 5, format selection, device
+benchmarks, scaling or release readiness. The historical v0.1.0 producer
+and its earlier negative records remain unchanged.
+
+
+CNR-001 v4 corrects installed-package baseline pin resolution and rejects
+injected samples from official analyses. The real wheel boundary, authentic
+v4 run/replay and historical v3 replay passed in
+[run 38295236828](https://github.com/QSOLKCB/Trinite/actions/runs/38295236828).
+Its [separate permanent packet](../fixtures/cnr-001-evidence/cnr001-v4.tar.gz)
+retains the complete new request, analysis and receipts; original v1/v2/v3
+packets remain unchanged. V4 reproduces the same negative/saturated scores,
+with no model, graph-algorithm or research-gate advancement. See
+[CNR-001](CNR-001.md#v4-package-and-authentic-input-boundary-correction).
