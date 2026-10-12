@@ -57,7 +57,14 @@ def protocol():
 
 
 def source_receipt():
-    return {name: identity(bounded(ROOT / name, 256 * 1024)) for name in SOURCES}
+    # The original reference auditor imports helper modules transitively.
+    # Bind the entire installed first-party source tree, not just the direct
+    # functions we happen to call today; no cached source/verification success.
+    package = ROOT / 'src/trinite'
+    selected = {p.relative_to(ROOT).as_posix() for pattern in ('*.py', '*.json')
+                for p in package.rglob(pattern)}
+    selected.update(SOURCES)
+    return {name: identity(bounded(ROOT / name, 256 * 1024)) for name in sorted(selected)}
 
 
 def packet():
