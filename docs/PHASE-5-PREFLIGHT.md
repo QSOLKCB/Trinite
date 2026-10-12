@@ -19,7 +19,7 @@ CI, 227 research tests, four replayed task-balance cells, or a plausible
 
 ## Implemented preflight boundary
 
-The stdlib-only `trinite.phase5_preflight` module validates a **prospective**
+The standalone, standard-library-only `scripts/phase5_preflight/preflight.py` module validates a **prospective**
 packet and a separate externally SHA-256-pinned trust policy:
 
 - Exact canonical JSON, strict schemas, material identities, UTC validity window
@@ -43,6 +43,14 @@ packet and a separate externally SHA-256-pinned trust policy:
   2 means malformed inputs or failure to retain the receipt. Existing receipts
   are never replaced; give each assessment a fresh path.
 
+The preflight helper lives under `scripts/phase5_preflight/`, **outside all
+historically frozen `src/trinite/` inventories**. The existing flat maths source
+receipt binds top-level files, and CNR-001 recursively commits to the entire
+first-party source package. No frozen source-inventory, model, updater, archive,
+request or historical witness is modified or resealed. This is standalone
+repository tooling invoked through `scripts/check_phase5_preflight.py`, not a
+new runtime dependency or exported installed model feature.
+
 The packet schemas are `trinite.phase5-preflight-packet.v1`,
 `trinite.phase5-geometry-proposal.v1` and
 `trinite.phase5-trust-policy.v1`. Receipt schema is
@@ -63,12 +71,39 @@ whitespace, trailing LF). The `signatures` file is an array with one object for
 each required role: `role`, `key_identity`, `algorithm: ed25519`, and
 `signature_b64` (standard canonical Base64 over 64 raw Ed25519 signature bytes).
 The trusted public-key policy is a *different* file listing two corresponding
-role/key/PEM records; each `key_identity` is the SHA-256 identity of the exact
-ASCII PEM bytes. **Keep signing keys outside the repository and off experiment
+role/key/PEM records; each v1 `key_identity` remains the SHA-256 identity of the
+**exact ASCII PEM bytes**, but **quorum independence is checked on canonical
+Ed25519 SubjectPublicKeyInfo DER bytes** (the 32-byte public keys). Validly
+rewrapping the same PEM cannot create a second independent key; EC/ECDSA,
+RSA, Ed448, concatenated or malformed PEM and DER are rejected before signature
+verification. External policy pinning must independently enforce organizational
+separation; distinct mathematical keys do not prove different people or services. **Keep signing keys outside the repository and off experiment
 workers.** Packet signatures can be created independently by the two key
 holders using OpenSSL's `pkeyutl -sign -rawin` over the canonical packet bytes.
 The tests generate throwaway keys; no production keys or fake successful
 scientific receipts are committed.
+
+The existing `verify_foundations_run.py` emits canonical JSON **followed by
+one transport LF** from its `print()` call; the new adapter validates precisely
+that framing, removes only the transport LF, and strictly checks the six
+returned receipt fields and both request/summary identities. It does not
+silently `strip()` output or trust a simulated score. If the verifier fails or
+times out, the blocked receipt retains its return status and **bounded** stdout
+and stderr previews (Base64), byte counts, SHA-256 digests, and truncation flags.
+The original run files and failure logs are not overwritten; complete unbounded
+child logs are not embedded in the receipt. Assessment timestamps and the exact
+signature-bundle identity are recorded, and the request expiry is rechecked on
+a fresh UTC clock **after** any foundations-verification subprocess.
+
+`--output` must be outside the retained `--foundations-run` root, including
+nested paths, `..` aliases, and symlink traversal. Receipts use exclusive
+creation with no-follow and 0600 permissions; an existing receipt is never
+replaced. The receipt also contains a canonical local tool/source manifest and
+its hash (CLI/helper, first-party sources, lock, foundations entrypoints).
+These are **disclosure identities of the verifier's local inputs**, not an
+externally signed guarantee that the local verifier is trusted. A separate
+reviewed trust/witness boundary must bind the verifier itself before executable
+authorization is possible.
 
 ## What this cannot authorize
 
@@ -107,10 +142,13 @@ PYTHONPATH=src python scripts/check_research_cpu.py
 ```
 
 The preflight tests use **actual OpenSSL Ed25519** sign and verify operations,
-including invalid signatures, wrong external policy digest, duplicate signer,
-incomplete lane matrix, proposal/request mismatch, expiry, forged apparent
-learning flags, exclusive receipt retention and a cryptographically valid
-proposal that remains blocked. They are cryptographic/software-conformance
+including invalid signatures, same Ed25519 key with different PEM wrapping,
+actual 64-byte ECDSA signatures mislabeled as Ed25519, RSA/Ed448 rejection,
+wrong external policy digest, duplicate signer, boolean matrix seeds,
+incomplete lane matrix, proposal/request mismatch, expiry and post-verifier
+expiry, strict historical stdout framing, bounded verifier diagnostics,
+foundations-run output overlap, forged apparent learning flags, exclusive
+receipt retention and a cryptographically valid proposal that remains blocked. They are cryptographic/software-conformance
 checks, not evidence that Phase 5 passed.
 
 **Affected invariants:** TRI-I02, I03, I07, I08, I09, I11, I12, I13, I14.

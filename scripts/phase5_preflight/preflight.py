@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import tempfile
 
-from .contracts import ContractError, exact_keys, identity, integer, json_bytes, parse_json, require_identity
+from trinite.contracts import ContractError, exact_keys, identity, integer, json_bytes, parse_json, require_identity
 
 PACKET_SCHEMA = 'trinite.phase5-preflight-packet.v1'
 PROTOCOL_SCHEMA = 'trinite.phase5-geometry-proposal.v1'
@@ -26,6 +26,53 @@ ROLES = ('protocol-steward', 'independent-verifier')
 FORMATS = ('dense', 'ternary')
 CONDITIONS = ('geometry-off', 'geometry-on', 'auxiliary-null')
 _SHA1 = re.compile(r'[0-9a-f]{40}\Z')
+
+_ED25519_SPKI_PREFIX = bytes.fromhex('302a300506032b6570032100')
+
+
+def public_key_der(pem: str) -> bytes:
+    """Accept one Ed25519 SPKI PEM, rejecting EC/RSA/Ed448 and trailing material.
+
+    The exact PEM bytes are still bound by the v1 key_identity for compatibility;
+    quorum independence instead compares the canonical public key itself.
+    """
+    if type(pem) is not str or len(pem) > 2048 or not pem.isascii():
+        raise ContractError('phase5 trusted key requires bounded ASCII PEM')
+    header = '-----BEGIN PUBLIC KEY-----\n'
+    footer = '-----END PUBLIC KEY-----\n'
+    if not pem.startswith(header) or not pem.endswith(footer):
+        raise ContractError('phase5 trusted key requires one PUBLIC KEY object')
+    lines = pem[len(header):-len(footer)].splitlines()
+    if (not lines or any(not line or len(line) > 64 or
+                         re.fullmatch('[A-Za-z0-9+/]*={0,2}', line) is None
+                         for line in lines)):
+        raise ContractError('phase5 public key PEM body is malformed')
+    joined = ''.join(lines)
+    try:
+        der = base64.b64decode(joined, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ContractError('phase5 public key PEM is not canonical base64') from exc
+    if base64.b64encode(der).decode('ascii') != joined:
+        raise ContractError('phase5 public key base64 is not canonical')
+    if len(der) != len(_ED25519_SPKI_PREFIX) + 32 or not der.startswith(_ED25519_SPKI_PREFIX):
+        raise ContractError('phase5 public key must be Ed25519 SubjectPublicKeyInfo')
+    return der
+
+
+def validate_matrix(rows: object, seeds: list[int], name: str) -> None:
+    expected = [{'seed': seed, 'format': fmt, 'condition': condition}
+                for seed in seeds for fmt in FORMATS for condition in CONDITIONS]
+    if type(rows) is not list or len(rows) != len(expected):
+        raise ContractError(name + ' missing/reordered geometry and null controls')
+    for row in rows:
+        exact_keys(row, {'seed', 'format', 'condition'}, name + ' cell')
+        integer(row['seed'], name + ' seed', 0, 2**31 - 1)
+        if type(row['format']) is not str or row['format'] not in FORMATS:
+            raise ContractError(name + ' format invalid')
+        if type(row['condition']) is not str or row['condition'] not in CONDITIONS:
+            raise ContractError(name + ' condition invalid')
+    if json_bytes(rows) != json_bytes(expected):
+        raise ContractError(name + ' missing/reordered geometry and null controls')
 
 
 def safe_read(path: Path, *, limit: int = 1024 * 1024) -> bytes:
@@ -88,10 +135,7 @@ def validate_protocol(protocol: object) -> None:
         integer(s, 'phase5 seed', 0, 2**31-1)
     if seeds != sorted(seeds):
         raise ContractError('phase5 seeds must be in canonical order')
-    expected = [{'seed': s, 'format': fmt, 'condition': cond}
-                for s in seeds for fmt in FORMATS for cond in CONDITIONS]
-    if protocol['matrix'] != expected:
-        raise ContractError('phase5 matrix missing/reordered geometry and null controls')
+    validate_matrix(protocol['matrix'], seeds, 'phase5 matrix')
     budget = exact_keys(protocol['budgets'], {'updates_per_cell', 'target_tokens_per_cell',
                                              'max_wall_seconds_per_cell'}, 'phase5 budgets')
     for k in budget:
@@ -119,9 +163,10 @@ def validate_packet(packet: object) -> None:
         raise ContractError('phase5 Git tree identity is invalid')
     for k in ('source_identity', 'data_admission_identity', 'environment_identity'):
         exact_hash(request[k], k)
+    validate_matrix(request['matrix'], packet['proposal']['seeds'], 'phase5 request matrix')
     if (request['source_identity'] != packet['proposal']['source_identity'] or
             request['data_admission_identity'] != packet['proposal']['data_admission_identity'] or
-            request['matrix'] != packet['proposal']['matrix']):
+            json_bytes(request['matrix']) != json_bytes(packet['proposal']['matrix'])):
         raise ContractError('phase5 request/proposal material or matrix mismatch')
     if type(request['run_nonce']) is not str or not re.fullmatch('[0-9a-f]{32,64}', request['run_nonce']):
         raise ContractError('phase5 nonce requires >=128-bit externally provided hex')
@@ -149,17 +194,22 @@ def verify_quorum(packet: dict, signatures: object, policy: dict) -> None:
     if type(keys) is not list or len(keys) != len(ROLES):
         raise ContractError('phase5 requires two distinct trusted key records')
     allowed = {}
+    mathematical_keys = set()
     for key in keys:
         exact_keys(key, {'role', 'key_identity', 'public_key_pem'}, 'phase5 trusted key')
-        pem = key['public_key_pem']
-        if (key['role'] not in ROLES or key['role'] in allowed or type(pem) is not str
-                or not pem.startswith('-----BEGIN PUBLIC KEY-----\n')
-                or not pem.endswith('-----END PUBLIC KEY-----\n') or len(pem) > 2048
-                or not pem.isascii() or identity(pem.encode('ascii')) != key['key_identity']):
+        role, pem = key['role'], key['public_key_pem']
+        if (type(role) is not str or role not in ROLES or role in allowed or
+                type(key['key_identity']) is not str):
             raise ContractError('invalid/duplicate phase5 trusted key')
-        allowed[key['role']] = key
-    if set(allowed) != set(ROLES) or len({k['key_identity'] for k in keys}) != len(ROLES):
-        raise ContractError('phase5 independent key identities required')
+        der = public_key_der(pem)
+        if identity(pem.encode('ascii')) != key['key_identity']:
+            raise ContractError('phase5 trusted key PEM identity mismatch')
+        if der in mathematical_keys:
+            raise ContractError('phase5 independent key identities required')
+        mathematical_keys.add(der)
+        allowed[role] = key
+    if set(allowed) != set(ROLES):
+        raise ContractError('phase5 independent signer roles required')
     if type(signatures) is not list or len(signatures) != len(ROLES):
         raise ContractError('phase5 requires independent signature quorum')
     openssl = shutil.which('openssl')
