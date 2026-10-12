@@ -252,7 +252,7 @@ See [MATHS-TASK-BALANCE.md](MATHS-TASK-BALANCE.md).
 
 ## Recursive integer geometry reference
 
-`lattice_scaffold.py` independently implements the frozen 3×3×3 Menger-style
+`lattice/scaffold.py` independently implements the frozen 3×3×3 Menger-style
 address hierarchy, 20-child occupancy rule and exact six-neighbour leaf graph.
 The standalone `generate_lattice_scaffold.py` exclusively creates a canonical
 source-bound artifact or independently reconstructs it for read-only verification.
