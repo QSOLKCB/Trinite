@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import base64
 import binascii
+from contextlib import ExitStack
+import fcntl
 import hashlib
 import os
 import stat
@@ -17,7 +19,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 import re
 import subprocess
-import tempfile
 
 from trinite.contracts import ContractError, exact_keys, identity, integer, json_bytes, parse_json, require_identity
 
@@ -285,45 +286,88 @@ def validate_signer_inputs(signatures: object, policy: object) -> dict:
     return allowed
 
 
-def verify_quorum(packet: dict, signatures: object, policy: dict, *, scratch_parent=None) -> dict:
-    """Verify independent Ed25519 signatures over exact canonical packet bytes.
+def _memfd(name: str, content: bytes = b'', *, seal: bool = True) -> int:
+    """Create anonymous Linux memory input; seal before passing to another process.
 
-    A fixed trusted Linux OpenSSL executable is hash-bound to the receipt and
-    invoked through its *verified file descriptor*, never inherited PATH.
-    Every temporary artifact uses an explicit scratch parent, ignoring TMPDIR.
+    No pathname (including within a private temp directory) can be swapped to
+    change a cryptographic input. All source bytes are sealed *before* exec.
+    For child stdout/stderr, the caller seals the capture after the child exits.
+    """
+    flags = getattr(os, 'MFD_CLOEXEC', 1) | getattr(os, 'MFD_ALLOW_SEALING', 2)
+    if not hasattr(os, 'memfd_create') or not all(hasattr(fcntl, symbol) for symbol in
+        ('F_ADD_SEALS', 'F_GET_SEALS', 'F_SEAL_WRITE', 'F_SEAL_GROW',
+         'F_SEAL_SHRINK', 'F_SEAL_SEAL')):
+        raise ContractError('phase5 requires sealable Linux memory descriptors')
+    fd = os.memfd_create('trinite-p5-' + name, flags=flags)
+    try:
+        offset = 0
+        while offset < len(content):
+            written = os.write(fd, content[offset:])
+            if written <= 0:
+                raise OSError('short phase5 descriptor write')
+            offset += written
+        os.lseek(fd, 0, os.SEEK_SET)
+        if seal:
+            seal_memfd(fd)
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def seal_memfd(fd: int) -> None:
+    """Make an in-memory descriptor immutable after all intended writes."""
+    required = (fcntl.F_SEAL_WRITE | fcntl.F_SEAL_GROW |
+                fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_SEAL)
+    fcntl.fcntl(fd, fcntl.F_ADD_SEALS, required)
+    if fcntl.fcntl(fd, fcntl.F_GET_SEALS) & required != required:
+        raise ContractError('phase5 descriptor sealing was incomplete')
+
+
+def verify_quorum(packet: dict, signatures: object, policy: dict, *, scratch_parent=None) -> dict:
+    """Verify exact canonical packet bytes with sealed, descriptor-only inputs.
+
+    Key material, signatures, and packet bytes have no mutable pathname.
+    The trusted executable and all three cryptographic inputs are passed to
+    OpenSSL by open descriptors (never by inherited PATH or local filenames).
     """
     allowed = validate_signer_inputs(signatures, policy)
-    parent = Path('/tmp') if scratch_parent is None else Path(scratch_parent)
-    if (not parent.is_absolute() or not parent.is_dir() or
-            any(x.is_symlink() for x in (parent, *parent.parents))):
-        raise ContractError('phase5 signature scratch parent must be safe and absolute')
+    # Preserve the v1 caller's explicit scratch-parent guard, although the
+    # signature operation no longer needs any scratch filesystem directory.
+    if scratch_parent is not None:
+        parent = Path(scratch_parent)
+        if (not parent.is_absolute() or not parent.is_dir() or
+                any(x.is_symlink() for x in (parent, *parent.parents))):
+            raise ContractError('phase5 signature scratch parent must be safe and absolute')
     fd, executable = _trusted_openssl()
     try:
-        with tempfile.TemporaryDirectory(prefix='trinite-p5-verify-', dir=parent) as directory:
-            root = Path(directory)
-            payload_path = root/'packet.json'
-            payload_path.write_bytes(json_bytes(packet))
+        with ExitStack() as stack:
+            payload_fd = _memfd('signed-packet', json_bytes(packet))
+            stack.callback(os.close, payload_fd)
             verified = set()
             for row in signatures:
                 role = row['role']
                 if row['key_identity'] != allowed[role]['key_identity']:
                     raise ContractError('phase5 signature key is not in external trust policy')
                 signature = base64.b64decode(row['signature_b64'], validate=True)
-                pub = root/'public.pem'
-                sig = root/'signature.bin'
-                pub.write_bytes(allowed[role]['public_key_pem'].encode('ascii'))
-                sig.write_bytes(signature)
-                try:
-                    run = subprocess.run([f'/proc/self/fd/{fd}', 'pkeyutl', '-verify',
-                        '-pubin', '-inkey', str(pub), '-rawin', '-in', str(payload_path),
-                        '-sigfile', str(sig)], pass_fds=(fd,),
-                        env={'PATH': '/usr/bin:/bin', 'LANG': 'C', 'LC_ALL': 'C'},
-                        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                        check=False, timeout=20)
-                except (OSError, subprocess.TimeoutExpired) as err:
-                    raise ContractError('phase5 signature verifier failed') from err
-                if run.returncode != 0:
-                    raise ContractError('phase5 cryptographic signature verification failed')
+                with ExitStack() as role_stack:
+                    pub_fd = _memfd('ed25519-public', allowed[role]['public_key_pem'].encode('ascii'))
+                    role_stack.callback(os.close, pub_fd)
+                    sig_fd = _memfd('ed25519-signature', signature)
+                    role_stack.callback(os.close, sig_fd)
+                    try:
+                        run = subprocess.run([f'/proc/self/fd/{fd}', 'pkeyutl', '-verify',
+                            '-pubin', '-inkey', f'/proc/self/fd/{pub_fd}',
+                            '-rawin', '-in', f'/proc/self/fd/{payload_fd}',
+                            '-sigfile', f'/proc/self/fd/{sig_fd}'],
+                            pass_fds=(fd, pub_fd, sig_fd, payload_fd),
+                            env={'PATH': '/usr/bin:/bin', 'LANG': 'C', 'LC_ALL': 'C'},
+                            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            check=False, timeout=20)
+                    except (OSError, subprocess.TimeoutExpired) as err:
+                        raise ContractError('phase5 signature verifier failed') from err
+                    if run.returncode != 0:
+                        raise ContractError('phase5 cryptographic signature verification failed')
                 verified.add(role)
             if verified != set(ROLES):
                 raise ContractError('phase5 signer threshold unmet')

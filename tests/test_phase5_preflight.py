@@ -1,6 +1,8 @@
 """Adversarial and positive *signature* conformance; no empirical gate pass."""
 import base64
 import copy
+import fcntl
+import errno
 import os
 import stat
 from datetime import datetime, timedelta, timezone
@@ -584,19 +586,15 @@ class Phase5AuthorizationPreflight(unittest.TestCase):
                           ('signatures.json', self.signatures()), ('policy.json', self.policy)]:
             (base/name).write_bytes(json_bytes(obj))
         recorded = []
-        original_tempdir = tempfile.TemporaryDirectory
+        original_memfd = verifier._memfd
 
-        def observe_tempdir(*args, **kwargs):
-            if kwargs.get('prefix') == 'trinite-p5-verify-':
-                parent = Path(kwargs['dir'])
-                self.assertNotEqual(parent, retained)
-                self.assertNotIn(retained, parent.parents)
-                recorded.append(str(parent))
-            return original_tempdir(*args, **kwargs)
+        def observe_memfd(name, content=b'', *, seal=True):
+            recorded.append((name, seal))
+            return original_memfd(name, content, seal=seal)
 
         with mock.patch.dict(os.environ, {'TMPDIR':str(retained), 'TMP':str(retained),
                                            'TEMP':str(retained)}):
-            with mock.patch.object(verifier.tempfile, 'TemporaryDirectory', side_effect=observe_tempdir):
+            with mock.patch.object(verifier, '_memfd', side_effect=observe_memfd):
                 with mock.patch.object(cli, 'verify_foundations', return_value=None):
                     with mock.patch.object(cli,'tool_source_manifest',return_value={'test':digest('test')}):
                         result = cli.main(['--packet',str(base/'packet.json'),
@@ -606,7 +604,10 @@ class Phase5AuthorizationPreflight(unittest.TestCase):
                             '--foundations-run',str(retained),
                             '--output',str(base/'blocked.json')])
         self.assertEqual(result,1)
-        self.assertGreaterEqual(len(recorded),2)  # initial + post-foundations assessments
+        # Two assessments, each with a packet and 2x public key/signature
+        # descriptors. No named signature scratch directory is created.
+        self.assertEqual([label for label, _ in recorded].count('signed-packet'), 2)
+        self.assertTrue(all(sealed for _, sealed in recorded))
         self.assertEqual(before,{p.name:p.read_bytes() for p in retained.iterdir()})
         receipt=parse_json((base/'blocked.json').read_bytes(),canonical=True)
         self.assertTrue(receipt['checks']['signature_quorum'])
@@ -700,6 +701,152 @@ class Phase5AuthorizationPreflight(unittest.TestCase):
         self.assertEqual(result['assessment_completed_at'],utc(completed))
         self.assertIn('at final assessment completion','\n'.join(result['errors']))
         self.assertFalse(result['phase5_authorized'])
+
+
+    def test_signature_verifier_uses_sealed_pinned_inputs_instead_of_paths(self):
+        from phase5_preflight import preflight as verifier
+        actual_run = subprocess.run
+        checked = []
+        expected_signatures = self.signatures()
+        def inspect_crypto(*args, **kwargs):
+            argv = args[0]
+            if ('pkeyutl' in argv and '-verify' in argv):
+                # All inputs are sealed before the invocation, so writing via
+                # the original fd (or through /proc/self/fd) is impossible.
+                referenced = [argv[argv.index(option) + 1] for option in
+                              ('-inkey', '-in', '-sigfile')]
+                self.assertEqual(len(referenced), 3)
+                for pathname in referenced:
+                    self.assertTrue(pathname.startswith('/proc/self/fd/'))
+                    fd = int(pathname.rsplit('/', 1)[1])
+                    self.assertIn(fd, kwargs['pass_fds'])
+                    seals = fcntl.fcntl(fd, fcntl.F_GET_SEALS)
+                    self.assertEqual(seals & fcntl.F_SEAL_WRITE, fcntl.F_SEAL_WRITE)
+                    with self.assertRaises(OSError):
+                        os.write(fd, b'forged-input')
+                    checked.append(pathname)
+            return actual_run(*args, **kwargs)
+        with mock.patch.object(verifier.subprocess, 'run', side_effect=inspect_crypto):
+            receipt = assess(self.packet, expected_signatures, self.policy,
+                             self.policy_identity, now=self.now)
+        self.assertTrue(receipt['checks']['signature_quorum'])
+        self.assertEqual(len(checked), 6)
+        self.assertFalse(receipt['phase5_authorized'])
+
+    def test_foundations_output_path_replacement_cannot_forge_positive_learning(self):
+        cli = preflight_cli()
+        root = Path(self.tmp.name)
+        refs = self.packet['prerequisites']
+        real = {'summary_identity': refs['foundations_summary_identity'],
+                'request_identity': refs['foundations_request_identity'],
+                'verified_training_cells': 27, 'outcome': 'blocked',
+                'dense_learning_adequate': False, 'scope': cli.FOUNDATIONS_SCOPE}
+        forged = dict(real, outcome='completed', dense_learning_adequate=True)
+        observed = []
+        def replaced_file(*args, stdout, stderr, env, **kwargs):
+            stdout.write(json_bytes(real) + b'\n')
+            stdout.flush()
+            scratch = Path(env['TMPDIR'])
+            # Replace a file with the name the previous implementation
+            # reopened. The pinned anonymous descriptor must be unaffected.
+            (scratch/'stdout.bin').write_bytes(json_bytes(forged) + b'\n')
+            self.assertIsInstance(stdout.name, int)
+            observed.append(stdout.name)
+            return subprocess.CompletedProcess(args[0], 0)
+        with mock.patch.object(cli.subprocess, 'run', side_effect=replaced_file):
+            result = cli.verify_foundations(root, refs['foundations_request_identity'],
+                                            refs['foundations_summary_identity'])
+        self.assertEqual(result['outcome'], 'blocked')
+        self.assertFalse(result['dense_learning_adequate'])
+        self.assertEqual(len(observed), 1)
+
+    def test_bad_external_policy_identity_is_malformed_not_scientific_block(self):
+        cli = preflight_cli()
+        root = Path(self.tmp.name)
+        for name, content in (('packet.json', self.packet),
+                              ('signatures.json', self.signatures()), ('policy.json', self.policy)):
+            (root/name).write_bytes(json_bytes(content))
+        for index, invalid in enumerate(('garbage', 'sha256:abcdef',
+                                         'sha256:'+'A'*64, True)):
+            with self.subTest(invalid=invalid):
+                output = root/f'malformed-digest-{index}.json'
+                rc = cli.main(['--packet', str(root/'packet.json'),
+                    '--signatures',str(root/'signatures.json'),
+                    '--trust-policy', str(root/'policy.json'),
+                    '--trust-policy-identity', str(invalid), '--output',str(output)])
+                self.assertEqual(rc, 2)
+                self.assertFalse(output.exists())
+        # Syntactically valid but incorrect digest is still a normal blocked
+        # research assessment with a retained result, not malformed input.
+        output = root/'mismatched-external-policy.json'
+        rc = cli.main(['--packet', str(root/'packet.json'),
+            '--signatures',str(root/'signatures.json'),
+            '--trust-policy', str(root/'policy.json'),
+            '--trust-policy-identity',digest('wrong-policy'), '--output',str(output)])
+        self.assertEqual(rc,1)
+        result = parse_json(output.read_bytes(), canonical=True)
+        self.assertFalse(result['checks']['external_policy_identity'])
+
+    def test_receipt_partial_write_failure_is_unlinked_and_retryable(self):
+        cli = preflight_cli()
+        root = Path(self.tmp.name)
+        receipt = root/'partial'/'receipt.json'
+        payload = json_bytes({'outcome':'blocked', 'scope':'write-fault'})
+        actual_fdopen = os.fdopen
+        triggered = []
+
+        class HalfWriter:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def write(self, content):
+                self.stream.write(content[:max(1,len(content)//2)])
+                triggered.append(True)
+                raise OSError(errno.ENOSPC, 'simulated partial write')
+            def flush(self):
+                return self.stream.flush()
+            def fileno(self):
+                return self.stream.fileno()
+
+        def faulting_fdopen(fd, mode, *args, **kwargs):
+            stream = actual_fdopen(fd, mode, *args, **kwargs)
+            return HalfWriter(stream) if mode == 'wb' else stream
+
+        with mock.patch.object(cli.os,'fdopen', side_effect=faulting_fdopen):
+            with self.assertRaises(OSError):
+                cli.write_receipt(receipt, payload)
+        self.assertEqual(triggered, [True])
+        self.assertFalse(receipt.exists())
+        cli.write_receipt(receipt, payload)
+        self.assertEqual(receipt.read_bytes(), payload)
+
+    def test_receipt_io_or_sync_failure_cleans_exclusive_file_for_retry(self):
+        cli = preflight_cli()
+        root = Path(self.tmp.name)
+        receipt = root/'nested'/'receipt.json'
+        content = json_bytes({'schema':'test', 'outcome':'blocked'})
+        true_fsync = os.fsync
+        for failed_kind in ('file', 'directory'):
+            with self.subTest(failed_kind=failed_kind):
+                fault = [False]
+                def failing_fsync(fd):
+                    is_dir = stat.S_ISDIR(os.fstat(fd).st_mode)
+                    kind = 'directory' if is_dir else 'file'
+                    if kind == failed_kind and not fault[0]:
+                        fault[0] = True
+                        raise OSError(errno.ENOSPC, 'simulated full filesystem')
+                    return true_fsync(fd)
+                with mock.patch.object(cli.os, 'fsync', side_effect=failing_fsync):
+                    with self.assertRaises(OSError):
+                        cli.write_receipt(receipt, content)
+                self.assertTrue(fault[0])
+                self.assertFalse(receipt.exists(), 'failed file must be unlinked')
+                cli.write_receipt(receipt, content)
+                self.assertEqual(receipt.read_bytes(), content)
+                receipt.unlink()
 
 
 if __name__ == '__main__':

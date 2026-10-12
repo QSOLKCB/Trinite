@@ -43,7 +43,11 @@ packet and a separate externally SHA-256-pinned trust policy:
   descriptor (`/proc/self/fd/N`), not inherited `PATH`. The subprocess receives
   only a minimal, fixed environment (no `LD_PRELOAD` or `OPENSSL_CONF`). This
   is an inspectable **local** trusted-binary policy, not an independent
-  attestation of the operating system or shared libraries.
+  attestation of the operating system or shared libraries. The packet bytes,
+  each Ed25519 public key and each signature are handed to OpenSSL through
+  **sealed, anonymous Linux memory descriptors**, passed explicitly using
+  `pass_fds`; there are no reopenable key, signature, or packet filenames.
+  The descriptors are sealed before the subprocess starts.
 - An optional invocation of the existing authoritative
   `scripts/verify_foundations_run.py` against an explicitly identified retained
   root. It checks the unchanged source/environment, custody, scores and
@@ -82,7 +86,11 @@ whitespace, trailing LF). A **semantically malformed packet** (unknown schema
 field, incomplete matrix, boolean seed, invalid objective weight, etc.) **or
 malformed signer/trust-policy structure** (extra/unknown fields, duplicate
 roles/keys, invalid Base64/PEM or wrong algorithm label) exits
-with code **2 without writing a blocked research verdict**. A valid proposal
+with code **2 without writing a blocked research verdict**. The externally
+provided `--trust-policy-identity` must likewise be a syntactically valid
+`sha256:<64 lowercase hexadecimal characters>` value: a malformed spelling
+returns code **2**, while a correctly shaped but incorrect digest remains a
+well-formed **blocked** result (exit **1**). A valid proposal
 with well-formed but cryptographically invalid detached signatures, or
 that cannot satisfy the learning/authorization gate, exits with code **1** and
 an exclusive blocked receipt. The `signatures` file is an array with one object for
@@ -109,16 +117,23 @@ silently `strip()` output or trust a simulated score. If the verifier fails or
 times out, the blocked receipt retains its return status and **bounded** stdout
 and stderr previews (Base64), byte counts, SHA-256 digests, and truncation flags.
 The original run files and failure logs are not overwritten; complete unbounded
-child logs are not embedded in the receipt. A dedicated private temporary
-workspace is selected independently of user `TMPDIR`/`TMP`/`TEMP` and is
-required to lie outside the retained foundations root. **Signature verification
-also uses that same explicitly selected scratch parent** (or a fixed `/tmp`
-parent when called independently), never the caller's `TMPDIR`; neither the
-private signing-packet copy nor public-key/signature files can land in retained
-custody merely because temporary environment variables are poisoned.
-The child's temporary environment is overridden to that workspace, so **its** disposable copy cannot
-be created under the evidence directory either. Failure to identify safe scratch
-space is an error, never permission to modify the evidence root. Assessment
+child logs are not embedded in the receipt. **Foundations stdout and stderr
+are captured into anonymous in-memory descriptors**, not pathname-addressed
+`stdout.bin` or `stderr.bin` files. The original descriptors are sealed when
+the child exits and are then read for diagnostics and canonical receipt
+validation. Replacing a scratch-directory pathname cannot substitute a
+post-run forged success record; this remains an in-process read-only verification
+boundary, not proof of independence from a hostile kernel or process with
+privileged control during execution.
+
+A dedicated private temporary workspace is selected independently of user
+`TMPDIR`/`TMP`/`TEMP` and lies outside the retained foundations root. This
+workspace is for the **historical verifier's own disposable copy**; the
+signature verifier does not require scratch files at all. The child's temporary
+environment is overridden to that workspace, so its copy cannot be created
+under the evidence directory merely because temporary variables are poisoned.
+Failure to identify safe scratch space is an error, never permission to modify
+the evidence root. Assessment
 timestamps and the exact signature-bundle identity are recorded, and the
 request expiry is rechecked on a fresh UTC clock **after** all signature
 verification subprocesses and the source-manifest scan, immediately before
@@ -131,7 +146,11 @@ pinned no-follow **directory descriptors** (not a second vulnerable pathname
 resolution) with exclusive creation and mode `0600`; an existing receipt is
 never replaced. The receipt file is synced, followed by its parent directory
 and every newly created ancestor's directory entry, **before** the identity is
-printed. If durability fails, the CLI reports error code 2 instead of success.
+printed. If writing, flushing, or syncing a newly created receipt fails,
+  the CLI best-effort unlinks that **new inode** through the pinned parent
+  descriptor and fsyncs the deletion, then returns code 2. This never
+  overwrites a preexisting receipt. A filesystem refusing both the write and
+  deletion may need operator intervention before a safe retry.
 The receipt also contains a canonical local tool/source manifest and its hash
 (CLI/helper, first-party sources, lock, foundations entrypoints).
 These are **disclosure identities of the verifier's local inputs**, not an
@@ -184,8 +203,9 @@ expiry, strict historical stdout framing, bounded verifier diagnostics,
 foundations-run output overlap, poisoned `TMPDIR` and child temp isolation,
 symlink-parent replacement during receipt creation, directory-entry syncing,
 malformed packet **and signer/policy** exit status, fake `openssl` path
-spoofing, pinned binary identity, poisoned signature scratch directory,
-post-signature expiry, canonical bounded objective weight, forged
+spoofing, pinned binary identity, **sealed anonymous signature inputs**,
+forged pathname-based foundations stdout, malformed external policy digests,
+failed-receipt-write cleanup and retry, post-signature expiry, canonical bounded objective weight, forged
 apparent learning flags, exclusive receipt retention and a cryptographically
 valid proposal that remains blocked. They are cryptographic/software-conformance
 checks, not evidence that Phase 5 passed.
