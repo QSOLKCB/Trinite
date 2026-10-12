@@ -511,13 +511,20 @@ under CC BY 4.0, source blobs pinned, and the authentic ingestion tested in
 its isolated hash-locked reader workflow. Full ETQ-303 303-state event/phase
 closure is verified separately from a true 303-step lifted-graph walk.
 
-The authoritative corrected [CNR-001 v2 run 38290658293](https://github.com/QSOLKCB/Trinite/actions/runs/38290658293)
-passed full genuine-input execution and read-only replay. The earlier
+The corrected [CNR-001 v2 run 38290658293](https://github.com/QSOLKCB/Trinite/actions/runs/38290658293)
+passed full genuine-input execution and read-only replay. A further
+separately frozen [v3 run 38291828194](https://github.com/QSOLKCB/Trinite/actions/runs/38291828194)
+passed complete pinned-reader module/import-byte attestation, original
+decoder/source pins, new versioned request and analysis schema and full
+read-only replay. V3 reproduced v2's negative/saturated graph-hop scores. The earlier
 [historical v1 run 38288002645](https://github.com/QSOLKCB/Trinite/actions/runs/38288002645)
 is retained separately: Codex exposed spurious no-op degree rewires in its
 control producer. Both exact requests and analyses are now permanently
 stored in the [lossless v1/v2 evidence packet](../fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz)
-with explicit immutable byte commitments, not just expiring Actions artifacts.
+with explicit immutable byte commitments, alongside the separate
+[v3 full evidence packet](../fixtures/cnr-001-evidence/cnr001-v3.tar.gz)
+(SHA-256 fcec1f268a3985aeb921899d2cfcd8886ec91d53598faa6184761eb800a5ef5a).
+The original v0.1.0 source and all three research records stay unchanged.
 The corrected v2 protocol pins original v0.1.0 scorer/E8 basis Git blobs and
 the transitive source closure. **No biological or ETQ arm beats the baseline:**
 all block.0 hop sums remain zero with only two occupied anchors; final
