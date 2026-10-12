@@ -1,7 +1,5 @@
 """Mandatory authentic MaleCNS-v1.0 Parquet execution: separate pinned CI lane."""
 from pathlib import Path
-import io
-import tarfile
 import tempfile
 import unittest
 
@@ -29,34 +27,35 @@ class CNR001FullBiology(unittest.TestCase):
             self.assertEqual(len({x["receiver_identity"] for x in layer["arms"].values()}),1)
         self.assertEqual(json_bytes(report),json_bytes(core.analyze()))
 
-        # Historical v2 packet is retained for its *own* archived producer;
-        # active v3 requests are separately source-bound and must not be
-        # mistaken for a replay of the v2 numerical implementation.
-        self.assertEqual(core.protocol()[0]["schema"],"trinite.cnr-001-protocol.v3")
-        self.assertEqual(report["schema"],"trinite.cnr-001-analysis.v3")
-        self.assertEqual(core.attest_reader()[0].__name__,"pyarrow")
-        # The newly frozen v3 archive must regenerate bit-for-bit under the
-        # current true hash-locked reader and complete source contract.
+        self.assertEqual(core.protocol()[0]["schema"], "trinite.cnr-001-protocol.v4")
+        self.assertEqual(report["schema"], "trinite.cnr-001-analysis.v4")
+        self.assertEqual(core.attest_reader()[0].__name__, "pyarrow")
+
+    def test_fresh_request_run_and_read_only_verification(self):
         from importlib.util import spec_from_file_location, module_from_spec
-        from trinite.contracts import json_bytes
-        import hashlib
-        spec=spec_from_file_location("cnr001_runner",ROOT/"scripts/run_cnr001.py")
-        module=module_from_spec(spec);spec.loader.exec_module(module)
-        with tarfile.open(ROOT/"fixtures/cnr-001-evidence/cnr001-v3.tar.gz","r:gz") as archived:
-            request=archived.extractfile("v3/cnr-request.json").read()
-            analysis=archived.extractfile("v3/cnr-analysis.json").read()
-            receipt=archived.extractfile("v3/cnr-verification.json").read()
-        self.assertEqual(request,json_bytes(module.expected_request()))
-        req_id="sha256:"+hashlib.sha256(request).hexdigest()
-        expected=core.analyze();expected["request_identity"]=req_id
-        self.assertEqual(analysis,json_bytes(expected))
+        spec = spec_from_file_location("cnr001_runner", ROOT / "scripts/run_cnr001.py")
+        module = module_from_spec(spec)
+        spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as tmp:
-            rpath=Path(tmp)/"request.json"; apath=Path(tmp)/"analysis.json"
-            rpath.write_bytes(request); apath.write_bytes(analysis)
-            got=module.verify(rpath,req_id,apath,"sha256:"+hashlib.sha256(analysis).hexdigest())
-            self.assertEqual(json_bytes(got),receipt)
+            rpath = Path(tmp) / "request.json"
+            apath = Path(tmp) / "analysis.json"
+            frozen = module.freeze(rpath)
+            req_id = frozen["request_identity"]
+            ran = module.run(rpath, req_id, apath)
+            before = (rpath.read_bytes(), apath.read_bytes())
+            got = module.verify(rpath, req_id, apath, ran["analysis_identity"])
+            self.assertEqual(got["status"], "passed")
+            self.assertTrue(got["read_only"])
+            self.assertEqual(before, (rpath.read_bytes(), apath.read_bytes()))
+            with self.assertRaises(FileExistsError):
+                module.freeze(rpath)
+            apath.write_bytes(before[1] + b" ")
+            with self.assertRaisesRegex(ContractError, "external CNR analysis commitment differs"):
+                module.verify(rpath, req_id, apath, ran["analysis_identity"])
+            # Even a refreshed external identity cannot bless unrelated bytes.
+            with self.assertRaisesRegex(ContractError, "replay mismatch"):
+                module.verify(rpath, req_id, apath, identity(apath.read_bytes()))
 
 
-
-if __name__=="__main__":
+if __name__ == "__main__":
     unittest.main()

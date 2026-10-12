@@ -25,8 +25,8 @@ class CNR001Contracts(unittest.TestCase):
     def test_frozen_release_protocol_source_and_genuine_dataset_bytes(self):
         p, digest = core.protocol()
         self.assertEqual(p["baseline_commit"], core.BASELINE_SHA)
-        self.assertEqual(p["schema"], "trinite.cnr-001-protocol.v3")
-        self.assertEqual(p["evidence_revision"].split(";")[0], "v3-immutable-reader-and-schema-correction")
+        self.assertEqual(p["schema"], "trinite.cnr-001-protocol.v4")
+        self.assertEqual(p["evidence_revision"].split(";")[0], "v4-installed-pins-and-authentic-input-boundary")
         for path, expected in p["baseline_git_blobs"].items():
             self.assertEqual(core.git_blob(core.read(core.ROOT/path)), expected)
         self.assertEqual(p["run_class"], "retrospective-exploratory-training-exposed-observation-not-held-out")
@@ -44,6 +44,7 @@ class CNR001Contracts(unittest.TestCase):
         self.assertIn("src/trinite/lattice_observation/experiment.py", source)
         self.assertIn("src/trinite/cnr001/protocol-v2.json", source)
         self.assertIn("src/trinite/cnr001/protocol-v3.json", source)
+        self.assertIn("src/trinite/cnr001/protocol-v4.json", source)
         self.assertIn("src/trinite/e8_reference/__init__.py", source)
         self.assertIn("src/trinite/lattice_observation/experiment.py", source)
         self.assertIn(".github/workflows/cnr-001.yml", source)
@@ -171,28 +172,29 @@ class CNR001Contracts(unittest.TestCase):
             self.assertEqual(len(normalized),16)
             self.assertEqual(len(fit["axis_range_hex"]),3)
 
-    def test_software_only_graph_comparison_is_exploratory_and_reproducible(self):
-        graph=synthetic_sample()
-        r=core.analyze(graph)
-        r2=core.analyze(graph)
-        self.assertEqual(json_bytes(r),json_bytes(r2))
-        self.assertEqual(r["baseline"]["original_baseline_commit"],core.BASELINE_SHA)
-        self.assertEqual(set(r["layers"]),{"block.0","final"})
-        for layer in r["layers"].values():
-            self.assertEqual(len(layer["arms"]),8)
-            for arm in layer["arms"].values():
-                self.assertEqual(arm["edge_count"],24)
-                self.assertEqual(arm["receiver_identity"],layer["arms"]["baseline-menger"]["receiver_identity"])
-                self.assertEqual(sum(arm["graph_hops"]),arm["graph_hops_sum"])
-        for arm in ("male-cns20","etq101-20","etq303-20"):
-            receipt = r["graph_provenance"]["rewire_swaps"][arm]
+    def test_injected_samples_cannot_claim_authentic_data_commitments(self):
+        from unittest.mock import patch
+        sample = synthetic_sample()
+        # Even authentic-looking metadata must not make injected rows official.
+        for dataset in ("test-synthetic-nonbiological", "male-cns:v1.0"):
+            sample[2]["provenance"]["dataset"] = dataset
+            with self.subTest(dataset=dataset), patch.object(core, "candidate_graphs") as graphs:
+                with self.assertRaisesRegex(ContractError, "rejects injected biological samples"):
+                    core.analyze(sample)
+                graphs.assert_not_called()
+
+    def test_software_only_graph_controls_remain_reproducible(self):
+        graph = synthetic_sample()
+        graphs, provenance = core.candidate_graphs(graph)
+        self.assertEqual((graphs, provenance), core.candidate_graphs(graph))
+        self.assertEqual(len(graphs), 8)
+        self.assertTrue(all(len(edges) == 24 for edges in graphs.values()))
+        for arm in ("male-cns20", "etq101-20", "etq303-20"):
+            receipt = provenance["rewire_swaps"][arm]
             self.assertEqual(receipt["eligible_control"],
                              receipt["effective_swaps"] > 0 and receipt["distinct_final_topology"])
-        self.assertEqual(r["graph_provenance"]["biological_provenance"]["dataset"],
+        self.assertEqual(provenance["biological_provenance"]["dataset"],
                          "test-synthetic-nonbiological")
-        self.assertFalse(r["phase5_ready"])
-        self.assertFalse(r["release_ready"])
-        self.assertEqual(r["geometry_loss"],"0")
 
     def test_request_freeze_external_identity_without_optional_bio_reader(self):
         import importlib.util

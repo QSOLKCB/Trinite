@@ -34,6 +34,10 @@ jobs:
         run: |
           python -m pip install --require-hashes --no-deps -r requirements.connectome.lock
           python -c "import importlib.metadata; assert importlib.metadata.version('pyarrow') == '21.0.0'"
+      - name: Build and install wheel at the package boundary
+        run: |
+          python -m pip install setuptools==84.0.0
+          python -m unittest discover -s tests/packaging -v 2>&1 | tee "$RUNNER_TEMP/cnr-wheel-tests.log"
       - name: Run bounded native-baseline/CNR experiment and verify exact replay
         run: |
           python -m unittest discover -s tests -p 'test_cnr001.py' -v 2>&1 | tee "$RUNNER_TEMP/cnr-standardlib-tests.log"
@@ -54,7 +58,7 @@ jobs:
           print('ETQ-303 full walk/event:',report['graph_provenance']['etq_diagnostics'])
           print('v0.1.0 baseline:',report['baseline'])
           PY
-      - name: Emit v3 immutable evidence for permanent repository retention
+      - name: Emit v4 immutable evidence for permanent repository retention
         if: success()
         run: |
           python - <<'PY'
@@ -64,30 +68,30 @@ jobs:
           original = Path("fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz").read_bytes()
           if sha(original) != "be7ec8ade4c19c05bff5f11741a2b48b4a7760e8ec8fa811c263a021354f18df":
               raise RuntimeError("historical CNR v1/v2 packet identity changed")
-          store = Path("fixtures/cnr-001-evidence/cnr001-v3.tar.gz")
+          store = Path("fixtures/cnr-001-evidence/cnr001-v4.tar.gz")
           temp = Path(os.environ["RUNNER_TEMP"])
           names = ("cnr-request.json","cnr-analysis.json","cnr-freeze-receipt.json",
                    "cnr-run-receipt.json","cnr-verification.json")
-          fresh = {"v3/" + n:(temp/n).read_bytes() for n in names}
+          fresh = {"v4/" + n:(temp/n).read_bytes() for n in names}
           if store.is_file():
               packed = store.read_bytes()
               with tarfile.open(fileobj=io.BytesIO(packed),mode="r:gz") as tar:
                   members = tar.getmembers()
                   if any(not m.isfile() for m in members) or len({m.name for m in members}) != len(members):
-                      raise RuntimeError("malformed retained v3 packet")
+                      raise RuntimeError("malformed retained v4 packet")
                   contents = {m.name:tar.extractfile(m).read() for m in members}
               manifest = json.loads(contents["MANIFEST.json"])
               if (manifest["historical_v1_v2_sha256"] != sha(original)
                       or set(manifest["entries"]) != set(contents)-{"MANIFEST.json"}):
-                  raise RuntimeError("v3 archive manifest mismatch")
+                  raise RuntimeError("v4 archive manifest mismatch")
               for name, value in manifest["entries"].items():
                   if sha(contents[name]) != value["sha256"] or len(contents[name]) != value["bytes"]:
-                      raise RuntimeError("v3 archived object differs from manifest")
+                      raise RuntimeError("v4 archived object differs from manifest")
               for name, raw in fresh.items():
                   if contents.get(name) != raw:
-                      raise RuntimeError("v3 archive differs from fresh source-bound replay: " + name)
+                      raise RuntimeError("v4 archive differs from fresh source-bound replay: " + name)
           else:
-              manifest = {"schema":"trinite.cnr-001-evidence-archive.v3",
+              manifest = {"schema":"trinite.cnr-001-evidence-archive.v4",
                           "historical_v1_v2_sha256":sha(original),
                           "producer_run":os.environ["GITHUB_RUN_ID"],
                           "entries":{name:{"bytes":len(raw),"sha256":sha(raw)}
@@ -103,8 +107,8 @@ jobs:
                           member.mode=0o644; member.uid=member.gid=0
                           tar.addfile(member,io.BytesIO(raw))
               packed=out.getvalue()
-          print("CNR_V3_ARCHIVE_SHA256:"+sha(packed))
-          print("CNR_V3_ARCHIVE_BASE64:"+base64.b64encode(packed).decode("ascii"))
+          print("CNR_V4_ARCHIVE_SHA256:"+sha(packed))
+          print("CNR_V4_ARCHIVE_BASE64:"+base64.b64encode(packed).decode("ascii"))
           PY
       - name: Retain all research results, including failure logs
         if: always()
@@ -116,3 +120,50 @@ jobs:
             ${{ runner.temp }}/cnr-*.log
           if-no-files-found: warn
           retention-days: 90
+
+  historical-v3-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: src
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: c9f4399eca3bb380136321453ff2c6222f0bbaec
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Replay unchanged v3 archive with its original producer
+        run: |
+          python -m pip install --require-hashes --no-deps -r requirements.connectome.lock
+          python - <<'PYCODE' 2>&1 | tee "$RUNNER_TEMP/cnr-historical-v3.log"
+          import hashlib, importlib.util, os, tarfile
+          from pathlib import Path
+          from trinite.contracts import identity, json_bytes
+          packet = Path("fixtures/cnr-001-evidence/cnr001-v3.tar.gz").read_bytes()
+          assert hashlib.sha256(packet).hexdigest() == "fcec1f268a3985aeb921899d2cfcd8886ec91d53598faa6184761eb800a5ef5a"
+          spec = importlib.util.spec_from_file_location("cnr_v3", "scripts/run_cnr001.py")
+          runner = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(runner)
+          with tarfile.open("fixtures/cnr-001-evidence/cnr001-v3.tar.gz", "r:gz") as archive:
+              request = archive.extractfile("v3/cnr-request.json").read()
+              analysis = archive.extractfile("v3/cnr-analysis.json").read()
+              receipt = archive.extractfile("v3/cnr-verification.json").read()
+          root = Path(os.environ["RUNNER_TEMP"])
+          rpath, apath = root / "v3-request.json", root / "v3-analysis.json"
+          rpath.write_bytes(request)
+          apath.write_bytes(analysis)
+          got = runner.verify(rpath, identity(request), apath, identity(analysis))
+          assert json_bytes(got) == receipt
+          assert rpath.read_bytes() == request and apath.read_bytes() == analysis
+          print("Original v3 request, analysis and verification receipt replay exactly; inputs unchanged.")
+          PYCODE
+      - name: Retain historical replay log including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cnr-001-historical-v3-replay
+          path: ${{ runner.temp }}/cnr-historical-v3.log
+          if-no-files-found: warn
