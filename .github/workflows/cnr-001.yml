@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: cnr-001-${{ github.ref }}
@@ -57,7 +58,7 @@ jobs:
       - name: Emit authenticated permanent evidence packet for review
         if: success()
         env:
-          CNR_HISTORY_TOKEN: {{ github.token }}
+          CNR_HISTORY_TOKEN: ${{ github.token }}
         run: |
           python - <<'PY'
           import base64, gzip, hashlib, io, json, os, tarfile, urllib.request, zipfile
@@ -103,7 +104,7 @@ jobs:
                   opener.open(req)
                   raise RuntimeError("unexpected direct artifact response")
               except urllib.error.HTTPError as error:
-                  if error.code != 302 or not error.headers.get("Location"):
+                  if error.code not in (302, 307) or not error.headers.get("Location"):
                       raise RuntimeError("historical CNR artifact unavailable") from error
                   location = error.headers["Location"]
               if not location.startswith("https://"):
