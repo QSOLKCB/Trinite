@@ -130,10 +130,10 @@ def biological_graph():
     nodes = pq.read_table(pa.BufferReader(raw["nodes.parquet"]))
     edges = pq.read_table(pa.BufferReader(raw["edges.parquet"]))
     if ("node_id" not in nodes.column_names or
-            not {"source", "target", "weight"} <= set(edges.column_names)):
+            not {"source_index", "target_index", "synapse_count"} <= set(edges.column_names)):
         raise ContractError("unexpected MaleCNS parquet schema")
     identifiers = nodes.column("node_id").to_pylist()
-    s, t, w = (edges.column(key).to_pylist() for key in ("source", "target", "weight"))
+    s, t, w = (edges.column(key).to_pylist() for key in ("source_index", "target_index", "synapse_count"))
     if len(identifiers) != 100 or len(set(identifiers)) != 100 or len(s) != 3630:
         raise ContractError("changed MaleCNS body/connection counts")
     if any(type(n) is not int or n <= 0 for n in identifiers):
