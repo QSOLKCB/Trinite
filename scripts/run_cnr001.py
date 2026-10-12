@@ -14,7 +14,7 @@ def expected_request():
     p, digest = core.protocol()
     data, _ = core.source_data()
     _, evidence = core.baseline_vectors()
-    return {"schema": "trinite.cnr-001-request.v1",
+    return {"schema": "trinite.cnr-001-request.v3",
             "protocol":p,"protocol_identity":digest,
             "baseline":evidence,"source":core.source_receipt(),
             "data_files":{name:identity(raw) for name,raw in data.items()},
