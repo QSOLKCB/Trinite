@@ -1,0 +1,306 @@
+"""Offline signed Phase 5 preflight; only creates an immutable rejection receipt."""
+import argparse
+import base64
+from datetime import datetime, timezone
+import hashlib
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'src'))
+from trinite.contracts import ContractError, exact_keys, identity, json_bytes, parse_json, require_identity
+from phase5_preflight.preflight import (assess, read_json, safe_read, validate_packet,
+    validate_signer_inputs, recheck_request_window, _memfd, seal_memfd)
+
+MAX_LOG_BYTES = 16384
+FOUNDATIONS_STDOUT_LIMIT = 1024 * 1024
+FOUNDATIONS_TIMEOUT = 2400
+FOUNDATIONS_SCOPE = 'integrity/score/checkpoint/gate replay; no new generation or independent experiment'
+
+
+class FoundationsVerifierFailure(ContractError):
+    """Preserve bounded, SHA-256-identified child-process evidence on failure."""
+    def __init__(self, message, diagnostics):
+        super().__init__(message)
+        self.diagnostics = diagnostics
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
+
+
+def safe_absolute(path):
+    """Normalize `..` aliases, but fail on symlinked spelling or ancestry."""
+    raw = Path(path).absolute()
+    absolute = Path(os.path.abspath(path))
+    for p in (raw, *raw.parents, absolute, *absolute.parents):
+        if p.is_symlink():
+            raise ContractError('phase5 path traversal through symlink denied')
+    return absolute
+
+
+def _log_record(stream):
+    """Hash and sample the already-open (sealed) original child output fd."""
+    digest = hashlib.sha256()
+    preview = bytearray()
+    count = 0
+    stream.seek(0)
+    while True:
+        block = stream.read(65536)
+        if not block:
+            break
+        digest.update(block)
+        count += len(block)
+        if len(preview) < MAX_LOG_BYTES:
+            preview.extend(block[:MAX_LOG_BYTES-len(preview)])
+    return {'sha256': 'sha256:' + digest.hexdigest(), 'total_bytes': count,
+            'truncated': count > MAX_LOG_BYTES,
+            'prefix_b64': base64.b64encode(preview).decode('ascii')}
+
+
+def _scratch_outside(foundations_root):
+    """Select a symlink-free scratch parent irrespective of user TMPDIR/TMP.
+
+    Never let a child verifier's temporary copy live inside the retained run.
+    These are Linux CPU-only tooling paths, not caller-supplied fallback roots.
+    """
+    for candidate in (Path('/tmp'), Path('/var/tmp')):
+        try:
+            candidate = safe_absolute(candidate)
+        except ContractError:
+            continue
+        if (candidate != foundations_root and foundations_root not in candidate.parents
+                and candidate.is_dir() and os.access(candidate, os.W_OK | os.X_OK)):
+            return candidate
+    raise ContractError('no safe temporary root outside retained foundations evidence')
+
+
+def write_receipt(output, content):
+    """Write and sync one exclusive receipt, removing any failed new file.
+
+    All operations use pinned O_NOFOLLOW parent-directory descriptors. If the
+    new file is only partially written or an fsync fails, best-effort unlink
+    *that inode* through the pinned descriptor and sync the removal. Never
+    delete an existing receipt or follow a raced parent symlink.
+    """
+    if not all(hasattr(os, key) for key in ('O_NOFOLLOW', 'O_DIRECTORY')):
+        raise ContractError('phase5 receipt requires no-follow directory descriptors')
+    output = Path(output)
+    if not output.is_absolute() or output.name in ('', '.', '..'):
+        raise ContractError('phase5 receipt requires an absolute filename')
+    dflags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, 'O_CLOEXEC', 0)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | getattr(os, 'O_CLOEXEC', 0)
+    descriptors = []
+    dirty = set()
+    receipt_inode = None
+    pending_fd = None
+    completed = False
+    try:
+        descriptors.append(os.open('/', dflags))
+        for part in output.parent.parts[1:]:
+            try:
+                next_fd = os.open(part, dflags, dir_fd=descriptors[-1])
+            except FileNotFoundError:
+                try:
+                    os.mkdir(part, mode=0o700, dir_fd=descriptors[-1])
+                except FileExistsError:
+                    pass  # Open with O_NOFOLLOW below or fail closed.
+                dirty.add(len(descriptors)-1)
+                next_fd = os.open(part, dflags, dir_fd=descriptors[-1])
+            descriptors.append(next_fd)
+        pending_fd = os.open(output.name, flags, 0o600, dir_fd=descriptors[-1])
+        info = os.fstat(pending_fd)
+        receipt_inode = (info.st_dev, info.st_ino)
+        dirty.add(len(descriptors)-1)
+        with os.fdopen(pending_fd, 'wb') as stream:
+            pending_fd = None  # fdopen owns this fd from here onwards.
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        for index in sorted(dirty, reverse=True):
+            os.fsync(descriptors[index])
+        completed = True
+    finally:
+        if pending_fd is not None:
+            os.close(pending_fd)
+        if not completed and receipt_inode is not None and descriptors:
+            parent_fd = descriptors[-1]
+            try:
+                actual = os.stat(output.name, dir_fd=parent_fd, follow_symlinks=False)
+                if (actual.st_dev, actual.st_ino) == receipt_inode:
+                    os.unlink(output.name, dir_fd=parent_fd)
+                    # Best effort: cleanup failure must not hide original IO
+                    # failure; the CLI still returns exit 2 (never success).
+                    os.fsync(parent_fd)
+            except OSError:
+                pass
+        for fd in reversed(descriptors):
+            os.close(fd)
+
+
+def verify_foundations(root, request_identity, summary_identity):
+    """Read the *original* sealed child outputs; never reopen a pathname."""
+    root = safe_absolute(root)
+    if not root.is_dir():
+        raise ContractError('unsafe or missing foundations run root')
+    runner = ROOT / 'scripts/verify_foundations_run.py'
+    argv = [sys.executable, str(runner), str(root), '--request-identity', request_identity,
+            '--summary-identity', summary_identity]
+    scratch_parent = _scratch_outside(root)
+    with tempfile.TemporaryDirectory(prefix='trinite-p5-foundations-', dir=scratch_parent) as directory:
+        base = safe_absolute(directory)
+        if root == base or root in base.parents:
+            raise ContractError('phase5 scratch space overlaps foundations evidence')
+        # The historical verifier uses TemporaryDirectory() and needs isolated
+        # scratch; its stdout/stderr never receive a replaceable pathname.
+        env = dict(os.environ, PYTHONPATH=str(ROOT/'src'), OMP_NUM_THREADS='1',
+                   MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1',
+                   TMPDIR=str(base), TMP=str(base), TEMP=str(base))
+        stdout_fd = _memfd('foundations-stdout', seal=False)
+        try:
+            stderr_fd = _memfd('foundations-stderr', seal=False)
+        except BaseException:
+            os.close(stdout_fd)
+            raise
+        with os.fdopen(stdout_fd, 'w+b', buffering=0) as stdout, os.fdopen(stderr_fd, 'w+b', buffering=0) as stderr:
+            try:
+                result = subprocess.run(argv, cwd=ROOT, shell=False, env=env,
+                    stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
+                    check=False, timeout=FOUNDATIONS_TIMEOUT)
+            except subprocess.TimeoutExpired as exc:
+                seal_memfd(stdout.fileno())
+                seal_memfd(stderr.fileno())
+                info = {'state': 'timed-out', 'timeout_seconds': FOUNDATIONS_TIMEOUT,
+                        'stdout': _log_record(stdout), 'stderr': _log_record(stderr)}
+                raise FoundationsVerifierFailure('foundations verification timed out', info) from exc
+            except OSError as exc:
+                seal_memfd(stdout.fileno())
+                seal_memfd(stderr.fileno())
+                info = {'state': 'spawn-error', 'error_type': type(exc).__name__,
+                        'stdout': _log_record(stdout), 'stderr': _log_record(stderr)}
+                raise FoundationsVerifierFailure('foundations verifier could not start', info) from exc
+            seal_memfd(stdout.fileno())
+            seal_memfd(stderr.fileno())
+            info = {'state': 'completed' if result.returncode == 0 else 'rejected',
+                    'returncode': result.returncode, 'stdout': _log_record(stdout),
+                    'stderr': _log_record(stderr)}
+            if result.returncode:
+                raise FoundationsVerifierFailure('authoritative foundations verification rejected the run', info)
+            if info['stdout']['total_bytes'] > FOUNDATIONS_STDOUT_LIMIT:
+                raise FoundationsVerifierFailure('foundations verifier stdout exceeds bound', info)
+            stdout.seek(0)
+            stdout_bytes = stdout.read(FOUNDATIONS_STDOUT_LIMIT + 1)
+            # Existing verify_foundations_run.py calls print(json_bytes(...).decode()).
+            # Canonical json_bytes ends with LF; print adds exactly one LF.
+            if not stdout_bytes.endswith(b'\n\n') or stdout_bytes.endswith(b'\n\n\n'):
+                raise FoundationsVerifierFailure('unexpected foundations stdout transport framing', info)
+            try:
+                record = parse_json(stdout_bytes[:-1], canonical=True)
+                exact_keys(record, {'summary_identity', 'request_identity', 'verified_training_cells',
+                                     'outcome', 'dense_learning_adequate', 'scope'}, 'foundations verifier receipt')
+                if (record['request_identity'] != request_identity or
+                        record['summary_identity'] != summary_identity or
+                        type(record['verified_training_cells']) is not int or
+                        not 0 <= record['verified_training_cells'] <= 27 or
+                        type(record['dense_learning_adequate']) is not bool or
+                        record['outcome'] not in ('blocked', 'completed') or
+                        record['scope'] != FOUNDATIONS_SCOPE):
+                    raise ContractError('foundations verifier returned an unbound or invalid receipt')
+            except (ContractError, ValueError, TypeError) as exc:
+                raise FoundationsVerifierFailure('foundations verifier receipt failed strict validation', info) from exc
+            return {'schema': 'trinite.phase5-foundations-verification.v1', **record}
+
+
+def tool_source_manifest():
+    """Identify local tool entries and existing foundations source closure.
+
+    This is a *reporting* identity, not an externally approved verifier identity.
+    """
+    paths = [ROOT/'scripts/check_phase5_preflight.py', ROOT/'scripts/verify_foundations_run.py',
+             ROOT/'scripts/run_foundations.py', ROOT/'requirements.lock',
+             *sorted((ROOT/'scripts/phase5_preflight').glob('*.py')),
+             *sorted((ROOT/'src/trinite').rglob('*.py')),
+             *sorted((ROOT/'src/trinite').rglob('*.json')),
+             ROOT/'src/trinite/cpu-dependencies.lock']
+    return {str(path.relative_to(ROOT)): identity(safe_read(path)) for path in paths}
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--packet', type=Path, required=True)
+    p.add_argument('--signatures', type=Path, required=True)
+    p.add_argument('--trust-policy', type=Path, required=True)
+    p.add_argument('--trust-policy-identity', required=True,
+                   help='Out-of-band SHA256 of canonical JSON trust policy; never read this from the packet')
+    p.add_argument('--foundations-run', type=Path)
+    p.add_argument('--output', type=Path, required=True)
+    args = p.parse_args(argv)
+    try:
+        sources = [safe_absolute(a) for a in (args.packet, args.signatures, args.trust_policy)]
+        output = safe_absolute(args.output)
+        foundations_root = safe_absolute(args.foundations_run) if args.foundations_run else None
+        if output in sources or any(output in s.parents for s in sources):
+            raise ContractError('phase5 output overlaps immutable input')
+        if foundations_root and (output == foundations_root or foundations_root in output.parents):
+            raise ContractError('phase5 output overlaps retained foundations evidence root')
+        packet = read_json(sources[0])
+        signature_bytes = safe_read(sources[1])
+        signatures = parse_json(signature_bytes, canonical=True)
+        policy = read_json(sources[2])
+        # Malformed schema is exit 2, not a scientifically meaningful denial
+        # (exit 1). Prevent arbitrary or tampered proposals from being archived
+        # as otherwise valid preflight packets.
+        validate_packet(packet)
+        validate_signer_inputs(signatures, policy)
+        require_identity(args.trust_policy_identity)
+        # The signature subprocess must not inherit TMPDIR from retained
+        # evidence, and cannot use a different root from the foundation worker.
+        scratch_parent = _scratch_outside(foundations_root)
+        started = utc_now()
+        result = assess(packet, signatures, policy, args.trust_policy_identity,
+                        now=started, scratch_parent=scratch_parent)
+        prior, prior_error, diagnostic = None, None, None
+        if foundations_root and all(result['checks'][key] for key in (
+                'protocol_and_matrix', 'external_policy_identity', 'signature_quorum', 'request_window')):
+            try:
+                refs = packet['prerequisites']
+                prior = verify_foundations(foundations_root, refs['foundations_request_identity'],
+                                           refs['foundations_summary_identity'])
+            except FoundationsVerifierFailure as exc:
+                prior_error, diagnostic = str(exc), exc.diagnostics
+            except (ContractError, KeyError, TypeError, ValueError) as exc:
+                prior_error = str(exc)
+            # A slow verifier cannot preserve an approval window that has expired.
+            result = assess(packet, signatures, policy, args.trust_policy_identity,
+                            now=utc_now(), foundations_result=prior, scratch_parent=scratch_parent)
+        # Do not run signatures *after* recording completion. The final
+        # time check occurs after ALL crypto work and manifest acquisition.
+        if prior_error:
+            result['errors'].append('foundations verification: ' + prior_error)
+        if diagnostic is not None:
+            result['foundations_diagnostics'] = diagnostic
+        result['signature_bundle_identity'] = identity(signature_bytes)
+        manifest = tool_source_manifest()
+        result['preflight_source_manifest'] = manifest
+        result['preflight_source_manifest_identity'] = identity(json_bytes(manifest))
+        assessed = utc_now()  # after last signature subprocess and source scan
+        recheck_request_window(packet, result, assessed)
+        result['assessment_started_at'] = started.isoformat().replace('+00:00', 'Z')
+        result['assessment_completed_at'] = assessed.isoformat().replace('+00:00', 'Z')
+        # Pin every parent component by descriptor; no path re-resolution
+        # between symlink checks and the file creation/open operation.
+        raw_receipt = json_bytes(result)
+        write_receipt(output, raw_receipt)
+        print(json_bytes({'receipt_identity': identity(raw_receipt),
+                          'outcome': result['outcome'], 'phase5_authorized': False}).decode(), end='')
+        return 1
+    except (ContractError, OSError, KeyError, TypeError, ValueError, UnicodeError) as exc:
+        print('phase5-preflight: ' + str(exc), file=sys.stderr)
+        return 2
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
