@@ -395,6 +395,22 @@ scaling and release remain separate blocked gates. The originally reported full
 Ryzen audit still requires its own producer/artifacts; these new records do not
 replace it.
 
+## Task-balanced maths scheduling increment
+
+After merging PR #23, Trent selected further learning development on 2026-10-12.
+The next separately frozen [training-only increment](MATHS-TASK-BALANCE.md)
+compares ranked maths-row cycling with equal task visits at 8,192 updates in
+both arms, seeds 0 and 1. Four arithmetic/four maths slots per batch, native
+initialization, model, optimizer, diagnostic view and final-checkpoint rule stay
+fixed. Task frequency and ordering change together; token exposure is measured,
+not matched. No held-out outcomes inform this recipe or select a winner.
+
+The implementation retains all six assurance checks and lossless evidence,
+with the same every-task/every-candidate-seed 90% joint-training gate. Research
+outcomes must follow publication of the frozen producer. This increment does
+not clear original fold/composed adequacy, fresh confirmation, Phase 5, format,
+scaling or release gates. Previous negative results and producers stay intact.
+
 ## Future recursive 3×3×3 geometry scaffold
 
 Requested by Trent on 2026-10-12: investigate a bounded recursive 3×3×3
