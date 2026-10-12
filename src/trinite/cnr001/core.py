@@ -17,15 +17,16 @@ from ..reference_geometry import decode_vector
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "fixtures/cnr-001-source"
-PROTOCOL_PATH = Path(__file__).parent / "protocol.json"
+PROTOCOL_PATH = Path(__file__).parent / "protocol-v2.json"
 BASELINE_SHA = "a1cd03ba8d29f335bea29179663931bbd9c35927"
-PROTOCOL_GIT_BLOB = "36a63b401a06811f669f538c343cef572f98c402"
+PROTOCOL_GIT_BLOB = "e9fec8937416e40a28083fe07e16b13c3020a7d5"
 SOURCE_PATHS = (
     "src/trinite/__init__.py", "src/trinite/contracts.py",
     "src/trinite/cnr001/__init__.py", "src/trinite/cnr001/core.py",
     "src/trinite/cnr001/protocol.json", "scripts/run_cnr001.py",
     "src/trinite/lattice_observation/experiment.py",
     "src/trinite/lattice/scaffold.py", "src/trinite/e8_reference/etq.py",
+    "src/trinite/e8_reference/__init__.py", "src/trinite/cnr001/protocol-v2.json",
     "src/trinite/reference_geometry.py", "src/trinite/reference_evidence.py",
     "src/trinite/reference_inputs.py", "src/trinite/lattice_observation/protocol.json",
     "src/trinite/lattice/protocol.json", "fixtures/cnr-001-source/metadata.json",
@@ -58,7 +59,7 @@ def protocol():
     if git_blob(raw) != PROTOCOL_GIT_BLOB:
         raise ContractError("CNR protocol differs from preregistered producer")
     p = parse_json(raw, canonical=True)
-    if (p["schema"] != "trinite.cnr-001-protocol.v1"
+    if (p["schema"] != "trinite.cnr-001-protocol.v2"
             or p["baseline_commit"] != BASELINE_SHA
             or p["baseline_reference_archive_sha256"] != ARCHIVE
             or p["seed"] != 29 or p["receiver_nodes"] != 20
@@ -69,11 +70,20 @@ def protocol():
                 "male-cns20-degree-rewired", "etq101-20-degree-rewired",
                 "etq303-20-degree-rewired", "hash-random20"]):
         raise ContractError("unsupported frozen CNR-001 protocol")
+    # Exact known v0.1.0 Git blob identities are distinct from source receipts
+    # for this separately versioned producer. A changed scorer is rejected.
+    for name, expected in p["baseline_git_blobs"].items():
+        if git_blob(read(ROOT / name)) != expected:
+            raise ContractError("v0.1.0 reference source changed: " + name)
     return p, identity(raw)
 
 
 def source_receipt():
-    return {name: identity(read(ROOT / name)) for name in SOURCE_PATHS}
+    # The baseline closure binds ALL transitive first-party Python/JSON modules;
+    # the extra files bind the new launcher, imported ETQ basis and data context.
+    combined = {**baseline.source_receipt(), **{
+        name: identity(read(ROOT / name)) for name in SOURCE_PATHS}}
+    return {name: combined[name] for name in sorted(combined)}
 
 
 def git_blob(raw):
@@ -206,26 +216,48 @@ def etq_graphs():
 
 
 def rewired(edges, seed=29):
-    """Deterministic simple-graph degree-preserving swaps with exact receipts."""
+    """Deterministic, *effective* undirected degree-preserving double-edge swaps.
+
+    Topologically rigid edge sets are kept unchanged with zero effective swaps.
+    They are reported as unavailable controls, never claimed as independently
+    rewired negative controls.
+    """
     original = {tuple(x) for x in edges}
     selected = set(original)
     swaps = 0
     for k in range(120):
-        order = sorted(selected, key=lambda e: identity(json_bytes({"seed": seed, "pass": k, "edge": list(e)})))
-        if len(order) < 2: break
-        a, b = order[0], order[1]
-        # a,b each ordered u<v; compare both symmetric partner swaps.
-        candidate = sorted([tuple(sorted((a[0], b[1]))), tuple(sorted((b[0], a[1])))])
-        if (all(x[0] != x[1] for x in candidate)
-                and len(set(candidate)) == 2
-                and not any(x in selected - {a, b} for x in candidate)):
-            selected.difference_update((a, b))
-            selected.update(candidate); swaps += 1
+        order = sorted(selected, key=lambda e: identity(json_bytes({
+            "seed": seed, "pass": k, "edge": list(e)})))
+        found = None
+        for i, a in enumerate(order):
+            for b in order[i+1:]:
+                old_pair = {a, b}
+                for orientation in (0, 1):
+                    if orientation == 0:
+                        endpoints = ((a[0], b[1]), (a[1], b[0]))
+                    else:
+                        endpoints = ((a[0], b[0]), (a[1], b[1]))
+                    candidate = {tuple(sorted(x)) for x in endpoints}
+                    if (len(candidate) != 2 or candidate == old_pair
+                            or any(u == v for u, v in candidate)
+                            or any(e in selected - old_pair for e in candidate)):
+                        continue
+                    found = (old_pair, candidate)
+                    break
+                if found is not None:
+                    break
+            if found is not None:
+                break
+        if found is None:
+            break
+        old_pair, candidate = found
+        selected.difference_update(old_pair)
+        selected.update(candidate)
+        swaps += 1
     result = sorted([list(x) for x in selected])
     if len(result) != len(edges) or degrees(result) != degrees(edges):
-        raise ContractError("rewiring broke edge count or degree multiset")
+        raise ContractError("rewiring broke edge count or per-node degrees")
     return result, swaps
-
 
 def degrees(edges):
     out = [0] * 20
@@ -287,7 +319,9 @@ def candidate_graphs(bio=None):
     for arm in ("male-cns20", "etq101-20", "etq303-20"):
         edges, count = rewired(graphs[arm])
         graphs[arm + "-degree-rewired"] = edges
-        swaps[arm] = count
+        swaps[arm] = {"effective_swaps": count,
+                      "distinct_final_topology": edges != graphs[arm],
+                      "eligible_control": count > 0 and edges != graphs[arm]}
     graphs["hash-random20"] = random_edges()
     for name, edges in graphs.items():
         if len(edges) != 24 or len({tuple(pair) for pair in edges}) != 24:
