@@ -25,8 +25,8 @@ class CNR001Contracts(unittest.TestCase):
     def test_frozen_release_protocol_source_and_genuine_dataset_bytes(self):
         p, digest = core.protocol()
         self.assertEqual(p["baseline_commit"], core.BASELINE_SHA)
-        self.assertEqual(p["schema"], "trinite.cnr-001-protocol.v2")
-        self.assertEqual(p["evidence_revision"].split(";")[0], "v2-source-bound-correction")
+        self.assertEqual(p["schema"], "trinite.cnr-001-protocol.v3")
+        self.assertEqual(p["evidence_revision"].split(";")[0], "v3-immutable-reader-and-schema-correction")
         for path, expected in p["baseline_git_blobs"].items():
             self.assertEqual(core.git_blob(core.read(core.ROOT/path)), expected)
         self.assertEqual(p["run_class"], "retrospective-exploratory-training-exposed-observation-not-held-out")
@@ -43,6 +43,7 @@ class CNR001Contracts(unittest.TestCase):
         source = core.source_receipt()
         self.assertIn("src/trinite/lattice_observation/experiment.py", source)
         self.assertIn("src/trinite/cnr001/protocol-v2.json", source)
+        self.assertIn("src/trinite/cnr001/protocol-v3.json", source)
         self.assertIn("src/trinite/e8_reference/__init__.py", source)
         self.assertIn("src/trinite/lattice_observation/experiment.py", source)
         self.assertIn(".github/workflows/cnr-001.yml", source)
