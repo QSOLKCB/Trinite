@@ -245,3 +245,11 @@ The `scripts/run_procedural_qec_v3.py` research launcher, source-bound
 environment. Wheel packaging does not change their scientific protocols,
 historical identities, or release readiness. There is no wheel-only full
 research runner in this phase.
+
+
+Installed procedural data now uses stable logical `src/trinite/...` source
+names, independent of the wheel's installation prefix. The installed-wheel
+test proves exact dataset and manifest parity with a separately regenerated
+checkout, including after moving the installation directory. Historical v2
+evidence remains bound to its original source; any new research execution
+must freeze a new source-bound request.
