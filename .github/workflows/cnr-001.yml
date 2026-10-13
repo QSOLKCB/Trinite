@@ -58,57 +58,51 @@ jobs:
           print('ETQ-303 full walk/event:',report['graph_provenance']['etq_diagnostics'])
           print('v0.1.0 baseline:',report['baseline'])
           PY
-      - name: Emit v4 immutable evidence for permanent repository retention
+      - name: Verify immutable v4 packet and compare native numerical outcomes
         if: success()
         run: |
           python - <<'PY'
-          import base64, gzip, hashlib, io, json, os, tarfile
+          import hashlib, json, os, tarfile
           from pathlib import Path
           def sha(raw): return hashlib.sha256(raw).hexdigest()
-          original = Path("fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz").read_bytes()
-          if sha(original) != "be7ec8ade4c19c05bff5f11741a2b48b4a7760e8ec8fa811c263a021354f18df":
+          historical = Path("fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz").read_bytes()
+          if sha(historical) != "be7ec8ade4c19c05bff5f11741a2b48b4a7760e8ec8fa811c263a021354f18df":
               raise RuntimeError("historical CNR v1/v2 packet identity changed")
-          store = Path("fixtures/cnr-001-evidence/cnr001-v4.tar.gz")
-          temp = Path(os.environ["RUNNER_TEMP"])
-          names = ("cnr-request.json","cnr-analysis.json","cnr-freeze-receipt.json",
-                   "cnr-run-receipt.json","cnr-verification.json")
-          fresh = {"v4/" + n:(temp/n).read_bytes() for n in names}
-          if store.is_file():
-              packed = store.read_bytes()
-              with tarfile.open(fileobj=io.BytesIO(packed),mode="r:gz") as tar:
-                  members = tar.getmembers()
-                  if any(not m.isfile() for m in members) or len({m.name for m in members}) != len(members):
-                      raise RuntimeError("malformed retained v4 packet")
-                  contents = {m.name:tar.extractfile(m).read() for m in members}
-              manifest = json.loads(contents["MANIFEST.json"])
-              if (manifest["historical_v1_v2_sha256"] != sha(original)
-                      or set(manifest["entries"]) != set(contents)-{"MANIFEST.json"}):
-                  raise RuntimeError("v4 archive manifest mismatch")
-              for name, value in manifest["entries"].items():
-                  if sha(contents[name]) != value["sha256"] or len(contents[name]) != value["bytes"]:
-                      raise RuntimeError("v4 archived object differs from manifest")
-              for name, raw in fresh.items():
-                  if contents.get(name) != raw:
-                      raise RuntimeError("v4 archive differs from fresh source-bound replay: " + name)
-          else:
-              manifest = {"schema":"trinite.cnr-001-evidence-archive.v4",
-                          "historical_v1_v2_sha256":sha(original),
-                          "producer_run":os.environ["GITHUB_RUN_ID"],
-                          "entries":{name:{"bytes":len(raw),"sha256":sha(raw)}
-                                     for name,raw in sorted(fresh.items())}}
-              fresh["MANIFEST.json"] = (json.dumps(manifest,sort_keys=True,
-                                                   separators=(",",":"))+"\n").encode()
-              out = io.BytesIO()
-              with gzip.GzipFile(fileobj=out,mode="wb",mtime=0,filename="") as gz:
-                  with tarfile.open(fileobj=gz,mode="w|") as tar:
-                      for name,raw in sorted(fresh.items()):
-                          member=tarfile.TarInfo(name)
-                          member.size=len(raw); member.mtime=0
-                          member.mode=0o644; member.uid=member.gid=0
-                          tar.addfile(member,io.BytesIO(raw))
-              packed=out.getvalue()
-          print("CNR_V4_ARCHIVE_SHA256:"+sha(packed))
-          print("CNR_V4_ARCHIVE_BASE64:"+base64.b64encode(packed).decode("ascii"))
+          archived = Path("fixtures/cnr-001-evidence/cnr001-v4.tar.gz").read_bytes()
+          if sha(archived) != "95d16ee195270aa9d41d08be1b63382ae9db804f9306cb2791740f81c0b733a4":
+              raise RuntimeError("published v4 archive identity changed")
+          with tarfile.open("fixtures/cnr-001-evidence/cnr001-v4.tar.gz", "r:gz") as tar:
+              members = tar.getmembers()
+              if any(not m.isfile() for m in members) or len({m.name for m in members}) != len(members):
+                  raise RuntimeError("malformed retained v4 archive")
+              contents = {m.name:tar.extractfile(m).read() for m in members}
+          manifest = json.loads(contents["MANIFEST.json"])
+          if (manifest["historical_v1_v2_sha256"] != sha(historical)
+                  or set(manifest["entries"]) != set(contents)-{"MANIFEST.json"}):
+              raise RuntimeError("v4 archival member inventory differs")
+          for name, expected in manifest["entries"].items():
+              if sha(contents[name]) != expected["sha256"] or len(contents[name]) != expected["bytes"]:
+                  raise RuntimeError("v4 archival member identity differs: " + name)
+          # Historical requests bind their entire source tree. Any later, unrelated
+          # first-party module correctly changes the new run's request and source
+          # identities: those are NEVER overwritten, patched or claimed equal.
+          frozen = json.loads(contents["v4/cnr-analysis.json"])
+          current = json.loads((Path(os.environ["RUNNER_TEMP"])/"cnr-analysis.json").read_bytes())
+          if (frozen["schema"] != "trinite.cnr-001-analysis.v4"
+                  or current["schema"] != frozen["schema"]
+                  or current["protocol_identity"] != frozen["protocol_identity"]):
+              raise RuntimeError("CNR v4 protocol mismatch")
+          # These two fields MUST remain source/run-specific, not normalized in
+          # persistent evidence. The scientific/numeric observation is compared
+          # exhaustively over every remaining field, not a few headline scores.
+          nonnumerical = {"source", "request_identity"}
+          old_values = {k:v for k,v in frozen.items() if k not in nonnumerical}
+          new_values = {k:v for k,v in current.items() if k not in nonnumerical}
+          if old_values != new_values:
+              raise RuntimeError("CNR current verified numerical results disagree with historical v4")
+          print("Historical CNR v4 archive SHA256 verified, all committed members exact.")
+          print("Fresh source-bound CNR report independently verified and all stable numerical fields agree.")
+          print("Historical and current request/source identities remain distinct; original archive untouched.")
           PY
       - name: Retain all research results, including failure logs
         if: always()
