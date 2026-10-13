@@ -57,6 +57,10 @@ class ProceduralQECDataTests(unittest.TestCase):
                   if e["kind"] == "fold-sum"}
         self.assertEqual(actual, expected)
         self.assertTrue(all(e["split"] == "train" for e in self.items))
+        self.assertTrue(all(e["prompt"].startswith("R/") for e in self.items
+                            if e["kind"] == "arithmetic"))
+        self.assertTrue(all(not e["prompt"].startswith("R/") for e in self.items
+                            if e["kind"] == "fold-sum"))
         for item in self.items:
             if item["kind"] == "fold-sum":
                 parent = approved[item["parent_example_identity"]]
