@@ -608,11 +608,33 @@ transport check. The archive-tool bytes are bound separately from the unchanged
 numerical producer. CI verifies structural tamper rejection and a real four-cell
 small-model archive smoke; those are software/assurance results only.
 
-**Research status: not yet measured.** The manual full matrix and its permanent
-evidence publication are subsequent steps. A complete negative result remains
+**Research status: completed negative study on 13 October 2026.** [Run 38355170260](PROCEDURAL-QEC-NEGATIVE-RESULT.md) finished all four research cells and passed full source-bound native optimiser/custody replay. It failed the per-task original answer+EOS training gate; procedural fold/GF(3) final-answer regressions are preserved. The historical ZIP remains unchanged, with a separately source-bound full-Git-tree supplement. This completion does not establish improved learning or satisfy fresh confirmation. A complete negative result remains
 publishable; no accuracy-based checkpoint/arm selection or relaxed gate is
 authorised. Original folded/composed-answer, fresh confirmation, weight-format
 choice, independent replication, geometry-on Phase 5, scaling and release
 readiness remain blocked. The earlier task-balance archival closure and
 full-versus-core curriculum decision are still separate work, not claimed
 completed by PR #35.
+
+## QEC procedural v2 negative evidence and corrected-cursor v3 (PR #36)
+
+The [fully verified v2 procedural experiment](PROCEDURAL-QEC-NEGATIVE-RESULT.md)
+ran all four 4,096-update cells on 2026-10-13, each with the original
+source-bound AdamW replay. Its **training gate failed**; fold-sum final
+accuracy regressed in both procedural seeds, while some intermediate-prefix
+accuracy improved. The original bundle, model checkpoints and results remain
+unchanged. The confirmed v2 parity scheduler excluded half of the possible
+prefix and trace rows in every auxiliary stream. The separately verified
+full-Git-tree source supplement restores a reproducible standalone original
+dataset source without rewriting the earlier 136-member ZIP.
+
+The [new v3 cursor experiment](PROCEDURAL-QEC-V3.md) freezes a distinct
+protocol before outcomes; four final-only and procedural cells must be
+rerun under one new research request. Only the procedural example cursor
+advances independently; final-only control, model, optimizer, dataset,
+update budget, seeds and original answer+EOS scorer remain unchanged.
+New reports distinguish full/final/per-mode losses, actual
+exposure and visited/unvisited auxiliary correctness. The next v3 matrix
+has **not** been run; no improvement is presumed. Original composed task
+adequacy, unseen-family confirmation, format, geometry, scaling and
+release remain separately blocked.

@@ -1,12 +1,12 @@
 # QEC-guided exact procedural supervision
 
-**PR #34 — exploratory implementation, no completed full research outcome.** This detour does not change historical models, frozen optimizer behavior, earlier protocols, geometry loss or immutable v0.1.0/v0.2.0 tags.
+**PR #34 original implementation, now followed by a verified negative four-cell research run (13 October 2026).** [The current outcome record](PROCEDURAL-QEC-NEGATIVE-RESULT.md) preserves every native replay and original answer+EOS failure. These results do not alter historical models, optimizer behavior, earlier protocols, geometry loss or immutable v0.1.0/v0.2.0 tags.
 
 ## Research question
 
 Can independently verified intermediate computations improve original complete final-answer-plus-EOS accuracy, rather than only enable the model to mimic traces?
 
-The first protocol (v1) was committed at 8a6116251e1d270dc39623dadfa58c18911a0be6 before implementation. Early **CI admission tests**, before any trained result, exposed a genuine prompt collision between arithmetic subtraction and fold sums. Therefore v1 is retained **unexecuted**, and a corrected [protocol v2](../src/trinite/procedural_qec/protocol-v2.json) was frozen in commit 0697d5944d48517bb0ab04afc211af7a9826cd2f. Its SHA-256 is 3c44c40c10fd63026cc7f8822f9b1a0842737897e33a91afef75a6c28d70d1bb. Old v1 outcomes have not been silently relabelled; no full model training run has yet been published.
+The first protocol (v1) was committed at 8a6116251e1d270dc39623dadfa58c18911a0be6 before implementation. Early **CI admission tests**, before any trained result, exposed a genuine prompt collision between arithmetic subtraction and fold sums. Therefore v1 is retained **unexecuted**, and a corrected [protocol v2](../src/trinite/procedural_qec/protocol-v2.json) was frozen in commit 0697d5944d48517bb0ab04afc211af7a9826cd2f. Its SHA-256 is 3c44c40c10fd63026cc7f8822f9b1a0842737897e33a91afef75a6c28d70d1bb. Old v1 outcomes have not been silently relabelled; the later full v2 run completed with a negative training outcome, as recorded separately in [PROCEDURAL-QEC-NEGATIVE-RESULT.md](PROCEDURAL-QEC-NEGATIVE-RESULT.md).
 
 ## Mathematical source and training data
 
@@ -71,7 +71,7 @@ For integration-only smoke, freeze a distinct request with --run-profile smoke, 
     python -m unittest discover -s tests -p test_procedural_qec.py -v
     python -m unittest discover -s tests/procedural_qec -v
 
-The separate procedural-qec GitHub Actions workflow uses the pinned CPU environment; existing 261 research cases and their shard partition are unchanged. The complete 4,096-update research matrix and external evidence archive are not published by this PR. The old task-balance archival closure remains a separate obligation.
+The separate procedural-qec GitHub Actions workflow uses the pinned CPU environment; existing 261 research cases and their shard partition are unchanged. PR #34 originally published only the implementation and smoke; the subsequent PR #35 research run and source-bound negative outcome are now documented in [PROCEDURAL-QEC-NEGATIVE-RESULT.md](PROCEDURAL-QEC-NEGATIVE-RESULT.md). The old task-balance archival closure remains a separate obligation.
 
 ## License, admission and scope
 

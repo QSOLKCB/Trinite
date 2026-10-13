@@ -1,0 +1,48 @@
+name: Historical QEC research full-source supplement
+on:
+  pull_request:
+    paths:
+      - 'scripts/supplement_procedural_qec_source.py'
+      - '.github/workflows/procedural-qec-source-supplement.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-source-supplement:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Preserve complete unchanged 93522bf research producer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/supplement_procedural_qec_source.py \
+            --create "$RUNNER_TEMP/Trinite-93522bf-QEC-full-source-supplement.zip" \
+            | tee "$RUNNER_TEMP/source-supplement-receipt.json"
+          (cd "$RUNNER_TEMP" && sha256sum Trinite-93522bf-QEC-full-source-supplement.zip > SOURCE-SUPPLEMENT-SHA256.txt)
+          EXPECTED=$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/source-supplement-receipt.json"))["archive_sha256"])')
+          python scripts/supplement_procedural_qec_source.py \
+            --verify "$RUNNER_TEMP/Trinite-93522bf-QEC-full-source-supplement.zip" \
+            --expected-sha256 "$EXPECTED"
+      - name: Retain standalone source supplement and external digest
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trinite-93522bf-full-source-supplement
+          path: |
+            ${{ runner.temp }}/Trinite-93522bf-QEC-full-source-supplement.zip
+            ${{ runner.temp }}/SOURCE-SUPPLEMENT-SHA256.txt
+            ${{ runner.temp }}/source-supplement-receipt.json
+          if-no-files-found: warn
+          retention-days: 90
