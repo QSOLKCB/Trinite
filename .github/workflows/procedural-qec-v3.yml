@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: qec-v3-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   v3-exact-schedule-and-native-replay:
     runs-on: ubuntu-24.04
