@@ -1,0 +1,285 @@
+{
+  "archive_inventory_identity": "sha256:e8dbdbb0134efc976014dc419054f2888fd3b5e0b02c26bf71c0c71d97c3b3a2",
+  "cells": [
+    {
+      "arm": "final-only",
+      "checks": {
+        "closed_custody": true,
+        "complete_optimizer_replay": true,
+        "final_predictions_and_loss": true,
+        "request_and_source_binding": true,
+        "safe_tensor_structure": true,
+        "scheduled_visits_and_targets": true
+      },
+      "initialization_identity": "sha256:ca28ec58049491285f0071d3996c8f58ae979df8e9cbfa66e934aa5628d7b61f",
+      "model_identity": "sha256:0ab155a5b77939ab9ab5dfb7859467e7db06f64f0ce451c2f3d4ebb27f40c7b9",
+      "report_identity": "sha256:cf53ea86e2a8896f1d9180a014a107a129ec5cfff348af4f942b2c9afe4385c2",
+      "schedule_identity": "sha256:36db571887d2fc83e9f6f663e84198ac495aef933c8b780017210a7a6c5e7f29",
+      "seed": 0,
+      "steps": 4096,
+      "training_task_failures": [
+        "fold-sum"
+      ]
+    },
+    {
+      "arm": "procedural",
+      "checks": {
+        "closed_custody": true,
+        "complete_optimizer_replay": true,
+        "final_predictions_and_loss": true,
+        "request_and_source_binding": true,
+        "safe_tensor_structure": true,
+        "scheduled_visits_and_targets": true
+      },
+      "initialization_identity": "sha256:ca28ec58049491285f0071d3996c8f58ae979df8e9cbfa66e934aa5628d7b61f",
+      "model_identity": "sha256:cba20343574a0e472ad3f87a92dc1dee6276397483c1a822b5a6b74e39dc101a",
+      "report_identity": "sha256:5ee51b59af89270237e63ce95c1a4e4e7a40807b84936715810817107cd70438",
+      "schedule_identity": "sha256:3e5e1579c13cd6ade9be178f9a9afcf91375bba774526e4e6b5cd676cc636f7c",
+      "seed": 0,
+      "steps": 4096,
+      "training_task_failures": [
+        "fold-sum",
+        "gf3"
+      ]
+    },
+    {
+      "arm": "procedural",
+      "checks": {
+        "closed_custody": true,
+        "complete_optimizer_replay": true,
+        "final_predictions_and_loss": true,
+        "request_and_source_binding": true,
+        "safe_tensor_structure": true,
+        "scheduled_visits_and_targets": true
+      },
+      "initialization_identity": "sha256:07d9f10459bf38c0df6a07f9ff922cf9fda0ca6152a53f7745b03e530a8605c6",
+      "model_identity": "sha256:d4c192b2f5bb3f046ed7109cb92ae88b7174a6ad5810b285baa2ec716f3d6ed6",
+      "report_identity": "sha256:6d544a7e9c7399ca047e94ee0215fdfcaf74d6baf0562938f8f9203a31369473",
+      "schedule_identity": "sha256:3be2b36e4a8f0240f842a3f407ae6f8fc83060d2f533a232eb1e384273ef0afa",
+      "seed": 1,
+      "steps": 4096,
+      "training_task_failures": [
+        "divide",
+        "fold-sum"
+      ]
+    },
+    {
+      "arm": "final-only",
+      "checks": {
+        "closed_custody": true,
+        "complete_optimizer_replay": true,
+        "final_predictions_and_loss": true,
+        "request_and_source_binding": true,
+        "safe_tensor_structure": true,
+        "scheduled_visits_and_targets": true
+      },
+      "initialization_identity": "sha256:07d9f10459bf38c0df6a07f9ff922cf9fda0ca6152a53f7745b03e530a8605c6",
+      "model_identity": "sha256:dd72046f5df8d3d8eba42616cb26e759351fdd97d836c5171a19060ca76a3d84",
+      "report_identity": "sha256:debce65ebefa495991dc3cbd651a9d0f2105a63280a1c270533f2e920666771d",
+      "schedule_identity": "sha256:9106f3fcf8028144a3e54a4f9c6f0489ad46036a2b10998c6d6cfe752c611468",
+      "seed": 1,
+      "steps": 4096,
+      "training_task_failures": [
+        "fold-sum"
+      ]
+    }
+  ],
+  "dataset_identity": "sha256:9ea3223ebd099933f9c05a3ccb9db43e4a7d19e3c1edf5922c326c2eec16d944",
+  "environment": {
+    "cpu": {
+      "flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities",
+      "model name": "AMD EPYC 9V74 80-Core Processor",
+      "vendor_id": "AuthenticAMD"
+    },
+    "cpu_kernel_capability": "AVX512",
+    "default_device": "cpu",
+    "default_dtype": "torch.float32",
+    "deterministic": true,
+    "device": "cpu",
+    "dtype": "float32",
+    "interop_threads": 9,
+    "machine": "x86_64",
+    "optimizer": "AdamW-single-tensor",
+    "packages": {
+      "filelock": "3.32.3",
+      "fsspec": "2026.7.0",
+      "jinja2": "3.1.6",
+      "markupsafe": "3.0.3",
+      "mpmath": "1.3.0",
+      "networkx": "3.6.1",
+      "numpy": "2.3.5",
+      "packaging": "25.0",
+      "safetensors": "0.6.2",
+      "setuptools": "78.1.0",
+      "sympy": "1.14.0",
+      "torch": "2.8.0+cpu",
+      "typing-extensions": "4.16.0"
+    },
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "threads": 1,
+    "torch": "2.8.0+cpu"
+  },
+  "evidence_class": "training-only-exploratory; historical-control order not preserved",
+  "full_source_git_tracked_members": 603,
+  "full_source_git_tree": "061173b9f71e7aa1f5c1c3838e3d1b5e4f07a8ca",
+  "gates": {
+    "format_selection_eligible": false,
+    "held_out_scored": false,
+    "learning_adequacy": false,
+    "outcome": "completed",
+    "pairing_errors": [],
+    "phase5_ready": false,
+    "release_ready": false,
+    "selected_arm": null,
+    "training_gate_pass": false,
+    "worker_errors": {}
+  },
+  "historical_v2": {
+    "causal_cursor_only_comparison_eligible": false,
+    "changed_example_identity_count": 3876,
+    "dataset_rows": 3876,
+    "different_final_only_mathematical_visits": {
+      "0": 32576,
+      "1": 32521
+    },
+    "historical_control_preserved": false,
+    "mathematical_rows_equal": true,
+    "original_dataset_identity": "sha256:120b95ac68825b50b92dc0210d1f142a30980bfe5acedcfafe6d8f3cdadf83c4",
+    "original_inventory_sha256": "180e89a892508a630f45255e44805a7487e5b5542ce97b5f6298700fe37e3736",
+    "original_request_identity": "sha256:35dfbaafd2f85e5c6836bab1837bdc99c18a8b003ca7c46273f2f4d265ce37b1",
+    "original_research_zip_sha256": "ac3b3627a27bcf6d43f89b31eeabaf1859949ae939784da06ba49916b495fdca",
+    "original_source_supplement_sha256": "a033902d5155d7e3914cf3abf262dddd7a2fd190c922062a03fb52a0c81d8a7a",
+    "original_summary_identity": "sha256:a6d53d4adff35f806226333891a38dd472506752c3d22d70cc96c76e8e2e0a68",
+    "producer_commit": "93522bf8f18fe38970ceafdd2ace792f8922c382",
+    "record": "../../docs/PROCEDURAL-QEC-NEGATIVE-RESULT.md",
+    "visits_per_seed": 32768
+  },
+  "large_artifacts": [
+    {
+      "bytes": 33094593,
+      "filename": "Trinite-procedural-QEC-research-v3.zip",
+      "retention": "private owner-held copy; not a public download",
+      "sha256": "65cc25d600e30a35c6ad3daefae6f92979162dfcb38e515397185aa952154d79"
+    },
+    {
+      "bytes": 393869840,
+      "filename": "Trinite-v3-full-source-cc996e272800.tar.gz",
+      "retention": "private owner-held copy; not a public download",
+      "sha256": "5b7fd56a20e9f111cdf4d9b278c89de9e23ff3715cfcb2a8d9c2ccfa4ede1d87"
+    },
+    {
+      "bytes": 1363097,
+      "filename": "Trinite-v3-verification-records-final.zip",
+      "retention": "private owner-held copy; not a public download",
+      "sha256": "e34ca0cc3f7a908036ff21ad9813b8343f9d91b12085e96dc91dc904335a4b4a"
+    },
+    {
+      "bytes": 322,
+      "filename": "FINAL-SHA256SUMS.txt",
+      "retention": "private owner-held copy; not a public download",
+      "sha256": "80dbac149fae06dea04dd857db2922c92ddefc17624b842e03af4583135af31a"
+    }
+  ],
+  "manifest_identity": "sha256:528cb27db98781db8148dd4f029e9a392d0d2a786d393f2ef399dcbdad95ff49",
+  "observed_date_utc": "2026-10-13",
+  "producer_commit": "cc996e272800a5c02667001f7c96c8d11cb513cc",
+  "protocol_commit": "66a8d927ee3026e47268f6fdfae5bad3c00565df",
+  "protocol_identity": "sha256:be5e998e5e79d52ecae40bf679c8b0a686c70577c78ac4ff0af76b49d7f27b18",
+  "purpose": "Additive documentation catalogue of unchanged original evidence. Not a new experiment request, verifier result, admission operation, or protocol.",
+  "request_identity": "sha256:7ee0b351cf737807cf888a66494fd1438714698f2c1b9834ea2073c0ee5c66ff",
+  "research_zip_payload_members": 269,
+  "research_zip_physical_members_including_inventory": 270,
+  "retained_originals": {
+    "FINAL-SHA256SUMS.txt": {
+      "bytes": 322,
+      "sha256": "80dbac149fae06dea04dd857db2922c92ddefc17624b842e03af4583135af31a",
+      "unchanged_copy": true
+    },
+    "archive-receipt.json": {
+      "bytes": 806,
+      "sha256": "dbdd539b15026f69b42bd44bd32ee2369fc848b0e1806373676a19c950d678ae",
+      "unchanged_copy": true
+    },
+    "final-byte-parity.json": {
+      "bytes": 314,
+      "sha256": "7bf06248bebd4039b2c5e41ffcf0b4886c72e62e91cfa6fbb092bf273ee1b531",
+      "unchanged_copy": true
+    },
+    "historical-control-audit.json": {
+      "bytes": 3896,
+      "sha256": "81149b4351d2d8142a088f34fc0b5027b75be591a0ff1758bf591237a5b2bf5c",
+      "unchanged_copy": true
+    },
+    "independent-historical-control-comparison.json": {
+      "bytes": 2580,
+      "sha256": "7e0160ac9ca5c6241dd8001bbc8775c6dd1c51266755533705debd819d9a087b",
+      "unchanged_copy": true
+    },
+    "read-only-byte-parity.json": {
+      "bytes": 138,
+      "sha256": "582921dacd0de86a84ade8d4aa415c9f7d010b0495c072c8e841c8560bfce244",
+      "unchanged_copy": true
+    },
+    "read-only-replay.json": {
+      "bytes": 300,
+      "sha256": "c69b61ebfc9d17abf2d2e1be6022cc02c05fe8856e851c9d9169526d6df6c51e",
+      "unchanged_copy": true
+    },
+    "request.json": {
+      "bytes": 23432,
+      "sha256": "7ee0b351cf737807cf888a66494fd1438714698f2c1b9834ea2073c0ee5c66ff",
+      "unchanged_copy": true
+    },
+    "source-reconstruction-verification.json": {
+      "bytes": 570,
+      "sha256": "a91d725445c8919c175422e5061b55afad2ee30714d97fd7331fcfc611fb49ef",
+      "unchanged_copy": true
+    },
+    "summary.json": {
+      "bytes": 152424,
+      "sha256": "c3ca81a4ef2a8aff90ce01ddd4984f4ce555d99eb559f5a2650ca9a6aaa3352b",
+      "unchanged_copy": true
+    },
+    "transport-verification.json": {
+      "bytes": 667,
+      "sha256": "34cfad1d4eefa169134a0ddcb1de864791376f3a082896737a67d73a0b585db3",
+      "unchanged_copy": true
+    },
+    "verification-request.json": {
+      "bytes": 3090,
+      "sha256": "6a52d8bcc33dc1c6a85624126e0001525a768f9deb24c8715bf46e9dfe8155b9",
+      "unchanged_copy": true
+    }
+  },
+  "retention_status": {
+    "claim_limit": "Private retention and digest publication do not provide public retrieval or independent-host numerical replication.",
+    "large_artifacts_in_git": false,
+    "private_retention": "complete",
+    "public_archive_or_doi": null,
+    "recorded_at_utc": "2026-10-13T14:41:35Z"
+  },
+  "schema": "trinite.procedural-qec-v3-negative-evidence-index.v1",
+  "source_inventory_entries": 156,
+  "summary_identity": "sha256:c3ca81a4ef2a8aff90ce01ddd4984f4ce555d99eb559f5a2650ca9a6aaa3352b",
+  "verification_request_identity": "sha256:6a52d8bcc33dc1c6a85624126e0001525a768f9deb24c8715bf46e9dfe8155b9",
+  "verification_scope": {
+    "independent_preservation_check": "Read-only SHA-256/CRC/size/member-set checks of both ZIPs and exact 603-member Git tree. This check did not execute training.",
+    "limits": [
+      "Same-host/native-path reproduction, not independent-host numerical replication",
+      "Historical final-only control sequence was not preserved",
+      "Training/development diagnostics, not held-out learning adequacy"
+    ],
+    "numerical_replays": [
+      "run_matrix complete native replay",
+      "separate verify_only complete native replay",
+      "archival complete native replay"
+    ],
+    "run_files_unchanged": 107,
+    "same_declared_environment": true,
+    "source_reconstruction": "156 declared runtime-source entries; isolated import and original request/source/dataset/environment admission",
+    "unchanged_run_inventory_sha256": "0dbdadc1c350a5dfc71bd33561485a689cbc2766dc3cf522ba9b5599a30c2a41"
+  },
+  "verification_zip_payload_members": 41,
+  "verification_zip_physical_members_including_inventory": 42
+}
