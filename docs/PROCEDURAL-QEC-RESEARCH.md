@@ -80,3 +80,22 @@ request bound to the reviewed source. The installed-wheel protocol-resource
 fix is deliberately deferred to a separate packaging PR.
 
 Affected invariants: TRI-I01, I07, I08, I12, I14.
+
+## PR #38 — installed protocol-resource compatibility
+
+The wheel now ships the two frozen v1/v2 procedural protocols and the
+separately frozen v3 protocol. A clean, non-editable wheel installation in an
+isolated Python process after deleting the temporary build checkout must
+provide all three exact source-matching resource bytes; the v3 protocol must
+retain its precommitted SHA-256. Installed
+`trinite.procedural_qec.data.dataset()` and
+`trinite.procedural_qec.data.audit_bytes()` must succeed with the pinned
+QEC oracle. A tampered installed v2 protocol changes the generator's source
+receipt and fails replay against the original data/manifest. A modified v3
+resource fails the frozen byte-identity check. Tests are packaging assurance,
+not model-update replay or learning evidence.
+
+The v3 research launcher remains **checkout-only**: it requires the fixed
+entrypoint, native CPU lock, and complete repository source closure. No
+numerical updater, admitted dataset, protocol hash, historical packet or
+immutable tag was edited. Invariants: TRI-I01, TRI-I07, TRI-I12, TRI-I14.

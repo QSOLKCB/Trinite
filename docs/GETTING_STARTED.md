@@ -216,3 +216,32 @@ For optional external internal-activation capture, follow the separate locked
 backend and explicit offline-input procedure in
 [REFERENCE-GEOMETRY.md](REFERENCE-GEOMETRY.md). The base CPU lock is unchanged;
 pretrained model acquisition is explicit and separate from capture.
+
+## Installed procedural-QEC data versus checkout-only research
+
+The built wheel includes the two original procedural-QEC protocol JSON resources
+(`trinite/procedural_qec/protocol.json` and
+`trinite/procedural_qec/protocol-v2.json`) and the separately frozen v3
+research protocol (`trinite/procedural_qec_v3/protocol.json`). Package
+resources are installed beside their corresponding modules rather than
+reconstructed from or read through the repository checkout.
+
+The standard-library procedural data API (`trinite.procedural_qec.data`)
+can regenerate and audit its admitted training/development data from a
+non-editable installed wheel with no checkout or PyTorch installed.
+The separately importable `trinite.procedural_qec_v3.scheduler` remains
+available without the numerical backend. This is package/data conformance,
+**not** a completed training or generalization claim.
+
+From a checkout with pinned `setuptools==84.0.0` available, run
+`python -m unittest discover -s tests/packaging -p test_procedural_wheel.py -v`
+for the real wheel build, isolated installation after deleting the copied
+project, exact resource membership/hash checks and installed-data tamper test.
+The GitHub v3 workflow runs the same test independently on each PR.
+
+The `scripts/run_procedural_qec_v3.py` research launcher, source-bound
+`experiment.sources()`, research requests and full optimizer/evidence replay
+**still require a source checkout** and the prescribed hash-locked CPU training
+environment. Wheel packaging does not change their scientific protocols,
+historical identities, or release readiness. There is no wheel-only full
+research runner in this phase.
