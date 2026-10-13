@@ -608,8 +608,7 @@ transport check. The archive-tool bytes are bound separately from the unchanged
 numerical producer. CI verifies structural tamper rejection and a real four-cell
 small-model archive smoke; those are software/assurance results only.
 
-**Research status: not yet measured.** The manual full matrix and its permanent
-evidence publication are subsequent steps. A complete negative result remains
+**Research status: completed negative study on 13 October 2026.** [Run 38355170260](PROCEDURAL-QEC-NEGATIVE-RESULT.md) finished all four research cells and passed full source-bound native optimiser/custody replay. It failed the per-task original answer+EOS training gate; procedural fold/GF(3) final-answer regressions are preserved. The historical ZIP remains unchanged, with a separately source-bound full-Git-tree supplement. This completion does not establish improved learning or satisfy fresh confirmation. A complete negative result remains
 publishable; no accuracy-based checkpoint/arm selection or relaxed gate is
 authorised. Original folded/composed-answer, fresh confirmation, weight-format
 choice, independent replication, geometry-on Phase 5, scaling and release
