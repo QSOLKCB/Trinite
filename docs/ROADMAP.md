@@ -33,6 +33,8 @@ Scaling is conditional: first prove the data, semantics, and measurement procedu
 
 ## Proposed research PRs #31 and #32 (not implemented)
 
+**Implementation status (PR #31):** The [ternary dynamics instrument](TERNARY-DYNAMICS.md) is implemented in this proposed PR, after the separately committed protocol freeze. It is an inspectable, digest-bound **descriptive checkpoint analyser**, not a new training experiment, a full optimizer replay, or a demonstration that STE saturation caused learning failure. All original gates remain unchanged; PR #32's Aizawa reference remains unimplemented. After both PRs merge, verify post-merge CI and consider a separate **immutable v0.2.0** checkpoint of the exact `main` SHA, recording all still-open scientific gates rather than presenting them as passed.
+
 **Order and status:** These are *future reviewable research increments*, proposed after the PR #30 preflight work. Do **not** start either until PR #30's outstanding review/CI defects are resolved and the chosen producer/protocol is published **before** any target measurement. PR #31 measures native ternary training dynamics first; PR #32 adds an Aizawa geometry reference and may refer to **independently bound PR #31 artifacts**. Neither is permission to run Phase 5 geometry-on training, relax learning thresholds, change the frozen quantizer or infer model superiority.
 
 ### Proposed PR #31 — Ternary training dynamics: is STE saturation suppressing useful updates?
