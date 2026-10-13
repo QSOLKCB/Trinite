@@ -119,14 +119,67 @@ requests and a fresh replay summary. Every member has a byte count and digest,
 and must round-trip exactly; archive and inventory identities are emitted
 separately. No old evidence is refreshed or resealed.
 
+## Reported matrix and unresolved archival closure
+
+Status checked on 2026-10-13 against merged
+[PR #29](https://github.com/QSOLKCB/Trinite/pull/29), merge
+`d282adaf0bf8699947ccdc0143ad8afb831908ae`, PR head
+`f9edd6501c8081c740fbaf9d90e70abffe11a791`. The PR attributes the experiment to
+published producer `18c6a13d95045ae6376e6144e38cc1aaf86a127b` and reports:
+
+| Seed | Arithmetic control → task-balanced | Maths control → task-balanced |
+| --- | --- | --- |
+| 0 | 262/264 → 260/264 | 1,206/1,998 → 1,264/1,998 |
+| 1 | 263/264 → 262/264 | 1,269/1,998 → 1,275/1,998 |
+
+These are **PR-reported counts**, not a new rerun or independently reverified
+historical result. The report states that all four cells and six assurance
+checks completed without worker or pairing errors, arithmetic retained its
+per-task gates, and only intersection-count and union-count passed the maths
+gate in both candidates. Ten maths tasks still failed; no recipe was selected.
+The aggregate increase does not satisfy the every-task joint training gate.
+
+The same PR still describes its additional archival replay as in progress.
+The inspected repository fixture contains only the prior-source compatibility
+map and its README, not the original four-cell research archive. No complete
+original packet or independently retained experiment/verifier/archive
+commitments has been located in the inspected repository, PR record or
+available supplied artifacts. **Historical archival closure remains unresolved.**
+This records a retrieval/verification gap; it does not establish that evidence
+was destroyed or never existed. Later procedural-QEC studies cannot close it.
+
+Before declaring closure, recover and independently verify all of:
+
+- The exact original producer and complete runtime source closure, frozen
+  protocol, dependency lock, admitted data and declared host fingerprint.
+- Original experiment request and its independently retained SHA-256 identity.
+- Original external artifact-verification request and its independently
+  retained SHA-256 identity; a newly computed digest alone is insufficient.
+- Every expected cell, final model and AdamW payload, full update history,
+  diagnostic, prediction, PROVENANCE bundle, worker/error/timeout log and
+  original summary, including negatives and failed checks.
+- Complete native optimizer replay and the separate archival replay receipt,
+  naming their actual original environment and numerical scope.
+- The complete lossless archive, immutable member inventory and independently
+  retained archive/inventory SHA-256 commitments, with a durable retrieval
+  record outside expiring Actions transport.
+
+Do not reconstruct missing historical bytes from reported counts, reseal a
+changed environment/source identity, or label a new run as the original. If
+original-host numerical replay is unavailable, preserve that precise limit;
+structural byte verification alone does not certify optimizer replay. A later
+newly authorized replication would require a fresh request and separate
+identity, leaving this historical retrieval obligation visible.
+
 ## Status and remaining gates
 
 Implementation and numerical validation are separate from research outcomes.
 The new required CPU suite exercises real training, admission, upstream custody,
 full replay, external commitment failures, controller errors and lossless
 archival. Standard-library tests cover exact scheduling and preservation of the
-published budget source. Research results must be recorded separately after
-producer publication.
+published budget source. The attributed negative matrix above is separate
+from those software checks; its complete historical research evidence remains
+awaiting archival closure.
 
 Joint learning remains unproven. Original fold-sum and composed-output adequacy,
 fresh family-level confirmation, independent replication, format selection,

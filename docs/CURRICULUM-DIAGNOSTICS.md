@@ -33,10 +33,11 @@ learning. Its original failure log remains in the unmodified packet.
 
 ## First controlled experiment
 
-Run the already published [task-balanced protocol](MATHS-TASK-BALANCE.md) from
-merged producer `18c6a13d95045ae6376e6144e38cc1aaf86a127b`, under a new request
-for this host. Neither the source nor the frozen protocol changes. Four cells
-compare uniform-row and task-balanced maths scheduling at seeds 0 and 1.
+The reported experiment used the already published
+[task-balanced protocol](MATHS-TASK-BALANCE.md) from merged producer
+`18c6a13d95045ae6376e6144e38cc1aaf86a127b`, under a request for its declared
+original host. The recorded plan changes neither source nor frozen protocol.
+Four cells compare uniform-row and task-balanced maths scheduling at seeds 0 and 1.
 Both keep all 264 arithmetic rows, all 1,998 maths rows, the same native dense
 model, context 64, AdamW, 8,192 updates, four arithmetic/four maths visits per
 update, unique-training diagnostics and final-checkpoint selection.
@@ -48,9 +49,16 @@ Training-only acceptance remains at least 90% complete answer plus EOS in every
 arithmetic and maths task in both candidate seeds. No test/validation model
 calls, winning-seed selection or relaxed task denominator are permitted.
 
-Research execution is in progress; measured outcomes and independent archive
-commitments will be recorded in MATHS-TASK-BALANCE.md after completion. Do not
-interpret this execution plan as an improvement or completed research record.
+[PR #29](https://github.com/QSOLKCB/Trinite/pull/29) reports that all four
+cells and six assurance checks completed, with ten maths tasks still failing
+the joint training gate. Its body still labels the additional archival replay
+as in progress. The complete original packet and independently retained
+request/verifier/archive identities have not been located in the inspected
+repository, PR record or available supplied artifacts. The
+[reported counts and exact closure checklist](MATHS-TASK-BALANCE.md#reported-matrix-and-unresolved-archival-closure)
+distinguish that attributed result from independently verified archival closure.
+Do not infer that the original evidence is lost, refresh it, or treat the
+merged implementation as a complete published research record.
 
 ## Ordered follow-up decisions
 

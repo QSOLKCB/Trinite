@@ -1,0 +1,50 @@
+name: Historical QEC control ordering audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/evidence/procedural-qec-control-order/**'
+      - '.github/workflows/procedural-control-audit.yml'
+  pull_request:
+    paths:
+      - 'docs/evidence/procedural-qec-control-order/**'
+      - '.github/workflows/procedural-control-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-bound-order-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: audit-tools
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: 93522bf8f18fe38970ceafdd2ace792f8922c382
+          path: historical-source
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: cc996e272800a5c02667001f7c96c8d11cb513cc
+          path: current-source
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct both pinned datasets and schedules without training
+        run: |
+          python -I -S -B audit-tools/docs/evidence/procedural-qec-control-order/audit.py \
+            --historical-source historical-source --current-source current-source
+      - name: Reject altered sources, receipts and malformed comparisons
+        env:
+          TRINITE_HISTORICAL_SOURCE: ${{ github.workspace }}/historical-source
+          TRINITE_CURRENT_SOURCE: ${{ github.workspace }}/current-source
+        run: |
+          python -I -S -B -m unittest discover \
+            -s audit-tools/docs/evidence/procedural-qec-control-order -p 'test_audit.py' -v
