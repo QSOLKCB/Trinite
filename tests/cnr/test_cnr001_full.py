@@ -9,6 +9,10 @@ from trinite.cnr001 import core
 from trinite.contracts import identity, json_bytes, ContractError
 
 ROOT=Path(__file__).resolve().parents[2]
+V7_SHA256 = "03327a365b76474bfaf0956eb06766cabdf9de02e5ca1162c0c1474f9d893288"
+V8_SHA256 = "718e5fec4674ab615b4162a956500b0bc245e25f15153770a5bfa4e6f7d72b42"
+PACKET_FILES = ("cnr-request.json", "cnr-analysis.json", "cnr-freeze-receipt.json",
+                "cnr-run-receipt.json", "cnr-verification.json")
 
 
 class CNR001FullBiology(unittest.TestCase):
@@ -19,23 +23,88 @@ class CNR001FullBiology(unittest.TestCase):
                          expected + "  " + archive.name + "\n")
         self.assertEqual(identity(archive.read_bytes()), "sha256:" + expected)
 
+    def assert_packet_members(self, members, version, parent_version, parent_digest):
+        """Archive structure only; actual numerical replay is separately required."""
+        expected = {"MANIFEST.json"} | {version + "/" + name for name in PACKET_FILES}
+        self.assertEqual(set(members), expected)
+        manifest_bytes = members["MANIFEST.json"]
+        manifest = json.loads(manifest_bytes)
+        self.assertEqual(json_bytes(manifest), manifest_bytes)
+        self.assertEqual(manifest["schema"], "trinite.cnr-001-evidence-archive." + version)
+        self.assertEqual(manifest["parent_" + parent_version + "_sha256"], parent_digest)
+        self.assertEqual(set(manifest["entries"]), expected - {"MANIFEST.json"})
+        for name, attr in manifest["entries"].items():
+            raw = members[name]
+            self.assertEqual(attr, {"bytes": len(raw), "sha256": identity(raw)[7:]})
+        self.assertEqual(manifest["request_identity"],
+                         identity(members[version + "/cnr-request.json"]))
+        self.assertEqual(manifest["analysis_identity"],
+                         identity(members[version + "/cnr-analysis.json"]))
+        return manifest
+
+    def read_packet(self, path):
+        with tarfile.open(path, "r:gz") as archive:
+            entries = archive.getmembers()
+            self.assertTrue(all(m.isfile() for m in entries))
+            self.assertEqual(len(entries), len({m.name for m in entries}))
+            return {m.name: archive.extractfile(m).read() for m in entries}
+
     def test_sidecar_deletion_and_rewrite_fail_closed(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            archive = Path(temporary) / "cnr001-v7.tar.gz"
-            sidecar = Path(temporary) / "cnr001-v7.sha256"
-            archive.write_bytes(b"synthetic archive contents")
-            digest = identity(archive.read_bytes())[7:]
-            sidecar.write_text(digest + "  " + archive.name + "\n", encoding="ascii")
-            self.assert_retained_sha256(archive, sidecar, digest)
-            sidecar.unlink()
-            with self.assertRaises(AssertionError):
+        for version in ("v7", "v8", "v9"):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as temporary:
+                archive = Path(temporary) / ("cnr001-" + version + ".tar.gz")
+                sidecar = Path(temporary) / ("cnr001-" + version + ".sha256")
+                archive.write_bytes(b"synthetic archive contents")
+                digest = identity(archive.read_bytes())[7:]
+                sidecar.write_text(digest + "  " + archive.name + "\n", encoding="ascii")
                 self.assert_retained_sha256(archive, sidecar, digest)
-            for modified in (("0" * 64) + "  " + archive.name + "\n",
-                             digest + "  cnr001-v6.tar.gz\n",
-                             digest + " " + archive.name + "\n"):
-                sidecar.write_text(modified, encoding="ascii")
-                with self.subTest(sidecar=modified), self.assertRaises(AssertionError):
+                sidecar.unlink()
+                with self.assertRaises(AssertionError):
                     self.assert_retained_sha256(archive, sidecar, digest)
+                for modified in (("0" * 64) + "  " + archive.name + "\n",
+                                 digest + "  cnr001-v6.tar.gz\n",
+                                 digest + " " + archive.name + "\n"):
+                    sidecar.write_text(modified, encoding="ascii")
+                    with self.subTest(sidecar=modified), self.assertRaises(AssertionError):
+                        self.assert_retained_sha256(archive, sidecar, digest)
+
+    def test_immutable_v8_packet_sidecar_and_v7_ancestry(self):
+        root = ROOT / "fixtures/cnr-001-evidence"
+        self.assert_retained_sha256(root / "cnr001-v7.tar.gz",
+                                    root / "cnr001-v7.sha256", V7_SHA256)
+        self.assert_retained_sha256(root / "cnr001-v8.tar.gz",
+                                    root / "cnr001-v8.sha256", V8_SHA256)
+        members = self.read_packet(root / "cnr001-v8.tar.gz")
+        self.assert_packet_members(members, "v8", "v7", V7_SHA256)
+
+    def test_packet_wrong_parent_or_member_fails_closed(self):
+        members = self.read_packet(ROOT / "fixtures/cnr-001-evidence/cnr001-v8.tar.gz")
+        with self.assertRaises(AssertionError):
+            self.assert_packet_members(members, "v8", "v7", "0" * 64)
+        # In-memory corruption tests do not replace or regenerate any packet.
+        for name in PACKET_FILES:
+            changed = dict(members)
+            changed["v8/" + name] += b" "
+            with self.subTest(member=name), self.assertRaises(AssertionError):
+                self.assert_packet_members(changed, "v8", "v7", V7_SHA256)
+
+    def retained_v9_members(self):
+        root = ROOT / "fixtures/cnr-001-evidence"
+        self.assert_retained_sha256(root / "cnr001-v8.tar.gz",
+                                    root / "cnr001-v8.sha256", V8_SHA256)
+        archive, sidecar = root / "cnr001-v9.tar.gz", root / "cnr001-v9.sha256"
+        self.assertTrue(archive.is_file(), "missing newly published v9 packet")
+        self.assertTrue(sidecar.is_file(), "missing independently retained v9 digest")
+        words = sidecar.read_text("ascii").strip().split()
+        self.assertEqual(len(words), 2)
+        self.assertRegex(words[0], r"^[a-f0-9]{64}$")
+        self.assert_retained_sha256(archive, sidecar, words[0])
+        members = self.read_packet(archive)
+        self.assert_packet_members(members, "v9", "v8", V8_SHA256)
+        return members
+
+    def test_retained_v9_packet_has_exact_v8_ancestry(self):
+        self.retained_v9_members()
 
     def test_real_connectome_ingestion_and_baseline_measurement(self):
         ids, edges, metadata=core.biological_graph()  # requires real pyarrow v21
@@ -92,8 +161,7 @@ class CNR001FullBiology(unittest.TestCase):
             self.assertEqual(
                 {k: v for k, v in previous.items() if k != "source"},
                 {k: v for k, v in current.items() if k != "source"})
-            # V6 belongs to its own exact producing revision. The current
-            # native producer must publish a distinct, immutable v7 packet;
+            # V6 and v7 belong to their own exact producing revisions;
             # comparing away changed source receipts is never acceptable.
             v6_archive = ROOT / "fixtures/cnr-001-evidence/cnr001-v6.tar.gz"
             self.assertEqual(identity(v6_archive.read_bytes()),
@@ -103,41 +171,21 @@ class CNR001FullBiology(unittest.TestCase):
             self.assert_retained_sha256(
                 v7_archive, v7_sidecar,
                 "03327a365b76474bfaf0956eb06766cabdf9de02e5ca1162c0c1474f9d893288")
+            # V8 also belongs to its immutable historical producer. The new
+            # codec and fixed workflow require a separately committed v9 packet.
             v8_archive = ROOT / "fixtures/cnr-001-evidence/cnr001-v8.tar.gz"
-            v8_sidecar = ROOT / "fixtures/cnr-001-evidence/cnr001-v8.sha256"
-            self.assertTrue(v8_archive.is_file(), "missing newly published v8 packet")
-            self.assertTrue(v8_sidecar.is_file(), "missing independently retained v8 digest")
-            words = v8_sidecar.read_text("ascii").strip().split()
-            self.assertEqual(len(words), 2)
-            self.assertEqual(words[1], "cnr001-v8.tar.gz")
-            self.assertRegex(words[0], r"^[a-f0-9]{64}$")
-            self.assertEqual(identity(v8_archive.read_bytes()), "sha256:" + words[0])
-            with tarfile.open(v8_archive, "r:gz") as archive:
-                entries = archive.getmembers()
-                self.assertTrue(all(m.isfile() for m in entries))
-                self.assertEqual(len(entries), len({m.name for m in entries}))
-                expected = {"MANIFEST.json", "v8/cnr-request.json",
-                            "v8/cnr-analysis.json", "v8/cnr-freeze-receipt.json",
-                            "v8/cnr-run-receipt.json", "v8/cnr-verification.json"}
-                self.assertEqual({m.name for m in entries}, expected)
-                members = {m.name: archive.extractfile(m).read() for m in entries}
-                manifest_bytes = members["MANIFEST.json"]
-                manifest = json.loads(manifest_bytes)
-                self.assertEqual(json_bytes(manifest), manifest_bytes)
-                self.assertEqual(manifest["schema"], "trinite.cnr-001-evidence-archive.v8")
-                self.assertEqual(manifest["parent_v7_sha256"],
-                                 identity(v7_archive.read_bytes())[7:])
-                self.assertEqual(set(manifest["entries"]), expected - {"MANIFEST.json"})
-                for name, attr in manifest["entries"].items():
-                    raw = members[name]
-                    self.assertEqual(attr, {"bytes": len(raw), "sha256": identity(raw)[7:]})
-                self.assertEqual(manifest["request_identity"], req_id)
-                self.assertEqual(manifest["analysis_identity"], ran["analysis_identity"])
-                self.assertEqual(members["v8/cnr-request.json"], before[0])
-                self.assertEqual(members["v8/cnr-analysis.json"], before[1])
-                self.assertEqual(members["v8/cnr-freeze-receipt.json"], json_bytes(frozen))
-                self.assertEqual(members["v8/cnr-run-receipt.json"], json_bytes(ran))
-                self.assertEqual(members["v8/cnr-verification.json"], json_bytes(got))
+            self.assert_retained_sha256(
+                v8_archive, ROOT / "fixtures/cnr-001-evidence/cnr001-v8.sha256",
+                V8_SHA256)
+            members = self.retained_v9_members()
+            manifest = json.loads(members["MANIFEST.json"])
+            self.assertEqual(manifest["request_identity"], req_id)
+            self.assertEqual(manifest["analysis_identity"], ran["analysis_identity"])
+            self.assertEqual(members["v9/cnr-request.json"], before[0])
+            self.assertEqual(members["v9/cnr-analysis.json"], before[1])
+            self.assertEqual(members["v9/cnr-freeze-receipt.json"], json_bytes(frozen))
+            self.assertEqual(members["v9/cnr-run-receipt.json"], json_bytes(ran))
+            self.assertEqual(members["v9/cnr-verification.json"], json_bytes(got))
             self.assertNotEqual(before[0], old_request)
             with self.assertRaises(FileExistsError):
                 module.freeze(rpath)

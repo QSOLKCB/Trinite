@@ -49,6 +49,8 @@ class CNR001Contracts(unittest.TestCase):
         self.assertIn("src/trinite/lattice_observation/experiment.py", source)
         self.assertIn(".github/workflows/cnr-001.yml", source)
         self.assertIn("scripts/run_cnr001.py", source)
+        self.assertEqual(source["src/trinite/packed_ternary/__init__.py"],
+                         identity((ROOT / "src/trinite/packed_ternary/__init__.py").read_bytes()))
 
     def test_permanent_v1_v2_archive_and_external_commitments(self):
         packet = ROOT / "fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz"
