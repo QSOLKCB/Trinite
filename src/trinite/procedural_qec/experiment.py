@@ -43,7 +43,7 @@ def protocol():
 
 
 def sources():
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[3]
     paths = (Path(__file__), root / "src/trinite/procedural_qec/data.py",
              root / "src/trinite/procedural_qec/protocol.json",
              root / "src/trinite/procedural_qec/__init__.py",
