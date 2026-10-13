@@ -5,6 +5,10 @@ on:
     paths:
       - 'src/trinite/procedural_qec/**'
       - 'scripts/run_procedural_qec.py'
+      - 'scripts/archive_procedural_qec.py'
+      - 'scripts/procedural_qec_archive.py'
+      - 'tests/test_procedural_archive.py'
+      - '.github/workflows/procedural-qec-research.yml'
       - 'tests/test_procedural_qec.py'
       - 'tests/procedural_qec/**'
       - '.github/workflows/procedural-qec.yml'
@@ -37,5 +41,7 @@ jobs:
           python -m pip check
       - name: Exact oracle, family and tamper conformance
         run: python -m unittest discover -s tests -p test_procedural_qec.py -v
+      - name: Archive tamper, exact digests and source-closure tests
+        run: python -m unittest discover -s tests -p test_procedural_archive.py -v
       - name: Native two-seed two-arm smoke, full replay and read-only verification
         run: python -m unittest discover -s tests/procedural_qec -v
