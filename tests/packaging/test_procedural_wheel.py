@@ -70,6 +70,25 @@ class ProceduralInstalledWheel(unittest.TestCase):
                 "--no-compile", "--target", str(installed), str(wheels[0]))
             shutil.rmtree(project)  # No uninstalled source tree is available to imports.
             self.assertFalse(project.exists())
+            # Independently regenerate the authoritative checkout evidence.
+            checkout = r'''
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]).resolve()))
+from trinite.procedural_qec import data
+raw, manifest = data.dataset()
+data.audit_bytes(raw, manifest)
+assert all(name.startswith("src/trinite/") for name in data.source_receipt())
+Path(sys.argv[2]).write_bytes(raw)
+Path(sys.argv[3]).write_bytes(manifest)
+'''
+            expected_data = root / "checkout-data.json"
+            expected_admission = root / "checkout-admission.json"
+            run(sys.executable, "-I", "-S", "-c", checkout, str(ROOT / "src"),
+                str(expected_data), str(expected_admission))
+            self.assertGreater(expected_data.stat().st_size, 0)
+            self.assertGreater(expected_admission.stat().st_size, 0)
+
             program = r'''
 import hashlib
 import json
@@ -79,6 +98,8 @@ import sys
 target = Path(sys.argv[1]).resolve()
 mode = sys.argv[2]
 expected = json.loads(sys.argv[3])
+checkout_raw = Path(sys.argv[4]).read_bytes()
+checkout_manifest = Path(sys.argv[5]).read_bytes()
 sys.path.insert(0, str(target))
 from trinite.contracts import ContractError
 from trinite.procedural_qec import data
@@ -91,49 +112,50 @@ for rel, digest in expected.items():
     protocol = resources / rel
     assert protocol.is_file(), rel
     actual = hashlib.sha256(protocol.read_bytes()).hexdigest()
-    if mode == "tampered-v3" and rel == "procedural_qec_v3/protocol.json":
-        assert actual != digest, "changed installed v3 protocol escaped byte pin"
+    changed = (mode == "tampered-v2" and rel == "procedural_qec/protocol-v2.json") or (
+        mode == "tampered-v3" and rel == "procedural_qec_v3/protocol.json")
+    if changed:
+        assert actual != digest, "tampered protocol unchanged"
     else:
         assert actual == digest, "installed protocol bytes differ: " + rel
 if mode == "valid":
     assert len(expected) == 3
+    assert all(name.startswith("src/trinite/") for name in data.source_receipt())
     raw, manifest = data.dataset()
+    assert raw == checkout_raw, "installed dataset differs from checkout"
+    assert manifest == checkout_manifest, "installed admission differs from checkout"
     data.audit_bytes(raw, manifest)
-    (target.parent / "expected-data.json").write_bytes(raw)
-    (target.parent / "expected-admission.json").write_bytes(manifest)
+    data.audit_bytes(checkout_raw, checkout_manifest)
     assert scheduler.auxiliary_stream(0) == ("fold-sum", "prefix")
 elif mode == "tampered-v2":
     try:
-        data.audit_bytes((target.parent / "expected-data.json").read_bytes(),
-                         (target.parent / "expected-admission.json").read_bytes())
+        data.audit_bytes(checkout_raw, checkout_manifest)
     except ContractError:
         pass
     else:
-        raise AssertionError("changed installed v2 resource did not break admission")
+        raise AssertionError("changed installed v2 resource accepted checkout evidence")
 else:
     assert mode == "tampered-v3"
 '''
-            def isolated(mode):
+            def isolated(mode, target):
                 run(sys.executable, "-I", "-S", "-c", program,
-                    str(installed), mode, json.dumps(expected, sort_keys=True))
+                    str(target), mode, json.dumps(expected, sort_keys=True),
+                    str(expected_data), str(expected_admission))
 
-            isolated("valid")
-            # Exactly one byte changes. The original admitted data can no
-            # longer be audited against the modified producer source receipt.
-            v2 = installed / "trinite/procedural_qec/protocol-v2.json"
+            isolated("valid", installed)
+            # Actual prefix relocation must preserve *both* complete streams.
+            relocated = root / "relocated-wheel"
+            installed.rename(relocated)
+            self.assertFalse(installed.exists())
+            isolated("valid", relocated)
+            v2 = relocated / "trinite/procedural_qec/protocol-v2.json"
             original = v2.read_bytes()
             v2.write_bytes(original + b"\n")
-            # For this case only, the earlier resource equality is expected
-            # to differ; preserve strict equality for the other two resources.
-            negative = program.replace(
-                'if mode == "tampered-v3" and rel == "procedural_qec_v3/protocol.json":',
-                'if (mode == "tampered-v3" and rel == "procedural_qec_v3/protocol.json") or (mode == "tampered-v2" and rel == "procedural_qec/protocol-v2.json"):')
-            run(sys.executable, "-I", "-S", "-c", negative,
-                str(installed), "tampered-v2", json.dumps(expected, sort_keys=True))
+            isolated("tampered-v2", relocated)
             v2.write_bytes(original)
-            v3 = installed / "trinite/procedural_qec_v3/protocol.json"
+            v3 = relocated / "trinite/procedural_qec_v3/protocol.json"
             v3.write_bytes(v3.read_bytes() + b"\n")
-            isolated("tampered-v3")
+            isolated("tampered-v3", relocated)
 
 
 if __name__ == "__main__":
