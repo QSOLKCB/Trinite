@@ -18,6 +18,10 @@ MAX_MEMBERS = 2048
 MAX_MEMBER_BYTES = 64 * 1024 * 1024
 MAX_TOTAL_BYTES = 512 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
+ROOT_COMMITTED = frozenset(("request.json", "worker-errors.json"))
+CELL_COMMITTED = frozenset(("report.json", "predictions.json", "steps.json",
+                           "tensors.safetensors", "metadata.json",
+                           "verification.json", "provenance/manifest.json"))
 ID_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
 TOOLS = ("scripts/procedural_qec_archive.py",
          "scripts/archive_procedural_qec.py",
@@ -72,8 +76,8 @@ def safe_path(path):
 
 
 def safe_name(name):
-    if (type(name) is not str or not name or len(name) > 512 or "\\." in name
-            or "\\" in name or name.startswith("/") or any(
+    if (type(name) is not str or not name or len(name) > 512 or "\\" in name or "\x00" in name or name.startswith("/")
+            or any(ord(c) < 32 or ord(c) == 127 for c in name) or any(
                 p in ("", ".", "..") for p in name.split("/"))):
         raise ArchiveError("unsafe archive member name")
     return name
@@ -171,6 +175,13 @@ def verify_contract(members, inventory, *, archive_identity=None):
         name = "procedural-qec-" + str(cell["seed"]) + "-" + cell["arm"]
         if name in records:
             raise ArchiveError("duplicate experimental cell")
+        if (identity(members.get("run/" + name + "/report.json", b"")) != cell.get("report_identity")
+                or parse(members["run/" + name + "/report.json"]) != cell.get("report")):
+            raise ArchiveError("cell summary does not match retained source-bound report")
+        report = cell["report"]
+        if (report.get("held_out_scored") is not False or report.get("learning_adequacy") is not False
+                or report.get("phase5_ready") is not False):
+            raise ArchiveError("archived report incorrectly claims held-out/Phase5 evidence")
         records[name] = cell
     if set(records) != {f"procedural-qec-{seed}-{arm}" for seed in (0, 1)
                        for arm in ("final-only", "procedural")}:
@@ -179,7 +190,11 @@ def verify_contract(members, inventory, *, archive_identity=None):
             or set(verification) != {"schema", "request_identity", "root_artifacts", "cells"}
             or verification["schema"] != "trinite.procedural-qec-verification-request.v1"
             or verification["request_identity"] != request_id
-            or type(verification["cells"]) is not dict or set(verification["cells"]) != set(records)):
+            or type(verification["cells"]) is not dict or set(verification["cells"]) != set(records)
+            or type(verification["root_artifacts"]) is not dict
+            or set(verification["root_artifacts"]) != ROOT_COMMITTED
+            or any(type(v) is not dict or set(v) != CELL_COMMITTED
+                   for v in verification["cells"].values())):
         raise ArchiveError("closed external verification request differs")
     committed = {"run/" + name: digest for name, digest in verification["root_artifacts"].items()}
     for cell, items in verification["cells"].items():
