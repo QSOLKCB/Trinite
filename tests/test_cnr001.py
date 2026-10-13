@@ -3,6 +3,7 @@ from pathlib import Path
 import io
 import hashlib
 import json
+import gzip
 import tarfile
 import tempfile
 import unittest
@@ -14,6 +15,9 @@ from trinite.e8_reference import etq
 ROOT = Path(__file__).resolve().parents[1]
 V8_SHA256 = "718e5fec4674ab615b4162a956500b0bc245e25f15153770a5bfa4e6f7d72b42"
 V9_SHA256 = "44c5dc8906c9a747498288a027aab907998b03ca0d508437b6a53b1b8d2aa59d"
+# Independently captured from hosted run 38422757597, job 115384119235.
+V10_SHA256 = "6059a5f97f7d6783e7d489c6787205d7c0402647173d2e96e5cc7321a630fc38"
+V10_BYTES = 12184
 PACKET_FILES = ("cnr-request.json", "cnr-analysis.json", "cnr-freeze-receipt.json",
                 "cnr-run-receipt.json", "cnr-verification.json")
 EXPORT_SOURCE_DELTA = {
@@ -318,18 +322,49 @@ class CNR001SourceCustody(unittest.TestCase):
         from scripts import run_cnr001 as runner
         self.assert_current_request(runner.expected_request())
 
-    def test_retained_v10_requires_complete_source_and_exact_v9_ancestry(self):
-        root = ROOT / "fixtures/cnr-001-evidence"
+    def retained_v10_members(self, root=None):
+        root = ROOT / "fixtures/cnr-001-evidence" if root is None else root
         archive, sidecar = root / "cnr001-v10.tar.gz", root / "cnr001-v10.sha256"
         self.assertTrue(archive.is_file(), "missing newly published v10 packet")
         self.assertTrue(sidecar.is_file(), "missing independently retained v10 digest")
-        words = sidecar.read_text("ascii").split()
-        self.assertEqual(len(words), 2)
-        self.assert_sidecar(archive, sidecar, words[0])
+        # The sidecar must agree with the captured identity, never define it.
+        self.assert_sidecar(archive, sidecar, V10_SHA256)
+        self.assertEqual(len(archive.read_bytes()), V10_BYTES)
         members = self.read_packet(archive)
         manifest = self.assert_members(members, "v10", "v9", V9_SHA256)
         self.assertEqual(manifest["source_delta"], EXPORT_SOURCE_DELTA)
         self.assert_current_request(parse_json(members["v10/cnr-request.json"], canonical=True))
+        return members
+
+    def test_retained_v10_requires_complete_source_and_exact_v9_ancestry(self):
+        self.retained_v10_members()
+
+    def test_coordinated_v10_gzip_metadata_and_sidecar_reseal_is_rejected(self):
+        original = ROOT / "fixtures/cnr-001-evidence/cnr001-v10.tar.gz"
+        raw = original.read_bytes()
+        expected_members = self.retained_v10_members()
+        # Verify the captured gzip magic, deflate method, absent optional
+        # fields, zero mtime, maximum-compression flag and portable OS marker.
+        self.assertEqual(raw[:10], b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff")
+        # Changing only mtime guarantees equal length without depending on a
+        # local zlib compressor's output. Never change the retained original.
+        changed = raw[:4] + (1).to_bytes(4, "little") + raw[8:]
+        self.assertEqual(len(changed), V10_BYTES)
+        self.assertEqual(gzip.decompress(changed), gzip.decompress(raw))
+        digest = identity(changed)[7:]
+        self.assertNotEqual(digest, V10_SHA256)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive, sidecar = root / "cnr001-v10.tar.gz", root / "cnr001-v10.sha256"
+            archive.write_bytes(changed)
+            sidecar.write_text(digest + "  " + archive.name + "\n", encoding="ascii")
+            self.assertEqual(self.read_packet(archive), expected_members)
+            # A coordinated replacement is internally consistent but has lost
+            # the independently captured hosted archive identity.
+            self.assert_sidecar(archive, sidecar, digest)
+            with self.assertRaises(AssertionError):
+                self.retained_v10_members(root)
+        self.assertEqual(original.read_bytes(), raw)
 
     def test_archive_and_sidecar_corruption_fail_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
