@@ -40,14 +40,17 @@ jobs:
           cmp fixtures/formal-v1/dataset.json "$RUNNER_TEMP/trinite-fixture/dataset.json"
           cmp fixtures/formal-v1/manifest.json "$RUNNER_TEMP/trinite-fixture/manifest.json"
 
-  model-conformance:
+  model-conformance-shard:
     runs-on: ubuntu-24.04
-    # Include acquisition plus real assurance, budget replay and archive integration tests.
+    # OPT-PAR-001: independent whole-suite shards; all 261 v0.2.0 cases
+    # still run per Python version with real optimizer/custody replay.
+    # The old sequential runner remains available as an exact reference.
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         python: ['3.11', '3.12', '3.13']
+        shard: [0, 1, 2, 3]
     env:
       OMP_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
@@ -68,6 +71,26 @@ jobs:
           python -m pip check
       - name: Offline reference model conformance
         run: |
-          python scripts/check_research_cpu.py
+          python scripts/check_research_cpu_shards.py --shard "${{ matrix.shard }}"
+      - name: Offline dense/ternary inspection (one complete run per Python)
+        if: ${{ matrix.shard == 0 }}
+        run: |
           python -m trinite inspect-model --lane dense --text '1+1=2' > "$RUNNER_TEMP/dense-inventory.json"
           python -m trinite inspect-model --lane ternary --text '1+1=2' --capture-layer final --capture-position 0 > "$RUNNER_TEMP/ternary-inventory.json"
+
+  # Preserve the three historical branch-protection check names. This status
+  # can pass only after *every* 3-Python × 4-shard numerical/inspection job
+  # succeeds; it never substitutes a cached or abbreviated model test result.
+  model-conformance:
+    needs: model-conformance-shard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    steps:
+      - name: Full model conformance shard matrix succeeded
+        run: |
+          echo 'All twelve pinned model-conformance shards and original inspections passed.'
+          echo 'Legacy full runner remains scripts/check_research_cpu.py.'
