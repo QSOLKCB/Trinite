@@ -23,8 +23,8 @@ from ..training import (TrainingState, create_optimizer, evaluate, model_identit
                         require_environment, run_steps)
 from . import data
 
-PROTOCOL_IDENTITY = "sha256:0777f713e24a88daf3b83d105cc1a210fcb717f7bbd40375acaed7688c73d8e3"
-PROTOCOL_COMMIT = "8a6116251e1d270dc39623dadfa58c18911a0be6"
+PROTOCOL_IDENTITY = "sha256:3c44c40c10fd63026cc7f8822f9b1a0842737897e33a91afef75a6c28d70d1bb"
+PROTOCOL_COMMIT = "0697d5944d48517bb0ab04afc211af7a9826cd2f"
 ARMS = ("final-only", "procedural")
 SEEDS = (0, 1)
 OUTPUTS = ("report.json", "predictions.json", "steps.json",
@@ -32,11 +32,11 @@ OUTPUTS = ("report.json", "predictions.json", "steps.json",
 
 
 def protocol():
-    raw = evidence.read_bytes(Path(__file__).parent / "protocol.json", 16384)
+    raw = evidence.read_bytes(Path(__file__).parent / "protocol-v2.json", 16384)
     if identity(raw) != PROTOCOL_IDENTITY:
         raise ContractError("frozen procedural/QEC protocol changed")
     value = parse_json(raw, canonical=True)
-    if (value["schema"] != "trinite.procedural-qec-protocol.v1"
+    if (value["schema"] != "trinite.procedural-qec-protocol.v2"
             or value["donor"]["pin_identity"] != data.verify_pin()["pin_identity"]):
         raise ContractError("procedural QEC protocol/donor mismatch")
     return value
@@ -46,6 +46,7 @@ def sources():
     root = Path(__file__).resolve().parents[3]
     paths = (Path(__file__), root / "src/trinite/procedural_qec/data.py",
              root / "src/trinite/procedural_qec/protocol.json",
+             root / "src/trinite/procedural_qec/protocol-v2.json",
              root / "src/trinite/procedural_qec/__init__.py",
              root / "scripts/run_procedural_qec.py",
              root / "src/trinite/model.py", root / "src/trinite/training.py",
