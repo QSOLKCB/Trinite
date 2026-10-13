@@ -616,3 +616,26 @@ choice, independent replication, geometry-on Phase 5, scaling and release
 readiness remain blocked. The earlier task-balance archival closure and
 full-versus-core curriculum decision are still separate work, not claimed
 completed by PR #35.
+
+## QEC procedural v2 negative evidence and corrected-cursor v3 (PR #36)
+
+The [fully verified v2 procedural experiment](PROCEDURAL-QEC-NEGATIVE-RESULT.md)
+ran all four 4,096-update cells on 2026-10-13, each with the original
+source-bound AdamW replay. Its **training gate failed**; fold-sum final
+accuracy regressed in both procedural seeds, while some intermediate-prefix
+accuracy improved. The original bundle, model checkpoints and results remain
+unchanged. The confirmed v2 parity scheduler excluded half of the possible
+prefix and trace rows in every auxiliary stream. The separately verified
+full-Git-tree source supplement restores a reproducible standalone original
+dataset source without rewriting the earlier 136-member ZIP.
+
+The [new v3 cursor experiment](PROCEDURAL-QEC-V3.md) freezes a distinct
+protocol before outcomes; four final-only and procedural cells must be
+rerun under one new research request. Only the procedural example cursor
+advances independently; final-only control, model, optimizer, dataset,
+update budget, seeds and original answer+EOS scorer remain unchanged.
+New reports distinguish full/final/per-mode losses, actual
+exposure and visited/unvisited auxiliary correctness. The next v3 matrix
+has **not** been run; no improvement is presumed. Original composed task
+adequacy, unseen-family confirmation, format, geometry, scaling and
+release remain separately blocked.
