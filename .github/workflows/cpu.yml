@@ -83,6 +83,7 @@ jobs:
   # succeeds; it never substitutes a cached or abbreviated model test result.
   model-conformance:
     needs: model-conformance-shard
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
@@ -91,6 +92,12 @@ jobs:
         python: ['3.11', '3.12', '3.13']
     steps:
       - name: Full model conformance shard matrix succeeded
+        env:
+          SHARDS_RESULT: ${{ needs.model-conformance-shard.result }}
         run: |
+          if [ "$SHARDS_RESULT" != 'success' ]; then
+            echo "A required model shard did not succeed: $SHARDS_RESULT" >&2
+            exit 1
+          fi
           echo 'All twelve pinned model-conformance shards and original inspections passed.'
           echo 'Legacy full runner remains scripts/check_research_cpu.py.'
