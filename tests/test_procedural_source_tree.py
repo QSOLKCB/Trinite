@@ -25,7 +25,7 @@ class HistoricalGitTreeTests(unittest.TestCase):
                 "120b95ac68825b50b92dc0210d1f142a30980bfe5acedcfafe6d8f3cdadf83c4",
             "scope": "full Git tracked source tree; not a new trained model or independent numerical replication",
             "members": {f"source/{i:04}.py": {} for i in range(EXPECTED_FILES)}}
-        with self.assertRaisesRegex(SourceError, "exact historical result"):
+        with self.assertRaisesRegex(SourceError, "invalid historical Git tree identifier"):
             sha_manifest(values)
         values["git_tree"] = EXPECTED_GIT_TREE
         self.assertIs(sha_manifest(values), values)
