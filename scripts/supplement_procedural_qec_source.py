@@ -201,11 +201,34 @@ def serialize(items):
     return out.getvalue()
 
 
+def read_supplement(path):
+    """Bound input acquisition before allocation; reject symlink/non-file paths."""
+    path = Path(path)
+    if any(p.is_symlink() for p in (path, *path.parents)):
+        raise SourceError("supplement input cannot traverse symlinks")
+    flags = (os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+             | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_CLOEXEC", 0))
+    fd = os.open(path, flags)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > LIMIT:
+            raise SourceError("supplement input is not a bounded regular file")
+        with os.fdopen(fd, "rb") as stream:
+            fd = None  # the stream now owns the descriptor
+            raw = stream.read(LIMIT + 1)
+        if len(raw) > LIMIT:
+            raise SourceError("supplement ZIP size exceeded")
+        return raw
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+
 def verify(path, external_digest):
     if type(external_digest) is not str or len(external_digest) != 64 or any(
             c not in "0123456789abcdef" for c in external_digest):
         raise SourceError("independent source supplement SHA-256 is required")
-    data = Path(path).read_bytes()
+    data = read_supplement(path)
     if sha(data) != external_digest or len(data) > LIMIT:
         raise SourceError("supplement ZIP differs from independently retained commitment")
     members = {}

@@ -6,6 +6,7 @@ updater, model, tokenizer and final-answer scorer are reused without patches.
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
+import os
 import math
 import resource
 import time
@@ -45,16 +46,51 @@ def protocol():
 
 
 def sources():
-    """Complete first-party package closure, not v2's partial declared list."""
+    """Bind the stable checkout's executable sources, not build byproducts.
+
+    This is an enumerated, bounded stable-tree receipt, not a concurrent
+    descriptor-sealed filesystem snapshot. Never silently omit a symlink.
+    """
     root = Path(__file__).resolve().parents[3]
-    selected = (p for p in (root / "src").rglob("*")
-                if p.is_file() and not p.is_symlink()
-                and "__pycache__" not in p.parts and p.suffix in
-                (".py", ".json", ".txt", ".lock", ".cff"))
-    paths = {p.relative_to(root).as_posix(): p for p in selected}
+    src = evidence.safe_path(root / "src")
+    if not src.is_dir():
+        raise ContractError("missing procedural v3 source directory")
+
+    suffixes = {".py", ".json", ".txt", ".lock", ".cff"}
+    paths = {}
+
+    def generated(name):
+        return name == "__pycache__" or name.endswith((".egg-info", ".dist-info"))
+
+    def scan_error(error):
+        raise ContractError("cannot enumerate procedural v3 source") from error
+
+    for directory, dirnames, filenames in os.walk(
+            src, topdown=True, followlinks=False, onerror=scan_error):
+        base = Path(directory)
+        retained = []
+        for name in sorted(dirnames):
+            if generated(name):
+                continue
+            child = base / name
+            if child.is_symlink():
+                raise ContractError("symlinked procedural v3 source directory")
+            retained.append(name)
+        dirnames[:] = retained
+
+        for name in sorted(filenames):
+            if generated(name):
+                continue
+            path = base / name
+            if path.is_symlink():
+                raise ContractError("symlinked procedural v3 source file")
+            if path.suffix in suffixes:
+                paths[path.relative_to(root).as_posix()] = path
+
     for rel in ("requirements.lock", "pyproject.toml",
                 "scripts/run_procedural_qec_v3.py"):
-        paths[rel] = root / rel
+        paths[rel] = evidence.safe_path(root / rel)
+
     return {name: identity(evidence.read_bytes(path, 1024 * 1024))
             for name, path in sorted(paths.items())}
 

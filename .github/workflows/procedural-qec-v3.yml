@@ -1,16 +1,8 @@
 name: QEC v3 independent-cursor conformance
 on:
+  # Shared model/data/updater/tokenizer changes can alter v3 native replay.
+  # No paths filter: exercise the complete existing v3 integration on every PR.
   pull_request:
-    paths:
-      - 'src/trinite/procedural_qec_v3/**'
-      - 'scripts/run_procedural_qec_v3.py'
-      - 'scripts/procedural_qec_v3_archive.py'
-      - 'scripts/archive_procedural_qec_v3.py'
-      - 'tests/test_procedural_v3_archive.py'
-      - '.github/workflows/procedural-qec-v3-research.yml'
-      - 'tests/test_procedural_qec_v3.py'
-      - 'tests/procedural_qec_v3/**'
-      - '.github/workflows/procedural-qec-v3.yml'
   workflow_dispatch:
 
 permissions:

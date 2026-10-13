@@ -55,3 +55,28 @@ Research training acceptance requires ≥90% complete original final-answer+EOS 
 Fresh family-level confirmation, original composed/fold gate, independent-host replication, CPU packing, format selection, scaling, Phase 5 geometry training and release readiness remain separately blocked. No pretrained model or teacher data has been introduced.
 
 Affected invariants: TRI-I02/I03/I05/I06/I07/I08/I11/I12/I13/I14.
+
+
+## PR #37 — v3 evidence input and CI hardening
+
+This follow-up preserves the frozen v3 protocol, schedule, target masks, data
+admission, native model and AdamW mathematics. Source-bound requests now reject
+symlinked package files/directories instead of silently omitting them, and omit
+generated `__pycache__`, `*.egg-info` and `*.dist-info` bookkeeping from
+the executable-source inventory. The latter must not change merely because a
+wheel was built. It is a stable-checkout guarantee, **not** atomic custody
+against a hostile concurrent filesystem mutation.
+
+The historical v2 source supplement still reconstructs the same fixed 578-file
+Git tree and regenerates the dataset in isolation. Its ZIP input is now checked
+as a regular non-symlink file with a bounded read *before* allocating the
+compressed payload; independently held commitments remain mandatory.
+The existing v3 PR workflow runs its full numerical smoke/replay on **every PR**
+so edits to shared training/data/tokenizer code cannot silently skip it.
+The full 4,096-update research matrix remains manual and has **not** been
+performed for v3. No historical source request, archive, negative outcome or
+immutable tag was regenerated or rewritten. New v3 executions require a fresh
+request bound to the reviewed source. The installed-wheel protocol-resource
+fix is deliberately deferred to a separate packaging PR.
+
+Affected invariants: TRI-I01, I07, I08, I12, I14.
