@@ -35,11 +35,91 @@ jobs:
           python -m pip install --require-hashes --no-deps -r requirements.connectome.lock
           python -c "import importlib.metadata; assert importlib.metadata.version('pyarrow') == '21.0.0'"
       - name: Build and install wheel at the package boundary
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install setuptools==84.0.0
           python -m unittest discover -s tests/packaging -v 2>&1 | tee "$RUNNER_TEMP/cnr-wheel-tests.log"
-      - name: Run bounded native-baseline/CNR experiment and verify exact replay
+      # Only the missing-packet bootstrap emits candidate bytes; the following
+      # strict tests still fail until the independently committed v5 packet and
+      # its externally recorded checksum exist. No historical bytes are altered.
+      - name: Emit prospectively source-bound v5 candidate when missing
+        shell: bash
         run: |
+          set -euo pipefail
+          if [ -e fixtures/cnr-001-evidence/cnr001-v5.tar.gz ]; then
+            echo 'v5 evidence packet already retained; test its full exact replay.'
+          else
+            python - <<'PY'
+          import base64, gzip, hashlib, io, json, os, tarfile, tempfile
+          from pathlib import Path
+          from trinite.contracts import identity, json_bytes, parse_json
+          from scripts import run_cnr001 as runner
+
+          def sha(raw):
+              return hashlib.sha256(raw).hexdigest()
+
+          root = Path(tempfile.mkdtemp(prefix="cnr001-v5-candidate-"))
+          req, analysis = root/"cnr-request.json", root/"cnr-analysis.json"
+          frozen = runner.freeze(req)
+          ran = runner.run(req, frozen["request_identity"], analysis)
+          checked = runner.verify(req, frozen["request_identity"], analysis,
+                                  ran["analysis_identity"])
+          if checked["status"] != "passed" or not checked["read_only"]:
+              raise RuntimeError("new CNR v5 candidate failed authentic source-bound replay")
+          # Inspect the actual mismatch, not an inferred or silently resealed ID.
+          with tarfile.open("fixtures/cnr-001-evidence/cnr001-v4.tar.gz", "r:gz") as tar:
+              archived = parse_json(tar.extractfile("v4/cnr-request.json").read(), canonical=True)
+          fresh = parse_json(req.read_bytes(), canonical=True)
+          if set(fresh) != set(archived) or {
+              k:v for k,v in fresh.items() if k != "source"
+          } != {k:v for k,v in archived.items() if k != "source"}:
+              raise RuntimeError("CNR protocol/data change beyond expected source receipt")
+          oldsource, newsource = archived["source"], fresh["source"]
+          print("CNR_V5_CHANGED_SOURCE_KEYS:" + json.dumps({
+              "added": sorted(set(newsource)-set(oldsource)),
+              "removed": sorted(set(oldsource)-set(newsource)),
+              "modified": sorted(k for k in set(oldsource)&set(newsource)
+                                 if oldsource[k] != newsource[k])}, sort_keys=True))
+          parent_v4 = Path("fixtures/cnr-001-evidence/cnr001-v4.tar.gz").read_bytes()
+          if sha(parent_v4) != "95d16ee195270aa9d41d08be1b63382ae9db804f9306cb2791740f81c0b733a4":
+              raise RuntimeError("historical parent archive changed")
+          items = {
+              "v5/cnr-request.json": req.read_bytes(),
+              "v5/cnr-analysis.json": analysis.read_bytes(),
+              "v5/cnr-freeze-receipt.json": json_bytes(frozen),
+              "v5/cnr-run-receipt.json": json_bytes(ran),
+              "v5/cnr-verification.json": json_bytes(checked),
+          }
+          manifest = {
+              "schema": "trinite.cnr-001-evidence-archive.v5",
+              "parent_v4_sha256": sha(parent_v4),
+              "source_procedure": "unchanged CNR v4 protocol, new source-bound producer",
+              "request_identity": frozen["request_identity"],
+              "analysis_identity": ran["analysis_identity"],
+              "entries": {name: {"bytes": len(raw), "sha256": sha(raw)}
+                          for name, raw in sorted(items.items())},
+          }
+          items["MANIFEST.json"] = json_bytes(manifest)
+          out = io.BytesIO()
+          with gzip.GzipFile(fileobj=out,mode="wb",mtime=0,filename="") as gz:
+              with tarfile.open(fileobj=gz,mode="w|") as tar:
+                  for name, raw in sorted(items.items()):
+                      member = tarfile.TarInfo(name)
+                      member.size=len(raw); member.mtime=0
+                      member.mode=0o644; member.uid=member.gid=0
+                      member.uname=member.gname=""
+                      tar.addfile(member, io.BytesIO(raw))
+          candidate = out.getvalue()
+          print("CNR_V5_ARCHIVE_SHA256:" + sha(candidate))
+          print("CNR_V5_ARCHIVE_BYTES:" + str(len(candidate)))
+          print("CNR_V5_ARCHIVE_BASE64:" + base64.b64encode(candidate).decode("ascii"))
+          PY
+          fi
+      - name: Run bounded native-baseline/CNR experiment and verify exact replay
+        shell: bash
+        run: |
+          set -euo pipefail
           python -m unittest discover -s tests -p 'test_cnr001.py' -v 2>&1 | tee "$RUNNER_TEMP/cnr-standardlib-tests.log"
           python -m unittest discover -s tests/cnr -v 2>&1 | tee "$RUNNER_TEMP/cnr-real-data-tests.log"
           python scripts/run_cnr001.py --freeze-request "$RUNNER_TEMP/cnr-request.json" > "$RUNNER_TEMP/cnr-freeze-receipt.json" 2> "$RUNNER_TEMP/cnr-freeze.log"
@@ -58,57 +138,58 @@ jobs:
           print('ETQ-303 full walk/event:',report['graph_provenance']['etq_diagnostics'])
           print('v0.1.0 baseline:',report['baseline'])
           PY
-      - name: Emit v4 immutable evidence for permanent repository retention
+      - name: Verify immutable v4 and source-bound v5 packet byte-for-byte
         if: success()
+        shell: bash
         run: |
+          set -euo pipefail
           python - <<'PY'
-          import base64, gzip, hashlib, io, json, os, tarfile
+          import hashlib, json, os, tarfile
           from pathlib import Path
+          from trinite.contracts import json_bytes
           def sha(raw): return hashlib.sha256(raw).hexdigest()
-          original = Path("fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz").read_bytes()
-          if sha(original) != "be7ec8ade4c19c05bff5f11741a2b48b4a7760e8ec8fa811c263a021354f18df":
-              raise RuntimeError("historical CNR v1/v2 packet identity changed")
-          store = Path("fixtures/cnr-001-evidence/cnr001-v4.tar.gz")
-          temp = Path(os.environ["RUNNER_TEMP"])
-          names = ("cnr-request.json","cnr-analysis.json","cnr-freeze-receipt.json",
-                   "cnr-run-receipt.json","cnr-verification.json")
-          fresh = {"v4/" + n:(temp/n).read_bytes() for n in names}
-          if store.is_file():
-              packed = store.read_bytes()
-              with tarfile.open(fileobj=io.BytesIO(packed),mode="r:gz") as tar:
-                  members = tar.getmembers()
-                  if any(not m.isfile() for m in members) or len({m.name for m in members}) != len(members):
-                      raise RuntimeError("malformed retained v4 packet")
-                  contents = {m.name:tar.extractfile(m).read() for m in members}
-              manifest = json.loads(contents["MANIFEST.json"])
-              if (manifest["historical_v1_v2_sha256"] != sha(original)
-                      or set(manifest["entries"]) != set(contents)-{"MANIFEST.json"}):
-                  raise RuntimeError("v4 archive manifest mismatch")
-              for name, value in manifest["entries"].items():
-                  if sha(contents[name]) != value["sha256"] or len(contents[name]) != value["bytes"]:
-                      raise RuntimeError("v4 archived object differs from manifest")
-              for name, raw in fresh.items():
-                  if contents.get(name) != raw:
-                      raise RuntimeError("v4 archive differs from fresh source-bound replay: " + name)
-          else:
-              manifest = {"schema":"trinite.cnr-001-evidence-archive.v4",
-                          "historical_v1_v2_sha256":sha(original),
-                          "producer_run":os.environ["GITHUB_RUN_ID"],
-                          "entries":{name:{"bytes":len(raw),"sha256":sha(raw)}
-                                     for name,raw in sorted(fresh.items())}}
-              fresh["MANIFEST.json"] = (json.dumps(manifest,sort_keys=True,
-                                                   separators=(",",":"))+"\n").encode()
-              out = io.BytesIO()
-              with gzip.GzipFile(fileobj=out,mode="wb",mtime=0,filename="") as gz:
-                  with tarfile.open(fileobj=gz,mode="w|") as tar:
-                      for name,raw in sorted(fresh.items()):
-                          member=tarfile.TarInfo(name)
-                          member.size=len(raw); member.mtime=0
-                          member.mode=0o644; member.uid=member.gid=0
-                          tar.addfile(member,io.BytesIO(raw))
-              packed=out.getvalue()
-          print("CNR_V4_ARCHIVE_SHA256:"+sha(packed))
-          print("CNR_V4_ARCHIVE_BASE64:"+base64.b64encode(packed).decode("ascii"))
+
+          root = Path("fixtures/cnr-001-evidence")
+          old_bytes = (root/"cnr001-v1-v2.tar.gz").read_bytes()
+          old_v4 = (root/"cnr001-v4.tar.gz").read_bytes()
+          if sha(old_bytes) != "be7ec8ade4c19c05bff5f11741a2b48b4a7760e8ec8fa811c263a021354f18df":
+              raise RuntimeError("historical v1/v2 archive changed")
+          if sha(old_v4) != "95d16ee195270aa9d41d08be1b63382ae9db804f9306cb2791740f81c0b733a4":
+              raise RuntimeError("historical v4 archive changed")
+          current_zip = (root/"cnr001-v5.tar.gz").read_bytes()
+          expected = (root/"cnr001-v5.sha256").read_text("ascii").strip().split()
+          if len(expected) != 2 or expected[1] != "cnr001-v5.tar.gz" or sha(current_zip) != expected[0]:
+              raise RuntimeError("v5 retained external archive digest mismatch")
+          with tarfile.open(root/"cnr001-v5.tar.gz", "r:gz") as tar:
+              members=tar.getmembers()
+              if any(not m.isfile() for m in members) or len({m.name for m in members}) != len(members):
+                  raise RuntimeError("malformed v5 archive inventory")
+              contents={m.name:tar.extractfile(m).read() for m in members}
+          required={"MANIFEST.json", "v5/cnr-request.json",
+                    "v5/cnr-analysis.json","v5/cnr-freeze-receipt.json",
+                    "v5/cnr-run-receipt.json","v5/cnr-verification.json"}
+          if set(contents) != required:
+              raise RuntimeError("v5 archive has missing or extra members")
+          manifest=json.loads(contents["MANIFEST.json"])
+          if (manifest["schema"] != "trinite.cnr-001-evidence-archive.v5"
+                  or manifest["parent_v4_sha256"] != sha(old_v4)
+                  or set(manifest["entries"]) != required-{"MANIFEST.json"}
+                  or contents["MANIFEST.json"] != json_bytes(manifest)):
+              raise RuntimeError("v5 canonical manifest and historical ancestry mismatch")
+          for name, attrs in manifest["entries"].items():
+              raw=contents[name]
+              if attrs != {"sha256":sha(raw),"bytes":len(raw)}:
+                  raise RuntimeError("v5 member identity/size mismatch: " + name)
+          temp=Path(os.environ["RUNNER_TEMP"])
+          files=("cnr-request.json","cnr-analysis.json","cnr-freeze-receipt.json",
+                 "cnr-run-receipt.json","cnr-verification.json")
+          for name in files:
+              if contents["v5/"+name] != (temp/name).read_bytes():
+                  raise RuntimeError("v5 source-bound producer replay mismatch: " + name)
+          if (manifest["request_identity"] != "sha256:"+sha(contents["v5/cnr-request.json"])
+                  or manifest["analysis_identity"] != "sha256:"+sha(contents["v5/cnr-analysis.json"])):
+              raise RuntimeError("v5 independent commitment identity mismatch")
+          print("Historical v4 archive remains immutable; all new v5 request/analysis/receipts exactly match current verified producer.")
           PY
       - name: Retain all research results, including failure logs
         if: always()
@@ -136,7 +217,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Replay unchanged v3 archive with its original producer
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install --require-hashes --no-deps -r requirements.connectome.lock
           python - <<'PYCODE' 2>&1 | tee "$RUNNER_TEMP/cnr-historical-v3.log"
           import hashlib, importlib.util, os, tarfile
