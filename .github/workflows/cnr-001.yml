@@ -399,7 +399,7 @@ jobs:
           manifest=json.loads(retained["MANIFEST.json"])
           if (retained["MANIFEST.json"]!=json_bytes(manifest)
                   or manifest["schema"]!="trinite.cnr-001-evidence-archive.v7"
-                  or manifest["parent_v5_sha256"]!="03e735f1101d26f935134ff9fe3f95fce43d6e40b2a03e0f9de0136305ee2144"
+                  or manifest["parent_v6_sha256"]!="86cb1be634f41cceabb7f1b49c5b5d4803b5a182ca04167b27ff96aea36a0aa4"
                   or set(manifest["entries"])!=names-{"MANIFEST.json"}):
               raise RuntimeError("historical v7 manifest or parent commitment invalid")
           for name,attrs in manifest["entries"].items():
