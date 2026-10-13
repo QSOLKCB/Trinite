@@ -129,3 +129,28 @@ The scalar-learning increment appends `tests/scalar` to current grouped discover
 the exact ordered standalone-equivalence gate includes that suite automatically.
 The retained 122-case timing packet remains the historical measurement, not a
 benchmark of the extended suite. No new speedup is claimed.
+
+## Post-v0.2.0 OPT-guided model-conformance sharding
+
+**Status: PR #33 optimization candidate; numerical source and tests unchanged.**
+The immutable [v0.2.0](https://github.com/QSOLKCB/Trinite/releases/tag/v0.2.0)
+reference ran 261 CPU research cases per Python version. Its hosted combined
+test-only durations were 1,794.636 s (Python 3.11), 1,808.813 s (3.12) and
+822.233 s (3.13); these are one-run samples, not portable medians.
+
+[OPT-PAR-001](https://github.com/QSOLKCB/OPT/blob/v1.4.0/optimizations/OPT-PAR-001-bounded-parallel-execution.md)
+and OPT-PY-001 now motivate a bounded **four-shard, whole-suite GitHub Actions
+matrix per interpreter**. This changes CI execution orchestration, not model,
+optimizer, replay, scoring, admission, test fixtures, or the original full
+runner. Every shard validates the *entire* required 261-case inventory and runs
+only its exact assigned suite subset; all 12 jobs must pass before the previous
+three model-conformance check names can succeed. Pinned CPU installation and
+`pip check` remain mandatory in every shard, and both inspect-model commands
+remain once per Python version. Cross-shard order is unconstrained; per-suite
+order is preserved.
+
+The complete contract, static assignment, skip/failure/duplicate controls,
+run instructions, baseline context, and rollback conditions are in
+[OPT-CI-SHARDING.md](OPT-CI-SHARDING.md). A real target speedup is **pending
+head-CI measurement**; increased runner-minutes/queueing must be disclosed.
+This is a source-isolated CI detour with no Phase 5 or release-gate promotion.
