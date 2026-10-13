@@ -3,7 +3,6 @@
 The only permitted learning rows come from existing admitted train families or
 new, bounded GF(3) numeric facts. This does not confer fresh held-out status.
 """
-from collections import Counter
 from itertools import product
 from pathlib import Path
 
@@ -29,7 +28,7 @@ def source_receipt():
              root / "learning_data.py", root / "qec_source.py",
              root / "_qec/qutrit/gf3.py", root / "qec-pin.json",
              root / "tokenizer.py", root / "contracts.py")
-    return {str(p.relative_to(root.parent)): identity(p.read_bytes()) for p in names}
+    return {str(p.relative_to(root.parent.parent)): identity(p.read_bytes()) for p in names}
 
 
 def states(kind, values):
