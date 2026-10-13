@@ -113,11 +113,15 @@ class CNR001FullBiology(unittest.TestCase):
 
                 historical_analysis = json.loads(v6_analysis)
                 current_analysis = json.loads(before[1])
+                self.assertEqual(historical_analysis["source"],
+                                 previous_v6["source"])
+                self.assertEqual(current_analysis["source"],
+                                 current_v6["source"])
                 self.assertEqual(
                     {k: v for k, v in historical_analysis.items()
-                     if k != "request_identity"},
+                     if k not in ("request_identity", "source")},
                     {k: v for k, v in current_analysis.items()
-                     if k != "request_identity"})
+                     if k not in ("request_identity", "source")})
                 self.assertEqual(historical_analysis["request_identity"],
                                  identity(v6_request))
                 self.assertEqual(current_analysis["request_identity"], req_id)
