@@ -67,74 +67,48 @@ class CNR001FullBiology(unittest.TestCase):
             self.assertEqual(
                 {k: v for k, v in previous.items() if k != "source"},
                 {k: v for k, v in current.items() if k != "source"})
-            # A newly versioned packet must bind every byte of this producer.
-            # No selective equality exceptions or regenerated old manifests.
-            new_archive = ROOT / "fixtures/cnr-001-evidence/cnr001-v6.tar.gz"
-            digest_file = ROOT / "fixtures/cnr-001-evidence/cnr001-v6.sha256"
-            self.assertTrue(new_archive.is_file(), "missing source-bound v6 evidence packet")
-            self.assertTrue(digest_file.is_file(), "missing externally held v6 digest")
-            recorded = digest_file.read_text("ascii").strip().split()
-            self.assertEqual(len(recorded), 2)
-            self.assertEqual(recorded[1], "cnr001-v6.tar.gz")
-            # Independent reviewed release commitment, not a value learned
-            # from the packet being verified in this test.
-            self.assertEqual(recorded[0], "86cb1be634f41cceabb7f1b49c5b5d4803b5a182ca04167b27ff96aea36a0aa4")
-            self.assertEqual(identity(new_archive.read_bytes()), "sha256:" + recorded[0])
-            with tarfile.open(new_archive, "r:gz") as archive:
-                names = archive.getnames()
-                self.assertEqual(len(names), len(set(names)))
-                self.assertEqual(
-                    set(names), {"MANIFEST.json", "v6/cnr-request.json",
-                                "v6/cnr-analysis.json", "v6/cnr-freeze-receipt.json",
-                                "v6/cnr-run-receipt.json", "v6/cnr-verification.json"})
-                manifest = json.loads(archive.extractfile("MANIFEST.json").read())
-                self.assertEqual(manifest["schema"], "trinite.cnr-001-evidence-archive.v6")
-                self.assertEqual(set(manifest["entries"]), set(names) - {"MANIFEST.json"})
-                self.assertEqual(json_bytes(manifest), archive.extractfile("MANIFEST.json").read())
-                self.assertEqual(manifest["parent_v5_sha256"], "03e735f1101d26f935134ff9fe3f95fce43d6e40b2a03e0f9de0136305ee2144")
-                for member, attrs in manifest["entries"].items():
-                    raw_member = archive.extractfile(member).read()
-                    self.assertEqual(attrs, {"bytes": len(raw_member),
-                                             "sha256": identity(raw_member)[7:]})
-                # The externally pinned v6 bytes must remain immutable, but a
-                # *current* source-bound request must change when first-party
-                # source bytes change. Preserve the historical result instead
-                # of resealing it to match the newer implementation.
-                v6_request = archive.extractfile("v6/cnr-request.json").read()
-                v6_analysis = archive.extractfile("v6/cnr-analysis.json").read()
-                v6_verify = archive.extractfile("v6/cnr-verification.json").read()
-                previous_v6 = json.loads(v6_request)
-                current_v6 = json.loads(before[0])
-                self.assertEqual(
-                    {k: v for k, v in previous_v6.items() if k != "source"},
-                    {k: v for k, v in current_v6.items() if k != "source"})
-                self.assertNotEqual(before[0], v6_request)
-                self.assertNotEqual(current_v6["source"], previous_v6["source"])
-
-                historical_analysis = json.loads(v6_analysis)
-                current_analysis = json.loads(before[1])
-                self.assertEqual(historical_analysis["source"],
-                                 previous_v6["source"])
-                self.assertEqual(current_analysis["source"],
-                                 current_v6["source"])
-                self.assertEqual(
-                    {k: v for k, v in historical_analysis.items()
-                     if k not in ("request_identity", "source")},
-                    {k: v for k, v in current_analysis.items()
-                     if k not in ("request_identity", "source")})
-                self.assertEqual(historical_analysis["request_identity"],
-                                 identity(v6_request))
-                self.assertEqual(current_analysis["request_identity"], req_id)
-                historic_receipt = json.loads(v6_verify)
-                self.assertEqual(historic_receipt["request_identity"],
-                                 identity(v6_request))
-                self.assertEqual(historic_receipt["analysis_identity"],
-                                 identity(v6_analysis))
-                self.assertEqual(historic_receipt["status"], "passed")
-                self.assertTrue(historic_receipt["read_only"])
-                self.assertEqual(got["request_identity"], req_id)
-                self.assertEqual(got["analysis_identity"],
-                                 identity(before[1]))
+            # V6 belongs to its own exact producing revision. The current
+            # native producer must publish a distinct, immutable v7 packet;
+            # comparing away changed source receipts is never acceptable.
+            v6_archive = ROOT / "fixtures/cnr-001-evidence/cnr001-v6.tar.gz"
+            self.assertEqual(identity(v6_archive.read_bytes()),
+                             "sha256:86cb1be634f41cceabb7f1b49c5b5d4803b5a182ca04167b27ff96aea36a0aa4")
+            v7_archive = ROOT / "fixtures/cnr-001-evidence/cnr001-v7.tar.gz"
+            v7_sidecar = ROOT / "fixtures/cnr-001-evidence/cnr001-v7.sha256"
+            self.assertTrue(v7_archive.is_file(), "missing newly published v7 packet")
+            self.assertTrue(v7_sidecar.is_file(), "missing independently retained v7 digest")
+            words = v7_sidecar.read_text("ascii").strip().split()
+            self.assertEqual(len(words), 2)
+            self.assertEqual(words[1], "cnr001-v7.tar.gz")
+            self.assertRegex(words[0], r"^[a-f0-9]{64}$")
+            self.assertEqual(identity(v7_archive.read_bytes()), "sha256:" + words[0])
+            with tarfile.open(v7_archive, "r:gz") as archive:
+                entries = archive.getmembers()
+                self.assertTrue(all(m.isfile() for m in entries))
+                self.assertEqual(len(entries), len({m.name for m in entries}))
+                expected = {"MANIFEST.json", "v7/cnr-request.json",
+                            "v7/cnr-analysis.json", "v7/cnr-freeze-receipt.json",
+                            "v7/cnr-run-receipt.json", "v7/cnr-verification.json"}
+                self.assertEqual({m.name for m in entries}, expected)
+                members = {m.name: archive.extractfile(m).read() for m in entries}
+                manifest_bytes = members["MANIFEST.json"]
+                manifest = json.loads(manifest_bytes)
+                self.assertEqual(json_bytes(manifest), manifest_bytes)
+                self.assertEqual(manifest["schema"], "trinite.cnr-001-evidence-archive.v7")
+                self.assertEqual(manifest["parent_v6_sha256"],
+                                 identity(v6_archive.read_bytes())[7:])
+                self.assertEqual(set(manifest["entries"]), expected - {"MANIFEST.json"})
+                for name, attr in manifest["entries"].items():
+                    raw = members[name]
+                    self.assertEqual(attr, {"bytes": len(raw), "sha256": identity(raw)[7:]})
+                self.assertEqual(manifest["request_identity"], req_id)
+                self.assertEqual(manifest["analysis_identity"], ran["analysis_identity"])
+                self.assertEqual(members["v7/cnr-request.json"], before[0])
+                self.assertEqual(members["v7/cnr-analysis.json"], before[1])
+                self.assertEqual(members["v7/cnr-freeze-receipt.json"], json_bytes(frozen))
+                self.assertEqual(members["v7/cnr-run-receipt.json"], json_bytes(ran))
+                self.assertEqual(members["v7/cnr-verification.json"], json_bytes(got))
+            self.assertNotEqual(before[0], old_request)
             with self.assertRaises(FileExistsError):
                 module.freeze(rpath)
             apath.write_bytes(before[1] + b" ")
