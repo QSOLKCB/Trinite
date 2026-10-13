@@ -243,10 +243,17 @@ def verify(path, external_digest):
                 raise SourceError("invalid ZIP member type, size, or name")
             if info.filename != "MANIFEST.json":
                 name_check(info.filename)
-            total += info.file_size
+            if total + info.file_size > LIMIT:
+                raise SourceError("source supplement uncompressed size exceeded")
+            # Do not trust ZIP header sizes as allocation limits.
+            with z.open(info) as stream:
+                raw = stream.read(MAX_MEMBER + 1)
+            if len(raw) != info.file_size or len(raw) > MAX_MEMBER:
+                raise SourceError("source supplement member expansion or size mismatch")
+            total += len(raw)
             if total > LIMIT:
                 raise SourceError("source supplement uncompressed size exceeded")
-            members[info.filename] = z.read(info)
+            members[info.filename] = raw
     manifest_raw = members.pop("MANIFEST.json")
     manifest = json.loads(manifest_raw)
     if canonical(manifest) != manifest_raw:

@@ -55,6 +55,27 @@ class ProceduralSourceClosureTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "symlinked procedural v3 source directory"):
             experiment.sources()
 
+    def test_entrypoint_symlink_is_rejected_before_resolving_root(self):
+        linked = self.module.parent / "linked-entrypoint.py"
+        linked.symlink_to(self.module)
+        with mock.patch.object(experiment, "__file__", str(linked)):
+            with self.assertRaisesRegex(ContractError, "symlinked procedural v3 entrypoint"):
+                experiment.sources()
+
+    def test_symlinked_generated_bytecode_directory_is_rejected(self):
+        outside = self.root / "external-cache"
+        outside.mkdir()
+        (self.root / "src/trinite/__pycache__").symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(ContractError, "symlinked procedural v3 source directory"):
+            experiment.sources()
+
+    def test_inventory_rejects_oversized_file_count(self):
+        parent = self.root / "src/trinite"
+        for i in range(520):
+            (parent / f"generated-{i:04}.py").write_bytes(b"x")
+        with self.assertRaisesRegex(ContractError, "file budget"):
+            experiment.sources()
+
     def test_packaging_and_bytecode_generation_do_not_change_receipt(self):
         original = experiment.sources()
         for name in ("src/trinite.egg-info/SOURCES.txt",

@@ -51,13 +51,18 @@ def sources():
     This is an enumerated, bounded stable-tree receipt, not a concurrent
     descriptor-sealed filesystem snapshot. Never silently omit a symlink.
     """
-    root = Path(__file__).resolve().parents[3]
+    entrypoint = Path(__file__)
+    if entrypoint.is_symlink():
+        raise ContractError("symlinked procedural v3 entrypoint")
+    root = evidence.safe_path(entrypoint).resolve().parents[3]
     src = evidence.safe_path(root / "src")
     if not src.is_dir():
         raise ContractError("missing procedural v3 source directory")
 
     suffixes = {".py", ".json", ".txt", ".lock", ".cff"}
+    max_files, max_bytes, max_entries = 512, 64 * 1024 * 1024, 10000
     paths = {}
+    enumerated = 0
 
     def generated(name):
         return name == "__pycache__" or name.endswith((".egg-info", ".dist-info"))
@@ -68,31 +73,47 @@ def sources():
     for directory, dirnames, filenames in os.walk(
             src, topdown=True, followlinks=False, onerror=scan_error):
         base = Path(directory)
+        enumerated += len(dirnames) + len(filenames)
+        if enumerated > max_entries:
+            raise ContractError("procedural v3 source inventory exceeds traversal budget")
         retained = []
         for name in sorted(dirnames):
-            if generated(name):
-                continue
             child = base / name
             if child.is_symlink():
                 raise ContractError("symlinked procedural v3 source directory")
+            if generated(name):
+                continue
             retained.append(name)
         dirnames[:] = retained
 
         for name in sorted(filenames):
-            if generated(name):
-                continue
             path = base / name
             if path.is_symlink():
                 raise ContractError("symlinked procedural v3 source file")
+            if generated(name):
+                continue
             if path.suffix in suffixes:
                 paths[path.relative_to(root).as_posix()] = path
+                if len(paths) > max_files:
+                    raise ContractError("procedural v3 source inventory exceeds file budget")
 
     for rel in ("requirements.lock", "pyproject.toml",
                 "scripts/run_procedural_qec_v3.py"):
         paths[rel] = evidence.safe_path(root / rel)
 
-    return {name: identity(evidence.read_bytes(path, 1024 * 1024))
-            for name, path in sorted(paths.items())}
+    if len(paths) > max_files:
+        raise ContractError("procedural v3 source inventory exceeds file budget")
+    source = {}
+    consumed = 0
+    for name, path in sorted(paths.items()):
+        raw = evidence.read_bytes(path, 1024 * 1024)
+        consumed += len(raw)
+        if consumed > max_bytes:
+            raise ContractError("procedural v3 source inventory exceeds byte budget")
+        source[name] = identity(raw)
+    if len(json_bytes(source)) > 96 * 1024:
+        raise ContractError("procedural v3 source receipt exceeds request budget")
+    return source
 
 
 def cells():

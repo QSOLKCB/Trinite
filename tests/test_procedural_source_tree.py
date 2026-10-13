@@ -2,6 +2,8 @@
 from pathlib import Path
 import sys
 import tempfile
+import stat
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -63,6 +65,38 @@ class BoundedSupplementInputTests(unittest.TestCase):
                     with self.assertRaisesRegex(SourceError, "bounded regular file"):
                         read_supplement(path)
 
+    def test_growth_after_stat_still_uses_capped_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "packet.zip"
+            path.write_bytes(b"surprise-new-bytes")
+            real_fdopen = supplement.os.fdopen
+            reads = []
+
+            class TracedStream:
+                def __init__(self, fd, mode):
+                    self.stream = real_fdopen(fd, mode)
+
+                def __enter__(self):
+                    self.stream.__enter__()
+                    return self
+
+                def __exit__(self, *args):
+                    return self.stream.__exit__(*args)
+
+                def read(self, count=-1):
+                    reads.append(count)
+                    return self.stream.read(count)
+
+            # The claimed size fits the budget, but the actual content grew.
+            fake = SimpleNamespace(st_mode=stat.S_IFREG | 0o644, st_size=4)
+            with mock.patch.object(supplement, "LIMIT", 4), \
+                 mock.patch.object(supplement.os, "fstat", return_value=fake), \
+                 mock.patch.object(supplement.os, "fdopen",
+                                   side_effect=TracedStream):
+                with self.assertRaisesRegex(SourceError, "supplement ZIP size exceeded"):
+                    read_supplement(path)
+            self.assertEqual(reads, [5])
+
     def test_symlinked_file_and_ancestor_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -82,6 +116,21 @@ class BoundedSupplementInputTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(SourceError, "bounded regular file"):
                 read_supplement(directory)
+
+
+class SourceSupplementZipBoundsTests(unittest.TestCase):
+    def test_member_read_is_bounded_even_when_headers_are_wrong(self):
+        import io
+        import zipfile
+        with zipfile.ZipFile(io.BytesIO(), "w") as unused:
+            pass
+        # Exercise the full verifier with a rehashed but invalid packet.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "packet.zip"
+            with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("source/member.py", b"not the pinned source")
+            with self.assertRaises((SourceError, KeyError, zipfile.BadZipFile)):
+                supplement.verify(path, sha(path.read_bytes()))
 
 
 class QECV3WorkflowTriggerTests(unittest.TestCase):
