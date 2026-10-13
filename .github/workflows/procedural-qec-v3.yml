@@ -4,6 +4,10 @@ on:
     paths:
       - 'src/trinite/procedural_qec_v3/**'
       - 'scripts/run_procedural_qec_v3.py'
+      - 'scripts/procedural_qec_v3_archive.py'
+      - 'scripts/archive_procedural_qec_v3.py'
+      - 'tests/test_procedural_v3_archive.py'
+      - '.github/workflows/procedural-qec-v3-research.yml'
       - 'tests/test_procedural_qec_v3.py'
       - 'tests/procedural_qec_v3/**'
       - '.github/workflows/procedural-qec-v3.yml'
@@ -35,6 +39,10 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest discover -s tests -p test_procedural_qec_v3.py -v
+      - name: Verify lossless v3 archival contract and hostile packet rejection
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p test_procedural_v3_archive.py -v
       - name: Acquire strictly pinned CPU model dependencies
         run: |
           set -euo pipefail
