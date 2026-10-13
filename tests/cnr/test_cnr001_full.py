@@ -73,6 +73,9 @@ class CNR001FullBiology(unittest.TestCase):
             recorded = digest_file.read_text("ascii").strip().split()
             self.assertEqual(len(recorded), 2)
             self.assertEqual(recorded[1], "cnr001-v5.tar.gz")
+            # Independent reviewed release commitment, not a value learned
+            # from the packet being verified in this test.
+            self.assertEqual(recorded[0], "03e735f1101d26f935134ff9fe3f95fce43d6e40b2a03e0f9de0136305ee2144")
             self.assertEqual(identity(new_archive.read_bytes()), "sha256:" + recorded[0])
             with tarfile.open(new_archive, "r:gz") as archive:
                 names = archive.getnames()
@@ -83,6 +86,8 @@ class CNR001FullBiology(unittest.TestCase):
                                 "v5/cnr-run-receipt.json", "v5/cnr-verification.json"})
                 manifest = json.loads(archive.extractfile("MANIFEST.json").read())
                 self.assertEqual(manifest["schema"], "trinite.cnr-001-evidence-archive.v5")
+                self.assertEqual(set(manifest["entries"]), set(names) - {"MANIFEST.json"})
+                self.assertEqual(json_bytes(manifest), archive.extractfile("MANIFEST.json").read())
                 self.assertEqual(manifest["parent_v4_sha256"], "95d16ee195270aa9d41d08be1b63382ae9db804f9306cb2791740f81c0b733a4")
                 for member, attrs in manifest["entries"].items():
                     raw_member = archive.extractfile(member).read()
