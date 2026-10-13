@@ -17,6 +17,8 @@ import tempfile
 import zipfile
 
 REVIEWED_COMMIT = "93522bf8f18fe38970ceafdd2ace792f8922c382"
+EXPECTED_GIT_TREE = "c8cc28e560729722539a2a6ee47408f50a7a802e"
+EXPECTED_FILES = 578
 RESEARCH_RUN = 38355170260
 INNER_ARCHIVE = "ac3b3627a27bcf6d43f89b31eeabaf1859949ae939784da06ba49916b495fdca"
 ORIGINAL_SUMMARY = "a6d53d4adff35f806226333891a38dd472506752c3d22d70cc96c76e8e2e0a68"
@@ -65,9 +67,53 @@ def sha_manifest(manifest):
             or manifest["expected_dataset_sha256"] != DATASET_DIGEST
             or manifest["scope"] != "full Git tracked source tree; not a new trained model or independent numerical replication"):
         raise SourceError("supplement contradicts exact historical result")
-    if type(manifest["git_tree"]) is not str or len(manifest["git_tree"]) != 40:
+    if manifest["git_tree"] != EXPECTED_GIT_TREE or len(manifest["members"]) != EXPECTED_FILES:
         raise SourceError("invalid historical Git tree identifier")
     return manifest
+
+
+def reconstruct_git_tree(members):
+    """Recompute the complete Git SHA-1 tree directly from retained bytes.
+
+    The pinned historical Git tree has 578 regular-mode 100644 blobs; this
+    inventory and root SHA are checked independently of the supplemental ZIP
+    manifest and its newly computed transport checksum. In particular,
+    omitting a file and resealing the ZIP cannot preserve this Git tree.
+    """
+    if type(members) is not dict or len(members) != EXPECTED_FILES:
+        raise SourceError("missing tracked source members of original Git tree")
+    root = {}
+    for name, raw in members.items():
+        name_check(name)
+        if type(raw) is not bytes:
+            raise SourceError("Git source blob must be bytes")
+        parts = name[len("source/"):].split("/")
+        node = root
+        for part in parts[:-1]:
+            old = node.setdefault(part, {})
+            if type(old) is not dict:
+                raise SourceError("Git source file/directory name collision")
+            node = old
+        if parts[-1] in node:
+            raise SourceError("Git source duplicate or file/directory collision")
+        node[parts[-1]] = raw
+
+    def hash_tree(node):
+        entries = []
+        for name, value in node.items():
+            key = name.encode("utf-8")
+            if type(value) is dict:
+                mode, suffix = b"40000", b"/"
+                target = hash_tree(value)
+            else:
+                mode, suffix = b"100644", b""
+                prefix = b"blob " + str(len(value)).encode("ascii") + b"\x00"
+                target = hashlib.sha1(prefix + value).digest()
+            entries.append((key + suffix, mode + b" " + key + b"\x00" + target))
+        content = b"".join(payload for _, payload in sorted(entries, key=lambda e: e[0]))
+        return hashlib.sha1(b"tree " + str(len(content)).encode("ascii")
+                            + b"\x00" + content).digest()
+    return hash_tree(root).hex()
 
 
 def git_output(*args):
@@ -107,6 +153,8 @@ def members_at_exact_commit():
         raise SourceError("missing transitive foundational dependency")
     if "source/src/provenance_core/__init__.py" not in members:
         raise SourceError("missing transitive provenance dependency")
+    if tree != EXPECTED_GIT_TREE or reconstruct_git_tree(members) != EXPECTED_GIT_TREE:
+        raise SourceError("historical complete source tree differs from pinned Git tree")
     return tree, members
 
 
@@ -186,6 +234,8 @@ def verify(path, external_digest):
     for name, commitment in manifest["members"].items():
         if (commitment != {"bytes": len(members[name]), "sha256": sha(members[name])}):
             raise SourceError("supplement entry SHA-256 or size mismatch")
+    if reconstruct_git_tree(members) != EXPECTED_GIT_TREE:
+        raise SourceError("ZIP does not reconstruct the original complete Git tree")
     isolated_data_regeneration(members)
     return {"status": "passed", "archive_sha256": external_digest,
             "tree": manifest["git_tree"], "members": len(members),
