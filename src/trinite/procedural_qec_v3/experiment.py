@@ -130,7 +130,7 @@ def state_for(seed, arm, run_profile, items=None):
     if sum(sum(row["loss"]) for row in state.data["train"]) > state.config.max_target_tokens:
         raise ContractError("v3 schedule exceeds frozen target budget")
     if arm == "final-only" and [r["identity"] for r in state.data["train"]] != [
-            r["identity"] for r in v2.state_for(seed, arm, run_profile, items).data["train"]]:
+            e["example_identity"] for e in v2.schedule(items, seed, arm, state.config.steps)]:
         raise ContractError("v3 control must exactly preserve historical row schedule")
     return state
 
