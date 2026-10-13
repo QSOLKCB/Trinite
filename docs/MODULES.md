@@ -21,6 +21,14 @@ These names are design boundaries, not an instruction to create a directory per 
 
 ## Dependency rules
 
+`packed_ternary/` owns only bounded in-memory ternary code/byte conversion,
+as [CPU-export preparation](INFERENCE.md#implemented-code-payload-preparation).
+It imports only shared contract validation helpers and has no model, training,
+checkpoint, filesystem or backend dependency. Its package boundary preserves
+the historical flat maths/retention source inventory. A future artifact layer may use
+it after separately validating complete inventory, shape, scale and identity
+metadata; it is not a second safe tensor reader or an inference backend.
+
 The detour adds qec_source.py for the pinned offline oracle, comparison_data.py for numeric admission, comparison_training.py for frozen settings/source/corpus/state construction, comparison_checkpoint.py for snapshot/replay, and comparison.py for evaluation/geometry/evidence orchestration. Both native and comparison states use training.py's authoritative optimiser/update loop; its schedule uses the admitted training length and enforces actual scored-target budgets. scripts/run_comparison.py owns fresh process orchestration. No circular imports or model-to-data/observer dependencies are added. The unmodified trinite._qec dependency retains original relative imports, source pins and separate license.
 
 Core model/tokenizer modules cannot import observation, geometry analysis, evaluation, or CLI. Inference cannot import training or require Unsloth. Data cannot query a model or observer to select its examples. Geometry consumes detached capture artifacts and cannot mutate the model. The first geometry training intervention is orchestrated explicitly by training and may add a reviewed dependency on geometry after its differentiable contract is specified.

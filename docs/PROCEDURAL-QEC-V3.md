@@ -64,6 +64,18 @@ The full mathematical row content, after removing only each row's
 final-only mathematical sequence differs at **32,576 of 32,768 visits in
 seed 0** and **32,521 of 32,768 visits in seed 1**.
 
+The [source-bound audit and reproduction instructions](evidence/procedural-qec-control-order/README.md)
+retain the original [comparison receipt](evidence/procedural-qec-control-order/comparison.json),
+whose independently recorded SHA-256 is
+`7e0160ac9ca5c6241dd8001bbc8775c6dd1c51266755533705debd819d9a087b`.
+Its executable check validates both fixed Git producers' actual source bytes,
+regenerates and admits both complete datasets, compares every row field except
+the two named identity fields, and reconstructs all four schedules. It also
+reproduces the same-current-row regression-check blind spot. The dedicated
+[read-only CI audit](../.github/workflows/procedural-control-audit.yml) executes
+the two pinned sources and rejection tests without importing Torch or training.
+Passing this audit confirms the ordering **failure**, not historical parity.
+
 This violates the intended preservation of the historical final-only order.
 It is a scientific comparison limitation even when current-source software
 conformance and complete native optimizer replay pass. A newly executed

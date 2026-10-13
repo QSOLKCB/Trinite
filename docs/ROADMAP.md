@@ -643,11 +643,12 @@ PR #37 evidence/CI hardening and PR #38 installed-wheel compatibility are
 also merged, through `cc996e272800a5c02667001f7c96c8d11cb513cc`. These are
 implementation and conformance milestones.
 
-The [new v3 cursor experiment](PROCEDURAL-QEC-V3.md) freezes a distinct
-protocol before outcomes; four final-only and procedural cells must be
-rerun under one new research request. Only the procedural example cursor
-advances independently by design; model, optimizer, mathematical examples,
-update budget, seeds and original answer+EOS scorer remain fixed. However,
+The [frozen v3 producer](PROCEDURAL-QEC-V3.md) is retained for explicitly
+requested, historically confounded reproduction. **Do not launch another
+current-v3 matrix for an exact-parity or isolated-cursor comparison.** Its
+intended change was independent procedural cursors, with model, optimizer,
+mathematical examples, update budget, seeds and original answer+EOS scorer
+fixed. However,
 the [historical control audit](PROCEDURAL-QEC-V3.md#historical-control-ordering-audit-13-october-2026)
 found that changed generator-source identities reorder the current final-only
 stream relative to the historical v2 producer. Same-current-row function
