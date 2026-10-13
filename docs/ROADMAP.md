@@ -588,3 +588,10 @@ retains the complete new request, analysis and receipts; original v1/v2/v3
 packets remain unchanged. V4 reproduces the same negative/saturated scores,
 with no model, graph-algorithm or research-gate advancement. See
 [CNR-001](CNR-001.md#v4-package-and-authentic-input-boundary-correction).
+
+
+## QEC-guided procedural supervision (PR #34 — implementation under review)
+
+The [QEC procedural learning detour](PROCEDURAL-QEC.md) adds independently checked intermediate running-sum and **pinned QEC GF(3)** supervision, paired with final-answer-only native CPU training on two seeds. Frozen protocol v1 was preserved **unexecuted** after data-conformance CI exposed arithmetic-subtraction/fold-sum prompt collisions; a new pre-outcome v2 requires an explicit arithmetic-task namespace and preserves original fold sum final prompts. Parent families/splits and exact formal labels are bound, no test/validation model calls are authorised, and the original 261 conformance tests remain unchanged.
+
+This is a *conditional training-development experiment*, not Phase 5. Only full four-cell research training with independent native optimizer/custody replay can support an exploratory per-task comparison. The code and software smoke do not show improvement. A training-only success cannot substitute for fresh confirmatory families, original fold/composed adequacy, independent replication, format selection, geometry-on training, larger scaling, CPU export or release readiness. No history, immutable baseline or prior negative result is reinterpreted. The prior task-balance archive-closure decision remains outstanding separately.
