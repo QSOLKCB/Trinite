@@ -1,6 +1,8 @@
 # QEC procedural v3 — independent-cursor controlled comparison
 
-**Status:** corrected implementation under PR #36. The previous v2 four-cell
+**Status:** corrected implementation merged in PR #36, followed by PR #37
+evidence/CI hardening and PR #38 installed-wheel compatibility; verified
+source baseline `cc996e272800a5c02667001f7c96c8d11cb513cc`. The previous v2 four-cell
 result was negative and remains immutable; v3 has no completed full research
 outcomes yet. See [retained negative result](PROCEDURAL-QEC-NEGATIVE-RESULT.md).
 

@@ -33,7 +33,7 @@ Scaling is conditional: first prove the data, semantics, and measurement procedu
 
 ## PR #31 ternary dynamics and PR #32 Aizawa geometry reference
 
-**Implementation status:** [PR #31](https://github.com/QSOLKCB/Trinite/pull/31) is **merged** at `507eabffce79d4702dc6a3ce53ea73cf0635ea06`, retaining a descriptive quantizer/STE instrument without a causal learning claim. **PR #32** adds the separate [Aizawa synthetic geometry benchmark](AIZAWA-REFERENCE.md) under a protocol frozen first at `c7fa03d25d21d1f3526d15cb76d5c725a798724c`, subject to review and CI. After PR #32 merges, verify post-merge checks and obtain separate approval to tag **immutable v0.2.0** on the exact resulting `main` SHA with unresolved scientific gates recorded.
+**Implementation status:** [PR #31](https://github.com/QSOLKCB/Trinite/pull/31) is **merged** at `507eabffce79d4702dc6a3ce53ea73cf0635ea06`, retaining a descriptive quantizer/STE instrument without a causal learning claim. [PR #32](https://github.com/QSOLKCB/Trinite/pull/32) is **merged** at `30350e2e82c2e3e7fec913ff4d20f3faac42f7e0`, adding the separate [Aizawa synthetic geometry benchmark](AIZAWA-REFERENCE.md) under a protocol frozen first at `c7fa03d25d21d1f3526d15cb76d5c725a798724c`. The existing [immutable v0.2.0 research checkpoint](https://github.com/QSOLKCB/Trinite/releases/tag/v0.2.0) points to that exact merge commit. This status correction creates no tag or release and does not clear scientific gates.
 
 **Order and boundary:** PR #30 and #31 have merged. PR #32 operates on a fixed **synthetic** reference and reads neither neural snapshots nor training gradients. Neither instrument authorizes geometry-on training, relaxes learning thresholds, changes the frozen quantizer, or establishes model superiority. Future activation-to-Aizawa or quantizer-to-geometry mapping would require a separate frozen protocol and independently bound inputs.
 
@@ -44,7 +44,7 @@ Scaling is conditional: first prove the data, semantics, and measurement procedu
 - **Controls and custody:** Keep the original random initialization, quantizer/AdamW/update/data path, context, geometry loss zero, and retained source closures unchanged. Pair seeds, tasks, exposure and budget with a separate dense comparator where valid. The new diagnostic must not mutate tensors, RNG or training order. Declare sampling steps and artifact schema before observing outcomes; bind exact source/model/checkpoint identities and retain all seeds/tasks, negative results, failures and resource overhead.
 - **Gate:** Pass conformance and observer-on/off numerical parity; report *per-task* training/held-out eligibility under existing gates, not an aggregate-only improvement. Diagnostic correlations **cannot** prove saturation caused learning failure. Only a subsequent separately frozen intervention may compare a versioned alternative STE/scale against the unmodified baseline. Native training must not silently become QAT, teacher-distillation or packed-inference training.
 
-### PR #32 (review pending) — Aizawa attractor: controlled geometry reference benchmark
+### PR #32 (merged) — Aizawa attractor: controlled geometry reference benchmark
 
 - **Reference-only implementation:** Fixed parameters `a=0.95, b=0.7, c=0.6, d=3.5, e=0.25, f=0.1`, initial `(0.1,0,0)`, interval `[0,100]`, CPU binary64 classical RK4 with 20,000/40,000 update steps and 201 inclusive sampled positions. Early refinement convergence is gated; full-horizon disagreement is descriptive. SciPy `solve_ivp(RK45)` is not a hidden runtime dependency.
 - **Geometry contract:** Each 201×3 sampled trajectory satisfies the existing **at most 256 point** `geometry.points()` interface; the unchanged pinned kernel computes distance, differences, Menger curvature and alignment. The canonical request, source/runtime closure, control samples, integration stream identities and report are independently recomputed by `--verify-only`.
@@ -63,7 +63,11 @@ Authorised to record for later research by Trent on 2026-10-13. Use the [immutab
 - **Later export resilience:** COSMO's SECDED, ternary repetition-code and deterministic bytes↔DNA/FASTA storage can supply scoped corruption/recovery *software* controls for the future Phase 6 CPU export. Do not mistake error correction for cryptographic custody or biological evidence.
 - **Claim maturity:** Preserve COSMO's **FORMAL / COMPUTATIONAL / SCIENTIFIC / HYPOTHESIS / SYMBOLIC** distinctions, explicit falsification and all negative outcomes. A later separate protocol must be source frozen before observing Trinite learning outcomes, with no Phase 5 authorization inherited.
 
-**Checkpoint boundary:** Following a clean PR #32 merge, record the exact `main` SHA and required checks. Create a separately requested immutable `v0.2.0` release with source/protocol/evidence inventory and unresolved scientific gates **before** attempting this COSMO integration. This roadmap entry does not tag a release or change any empirical gate.
+**Checkpoint boundary:** The existing immutable `v0.2.0` checkpoint at
+`30350e2e82c2e3e7fec913ff4d20f3faac42f7e0` is preserved. COSMO integration
+remains planned and needs its own scoped source/rights/protocol review and
+applicable evidence. The existence of a source checkpoint changes no empirical
+gate and does not itself authorize a new experiment or release.
 
 ## Planned training corpus and curriculum
 
@@ -442,9 +446,15 @@ fixed. Task frequency and ordering change together; token exposure is measured,
 not matched. No held-out outcomes inform this recipe or select a winner.
 
 The implementation retains all six assurance checks and lossless evidence,
-with the same every-task/every-candidate-seed 90% joint-training gate. Research
-outcomes must follow publication of the frozen producer. This increment does
-not clear original fold/composed adequacy, fresh confirmation, Phase 5, format,
+with the same every-task/every-candidate-seed 90% joint-training gate.
+[PR #29](https://github.com/QSOLKCB/Trinite/pull/29) subsequently reported all
+four research cells complete, with small aggregate maths gains but ten maths
+tasks still failing. Its additional archival replay remains labelled in
+progress, and the complete original packet and independent commitments have
+not been located in the inspected evidence. See the
+[attributed counts and closure checklist](MATHS-TASK-BALANCE.md#reported-matrix-and-unresolved-archival-closure);
+the historical archival obligation is unresolved, not closed by a later study.
+This increment does not clear original fold/composed adequacy, fresh confirmation, Phase 5, format,
 scaling or release gates. Previous negative results and producers stay intact.
 
 ## Exact recursive 3×3×3 geometry scaffold
@@ -590,7 +600,7 @@ with no model, graph-algorithm or research-gate advancement. See
 [CNR-001](CNR-001.md#v4-package-and-authentic-input-boundary-correction).
 
 
-## QEC-guided procedural supervision (PR #34 — implementation under review)
+## QEC-guided procedural supervision (PR #34 — merged)
 
 The [QEC procedural learning detour](PROCEDURAL-QEC.md) adds independently checked intermediate running-sum and **pinned QEC GF(3)** supervision, paired with final-answer-only native CPU training on two seeds. Frozen protocol v1 was preserved **unexecuted** after data-conformance CI exposed arithmetic-subtraction/fold-sum prompt collisions; a new pre-outcome v2 requires an explicit arithmetic-task namespace and preserves original fold sum final prompts. Parent families/splits and exact formal labels are bound, no test/validation model calls are authorised, and the original 261 conformance tests remain unchanged.
 
@@ -616,7 +626,7 @@ readiness remain blocked. The earlier task-balance archival closure and
 full-versus-core curriculum decision are still separate work, not claimed
 completed by PR #35.
 
-## QEC procedural v2 negative evidence and corrected-cursor v3 (PR #36)
+## QEC procedural v2 negative evidence and corrected-cursor v3 (PR #36 — merged)
 
 The [fully verified v2 procedural experiment](PROCEDURAL-QEC-NEGATIVE-RESULT.md)
 ran all four 4,096-update cells on 2026-10-13, each with the original
@@ -628,13 +638,18 @@ prefix and trace rows in every auxiliary stream. The separately verified
 full-Git-tree source supplement restores a reproducible standalone original
 dataset source without rewriting the earlier 136-member ZIP.
 
+PR #36 merged at `609d30160a15af938770b81bc0a40b278ce7323f`;
+PR #37 evidence/CI hardening and PR #38 installed-wheel compatibility are
+also merged, through `cc996e272800a5c02667001f7c96c8d11cb513cc`. These are
+implementation and conformance milestones.
+
 The [new v3 cursor experiment](PROCEDURAL-QEC-V3.md) freezes a distinct
 protocol before outcomes; four final-only and procedural cells must be
 rerun under one new research request. Only the procedural example cursor
 advances independently; final-only control, model, optimizer, dataset,
 update budget, seeds and original answer+EOS scorer remain unchanged.
 New reports distinguish full/final/per-mode losses, actual
-exposure and visited/unvisited auxiliary correctness. The next v3 matrix
-has **not** been run; no improvement is presumed. Original composed task
+exposure and visited/unvisited auxiliary correctness. No completed v3 matrix
+is yet retained in this record; no improvement is presumed. Original composed task
 adequacy, unseen-family confirmation, format, geometry, scaling and
 release remain separately blocked.
