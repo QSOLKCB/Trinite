@@ -28,7 +28,10 @@ def source_receipt():
              root / "learning_data.py", root / "qec_source.py",
              root / "_qec/qutrit/gf3.py", root / "qec-pin.json",
              root / "tokenizer.py", root / "contracts.py")
-    return {str(p.relative_to(root.parent.parent)): identity(p.read_bytes()) for p in names}
+    # Bind checkout-style logical names even in an installed wheel. Path
+    # prefixes must never become part of a dataset or admission identity.
+    return {"src/" + p.relative_to(root.parent).as_posix(): identity(p.read_bytes())
+            for p in names}
 
 
 def states(kind, values):
