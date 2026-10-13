@@ -111,13 +111,30 @@ Phase 5 readiness, or release acceptance.
 
 ## Required next comparison
 
-After v3 merges, freeze a **new research request** and rerun both arms and
-both seeds under the corrected producer. The final-only arm is required to
-keep the original v2 schedule exactly. Do not compare a new seed/arm to
-unbound historical control evidence or alter the original experiment. If
-full-trace fitting improves but original complete final answers still
-regress, the separate next hypothesis is non-displacing auxiliary
-supervision with explicitly normalized final/aux losses. That is not a
-part of v3 and must be frozen before outcomes.
+The original next-step requirement was a newly source-bound four-cell cursor
+comparison preserving the historical v2 final-only order. The
+[13 October historical-control audit](PROCEDURAL-QEC-V3.md#historical-control-ordering-audit-13-october-2026)
+subsequently established that the current merged v3 producer cannot satisfy
+that requirement: generator-source changes alter row identities and therefore
+reorder the final-only stream. Same-current-row function parity is insufficient.
+
+**Do not dispatch the current v3 workflow to satisfy the exact-parity
+comparison.** Its commands can reproduce only the separately identified,
+historically confounded current producer. Retain any existing v3 execution,
+including negative outcomes and this failed control-preservation requirement;
+do not repair its metadata or relabel it as an isolated cursor experiment.
+
+Exact-parity work now requires a separately reviewed, prospectively frozen
+protocol/producer with explicit source-independent or historically bound
+ordering, new request identities, genuine historical-control regression and
+the applicable scientific authorization before execution. No such replacement
+protocol is selected or authorized by this status correction. The original
+v2 producer, archive and results remain immutable.
+
+Non-displacing auxiliary supervision with explicitly normalized final/aux
+losses remains a separate possible hypothesis if the retained evidence
+justifies it. It must not be bundled with an ordering repair or inferred from
+historically confounded cross-version results; it needs its own frozen
+protocol and authorization before outcomes.
 
 Relevant invariants: TRI-I02, I03, I05, I07, I08, I11, I12, I13, I14.

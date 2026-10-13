@@ -123,7 +123,15 @@ CNR numerical algorithm remains frozen; a distinct CNR
 linked to immutable v5, preserves exact **current** request/analysis/receipt
 equality rather than altering old v5 evidence.
 
-## Reproduction
+## Reproduction of the historically confounded current producer
+
+**These are preservation/reproduction commands, not the next exact-parity
+experiment. Do not launch another current-v3 matrix to establish an isolated
+cursor effect or historical-control preservation.** The existing source is
+retained so an explicitly requested reproduction can be inspected and replayed;
+a successful numerical replay does not clear the ordering limitation above.
+Any new exact-parity comparison must first pass the separate protocol/review/
+authorization gate in [the next-step contract](PROCEDURAL-QEC-NEGATIVE-RESULT.md#required-next-comparison).
 
 From the [hash-locked CPU environment](GETTING_STARTED.md), use distinct
 new output paths and independently retain the identities returned by
@@ -155,11 +163,13 @@ python scripts/archive_procedural_qec_v3.py --verify-archive \
   --archive-identity sha256:ARCHIVE --inventory-identity sha256:INVENTORY
 ```
 
-The separate [manual full research workflow](../.github/workflows/procedural-qec-v3-research.yml)
-executes all four new research cells after source publication, full native
-replay and independent archival verification; PR conformance runs only the
-small-model smoke. The manual workflow must be explicitly launched only
-after code review/merge, not inferred from passing CI.
+The existing [manual full research workflow](../.github/workflows/procedural-qec-v3-research.yml)
+remains available for explicitly requested reproduction of this identified
+current producer, including complete replay and archival verification. It is
+**not eligible for the next exact-historical-parity comparison**. Do not launch
+it merely because the implementation merged or CI passed. PR conformance runs
+only the small-model smoke. A corrected scientific comparison needs a distinct
+reviewed and authorized protocol/producer before any new target outcomes.
 
 Previous negative results are permanently documented in
 [PROCEDURAL-QEC-NEGATIVE-RESULT.md](PROCEDURAL-QEC-NEGATIVE-RESULT.md).
