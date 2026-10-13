@@ -1,9 +1,5 @@
 name: Historical QEC research full-source supplement
 on:
-  pull_request:
-    paths:
-      - 'scripts/supplement_procedural_qec_source.py'
-      - '.github/workflows/procedural-qec-source-supplement.yml'
   workflow_dispatch:
 
 permissions:
