@@ -416,8 +416,11 @@ def verify_cell(root, seed, arm, run_profile, request, request_identity, items,
     evidence.check_commitments(root, commitments, evidence.ARTIFACTS)
     return {"seed": seed, "arm": arm, "outcome": "completed",
             "report_identity": identity(bound["report.json"]), "report": record,
-            "checks": {"closed_custody": True, "source_request": True,
-                       "safe_checkpoint": True, "original_answer_scoring": True,
+            "checks": {"closed_custody": True,
+                       "request_and_source_binding": True,
+                       "safe_tensor_structure": True,
+                       "scheduled_visits_and_targets": True,
+                       "final_predictions_and_loss": True,
                        "complete_optimizer_replay": True}}
 
 
