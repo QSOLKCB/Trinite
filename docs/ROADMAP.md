@@ -595,3 +595,24 @@ with no model, graph-algorithm or research-gate advancement. See
 The [QEC procedural learning detour](PROCEDURAL-QEC.md) adds independently checked intermediate running-sum and **pinned QEC GF(3)** supervision, paired with final-answer-only native CPU training on two seeds. Frozen protocol v1 was preserved **unexecuted** after data-conformance CI exposed arithmetic-subtraction/fold-sum prompt collisions; a new pre-outcome v2 requires an explicit arithmetic-task namespace and preserves original fold sum final prompts. Parent families/splits and exact formal labels are bound, no test/validation model calls are authorised, and the original 261 conformance tests remain unchanged.
 
 This is a *conditional training-development experiment*, not Phase 5. Only full four-cell research training with independent native optimizer/custody replay can support an exploratory per-task comparison. The code and software smoke do not show improvement. A training-only success cannot substitute for fresh confirmatory families, original fold/composed adequacy, independent replication, format selection, geometry-on training, larger scaling, CPU export or release readiness. No history, immutable baseline or prior negative result is reinterpreted. The prior task-balance archive-closure decision remains outstanding separately.
+
+
+## PR #35 — QEC procedural full-research execution and evidence transport
+
+Following merged PR #34, the [separate research execution increment](PROCEDURAL-QEC-RESEARCH.md)
+implements a manual, source-bound full 4,096-update × four-cell experiment
+over the **unchanged** procedural-QEC protocol v2 and native training path.
+It adds exclusive lossless archival, independent request/verifier/ZIP/inventory
+commitments, fresh full optimizer replay and a standard-library-only read-only
+transport check. The archive-tool bytes are bound separately from the unchanged
+numerical producer. CI verifies structural tamper rejection and a real four-cell
+small-model archive smoke; those are software/assurance results only.
+
+**Research status: not yet measured.** The manual full matrix and its permanent
+evidence publication are subsequent steps. A complete negative result remains
+publishable; no accuracy-based checkpoint/arm selection or relaxed gate is
+authorised. Original folded/composed-answer, fresh confirmation, weight-format
+choice, independent replication, geometry-on Phase 5, scaling and release
+readiness remain blocked. The earlier task-balance archival closure and
+full-versus-core curriculum decision are still separate work, not claimed
+completed by PR #35.
