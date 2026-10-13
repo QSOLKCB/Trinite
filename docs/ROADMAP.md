@@ -666,3 +666,22 @@ research/source/verification artifacts is verified; permanent public publication
 and independent-host replication are not claimed. Historical-order parity still
 fails. Original composed task adequacy, unseen-family confirmation, format,
 geometry, scaling and release remain separately blocked.
+
+
+## Review-only non-displacing auxiliary proposal
+
+The [prospective design](PROCEDURAL-QEC-NONDISPLACING-PROPOSAL.md) separates a
+historical ordered-input/custody prerequisite from one new hypothesis: preserve
+the original eight-row primary final-answer batches, then compare additional
+procedural updates with matched-shape additional final-answer rehearsal. It
+proposes two fresh arms and two seeds, each with 4,096 paired rounds and 8,192
+native updates. Data-only planning counts and existing plan/padding bounds are
+checked; no new learner, protocol freeze or research execution is implemented.
+
+This proposal is **not approved for merge or execution**. Historical input
+matching, new source-bound production/replay tests, a frozen protocol and
+explicit scientific plus time/storage/resource authorization remain required.
+The existing numerical updater, original evidence and acceptance thresholds are
+unchanged. Additional updates alter the optimizer trajectory; the proposal is
+not historical reproduction, a cursor-only comparison or an unlocked Phase 5,
+format, scaling or release milestone.

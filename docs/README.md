@@ -33,6 +33,7 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [COMPARISON.md](COMPARISON.md) | Matrix commands, task admission, results and scientific limits |
 | [PROCEDURAL-QEC-V3.md](PROCEDURAL-QEC-V3.md) | Frozen cursor implementation, historical-order limitation and pinned reproduction boundary |
 | [PROCEDURAL-QEC-V3-NEGATIVE-RESULT.md](PROCEDURAL-QEC-V3-NEGATIVE-RESULT.md) | Complete local four-cell negative result, original-byte evidence and archive identities |
+| [PROCEDURAL-QEC-NONDISPLACING-PROPOSAL.md](PROCEDURAL-QEC-NONDISPLACING-PROPOSAL.md) | Review-only extra-update hypothesis, historical-order prerequisite and explicit scientific/resource gate |
 | [FOUNDATIONS-PROTOCOL.md](FOUNDATIONS-PROTOCOL.md) | Frozen basics curriculum and learning gates before Phase 5 |
 | [FOUNDATIONS.md](FOUNDATIONS.md) | Foundations admission, replay, scoring, evidence and measured gate |
 
