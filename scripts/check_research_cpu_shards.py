@@ -76,24 +76,34 @@ def validate_partition(names, shards=SHARDS):
     return True
 
 
-def audit(full, names, *, shards=SHARDS, expected_cases=BASELINE_V020_CASES):
-    """Compare each shard against the actual complete, ordered suite inventory.
+def audit(full, names, *, shards=SHARDS, expected_cases=BASELINE_V020_CASES,
+          discovered=None):
+    """Match actual full ordered IDs to separately discovered whole-suite IDs.
 
-    Returns the original suite objects without executing their tests. Import
-    failures are not promoted: real unittest _FailedTest placeholders fail when
-    run; a false match cannot turn execution success into a fixture guarantee.
+    The original grouped runner extends native TestSuite via addTests() for
+    research suites, which can FLATTEN the top-level suite shape. Suite
+    boundaries must therefore come from independent per-directory discovery,
+    not the number of top-level TestSuite children. This is the same oracle
+    as tests/generalization/test_cpu_research_runner.py.
     """
     validate_partition(names, shards)
     if type(expected_cases) is not int or expected_cases < 1:
         raise CoverageError('invalid expected case budget')
     if not isinstance(full, unittest.TestSuite):
         raise CoverageError('original runner must return a unittest suite')
-    parts = list(full)
-    if len(parts) != len(names):
+    full_ids = list(case_ids(full))
+    if not full_ids or len(full_ids) != len(set(full_ids)):
+        raise CoverageError('duplicate/empty test IDs in authoritative full runner')
+    if discovered is None:
+        # Rediscover, but never run or cache the full reference suite here.
+        discovered = {name: unittest.TestLoader().discover(str(ROOT/'tests'/name))
+                      for name in names}
+    if type(discovered) is not dict or set(discovered) != set(names):
         raise CoverageError('discovered suite boundaries differ from full runner')
     suites = {}
     all_ids = []
-    for name, part in zip(names, parts):
+    for name in names:
+        part = discovered[name]
         if not isinstance(part, unittest.TestSuite):
             raise CoverageError('missing discovered test suite: '+name)
         ids = list(case_ids(part))
@@ -101,11 +111,13 @@ def audit(full, names, *, shards=SHARDS, expected_cases=BASELINE_V020_CASES):
             raise CoverageError('empty/invalid discovered suite: '+name)
         suites[name] = {'suite': part, 'ids': ids}
         all_ids.extend(ids)
-    if len(all_ids) != expected_cases:
+    if len(all_ids) != expected_cases or len(full_ids) != expected_cases:
         raise CoverageError('case count diverges from v0.2.0 baseline; review the inventory: '
-                            +str(len(all_ids))+' != '+str(expected_cases))
+                            +str(len(full_ids))+'/'+str(len(all_ids))+' != '+str(expected_cases))
     if len(all_ids) != len(set(all_ids)):
-        raise CoverageError('duplicate test IDs in full-suite discovery')
+        raise CoverageError('duplicate test IDs in separate suite discovery')
+    if all_ids != full_ids:
+        raise CoverageError('discovered suite order/test IDs differ from full runner')
     for members in shards:
         ids = [case for name in members for case in suites[name]['ids']]
         if not ids:

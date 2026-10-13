@@ -31,6 +31,14 @@ def fake_parts():
     ))
 
 
+def fake_discovered():
+    return {
+        'alpha': unittest.TestSuite([case('alpha')]),
+        'beta': unittest.TestSuite([case('beta')]),
+        'gamma': unittest.TestSuite([case('gamma')]),
+    }
+
+
 class OptCiShardingContract(unittest.TestCase):
     def test_exact_source_suites_one_per_shard_in_legacy_order(self):
         names = required_suites()  # Does not discover/import model tests.
@@ -66,31 +74,48 @@ class OptCiShardingContract(unittest.TestCase):
         assignments = (('gamma','alpha'), ('beta',))
         # Same content without correct order is not an acceptable shard.
         with self.assertRaisesRegex(CoverageError,'order'):
-            audit(fake_parts(),names,shards=assignments,expected_cases=3)
+            audit(fake_parts(),names,shards=assignments,expected_cases=3,
+                      discovered=fake_discovered())
         assignments = (('alpha','beta'), ('gamma',))
-        groups,ids,hashes = audit(fake_parts(),names,shards=assignments,expected_cases=3)
+        groups,ids,hashes = audit(fake_parts(),names,shards=assignments,expected_cases=3,
+                      discovered=fake_discovered())
+        # Genuine combined discovery need not preserve a top-level slot per suite.
+        flattened = unittest.TestSuite([unittest.TestSuite(
+            [case('alpha'),case('beta'),case('gamma')])])
+        self.assertEqual(len(list(flattened)),1)
+        audit(flattened,names,shards=assignments,expected_cases=3,
+              discovered=fake_discovered())
         self.assertEqual(ids, [case('alpha').id(),case('beta').id(),case('gamma').id()])
         self.assertEqual(set(groups),set(names))
         self.assertEqual(len(hashes['full_test_ids_sha256']),64)
         for expected in (2, 4):
             with self.assertRaisesRegex(CoverageError,'case count'):
-                audit(fake_parts(),names,shards=assignments,expected_cases=expected)
+                audit(fake_parts(),names,shards=assignments,expected_cases=expected,
+                      discovered=fake_discovered())
         duplicate = unittest.TestSuite([
             unittest.TestSuite([case('alpha')]),
             unittest.TestSuite([case('alpha')]),
             unittest.TestSuite([case('gamma')]),
         ])
-        with self.assertRaisesRegex(CoverageError,'duplicate test IDs'):
-            audit(duplicate,names,shards=assignments,expected_cases=3)
+        with self.assertRaisesRegex(CoverageError,'duplicate/empty test IDs'):
+            audit(duplicate,names,shards=assignments,expected_cases=3,
+                      discovered=fake_discovered())
         empty = unittest.TestSuite([
             unittest.TestSuite([case('alpha')]), unittest.TestSuite(),
             unittest.TestSuite([case('gamma')]),
         ])
+        with self.assertRaisesRegex(CoverageError,'case count'):
+            audit(empty,names,shards=assignments,expected_cases=3,
+                      discovered=fake_discovered())
+        empty_parts=fake_discovered()
+        empty_parts['beta']=unittest.TestSuite()
         with self.assertRaisesRegex(CoverageError,'empty'):
-            audit(empty,names,shards=assignments,expected_cases=3)
-        with self.assertRaisesRegex(CoverageError,'boundaries'):
+            audit(fake_parts(),names,shards=assignments,expected_cases=3,
+                  discovered=empty_parts)
+        with self.assertRaisesRegex(CoverageError,'case count'):
             audit(unittest.TestSuite([unittest.TestSuite([case('alpha')])]),
-                  names,shards=assignments,expected_cases=3)
+                  names,shards=assignments,expected_cases=3,
+                      discovered=fake_discovered())
 
     def test_true_execution_ids_and_required_skip_fail_closed(self):
         log = io.StringIO()
