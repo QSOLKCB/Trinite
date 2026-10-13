@@ -7,11 +7,21 @@ import tarfile
 import tempfile
 import unittest
 
-from trinite.contracts import ContractError, identity, json_bytes
+from trinite.contracts import ContractError, identity, json_bytes, parse_json
 from trinite.cnr001 import core
 from trinite.e8_reference import etq
 
 ROOT = Path(__file__).resolve().parents[1]
+V8_SHA256 = "718e5fec4674ab615b4162a956500b0bc245e25f15153770a5bfa4e6f7d72b42"
+V9_SHA256 = "44c5dc8906c9a747498288a027aab907998b03ca0d508437b6a53b1b8d2aa59d"
+PACKET_FILES = ("cnr-request.json", "cnr-analysis.json", "cnr-freeze-receipt.json",
+                "cnr-run-receipt.json", "cnr-verification.json")
+EXPORT_SOURCE_DELTA = {
+    "added": ["src/trinite/forward_export/__init__.py",
+              "src/trinite/forward_export/encoder.py",
+              "src/trinite/forward_export/source.py"],
+    "removed": [], "modified": [".github/workflows/cnr-001.yml"],
+}
 
 
 def synthetic_sample():
@@ -51,6 +61,8 @@ class CNR001Contracts(unittest.TestCase):
         self.assertIn("scripts/run_cnr001.py", source)
         self.assertEqual(source["src/trinite/packed_ternary/__init__.py"],
                          identity((ROOT / "src/trinite/packed_ternary/__init__.py").read_bytes()))
+        for name in EXPORT_SOURCE_DELTA["added"]:
+            self.assertEqual(source[name], identity((ROOT / name).read_bytes()))
 
     def test_permanent_v1_v2_archive_and_external_commitments(self):
         packet = ROOT / "fixtures/cnr-001-evidence/cnr001-v1-v2.tar.gz"
@@ -235,6 +247,144 @@ class CNR001Contracts(unittest.TestCase):
             assert core.source_data()[1]["num_nodes"] == 100
             self.assertEqual(core.source_receipt()["scripts/run_cnr001.py"],
                              identity(file.read_bytes()))
+
+
+
+class CNR001SourceCustody(unittest.TestCase):
+    """Standard-library custody checks never stand in for authentic replay."""
+
+    def read_packet(self, path):
+        with tarfile.open(path, "r:gz") as archive:
+            entries = archive.getmembers()
+            self.assertEqual(len(entries), 6)
+            self.assertEqual(len({entry.name for entry in entries}), 6)
+            self.assertTrue(all(entry.isfile() and entry.size < 512 * 1024
+                                and not entry.name.startswith("/")
+                                and ".." not in entry.name.split("/")
+                                for entry in entries))
+            return {entry.name: archive.extractfile(entry).read() for entry in entries}
+
+    def assert_sidecar(self, archive, sidecar, expected):
+        self.assertTrue(archive.is_file(), "missing retained archive: " + archive.name)
+        self.assertTrue(sidecar.is_file(), "missing independently retained digest: " + sidecar.name)
+        self.assertRegex(expected, r"^[a-f0-9]{64}$")
+        self.assertEqual(sidecar.read_bytes(),
+                         (expected + "  " + archive.name + "\n").encode("ascii"))
+        self.assertEqual(identity(archive.read_bytes()), "sha256:" + expected)
+
+    def assert_members(self, members, version, parent_version, parent_digest):
+        expected = {"MANIFEST.json"} | {version + "/" + name for name in PACKET_FILES}
+        self.assertEqual(set(members), expected)
+        manifest = parse_json(members["MANIFEST.json"], canonical=True)
+        self.assertEqual(manifest["schema"], "trinite.cnr-001-evidence-archive." + version)
+        self.assertEqual(manifest["parent_" + parent_version + "_sha256"], parent_digest)
+        self.assertEqual(set(manifest["entries"]), expected - {"MANIFEST.json"})
+        for name, attrs in manifest["entries"].items():
+            raw = members[name]
+            self.assertEqual(attrs, {"bytes": len(raw), "sha256": identity(raw)[7:]})
+            parse_json(raw, canonical=True)
+        self.assertEqual(manifest["request_identity"], identity(members[version + "/cnr-request.json"]))
+        self.assertEqual(manifest["analysis_identity"], identity(members[version + "/cnr-analysis.json"]))
+        return manifest
+
+    def historical_v9(self):
+        root = ROOT / "fixtures/cnr-001-evidence"
+        for version, digest in (("v8", V8_SHA256), ("v9", V9_SHA256)):
+            self.assert_sidecar(root / ("cnr001-" + version + ".tar.gz"),
+                                root / ("cnr001-" + version + ".sha256"), digest)
+        members = self.read_packet(root / "cnr001-v9.tar.gz")
+        self.assert_members(members, "v9", "v8", V8_SHA256)
+        return members
+
+    def assert_current_request(self, request):
+        # This is exact complete-request equality, without removing source keys.
+        from scripts import run_cnr001 as runner
+        self.assertEqual(request, runner.expected_request())
+        previous = parse_json(self.historical_v9()["v9/cnr-request.json"], canonical=True)
+        self.assertEqual(set(request), set(previous))
+        for key in previous:
+            if key != "source":
+                self.assertEqual(request[key], previous[key], key)
+        old, new = previous["source"], request["source"]
+        delta = {"added": sorted(set(new) - set(old)),
+                 "removed": sorted(set(old) - set(new)),
+                 "modified": sorted(key for key in set(old) & set(new) if old[key] != new[key])}
+        self.assertEqual(delta, EXPORT_SOURCE_DELTA)
+
+    def test_immutable_v9_packet_and_independent_sidecar(self):
+        self.historical_v9()
+
+    def test_current_source_is_exactly_additive_forward_export(self):
+        from scripts import run_cnr001 as runner
+        self.assert_current_request(runner.expected_request())
+
+    def test_retained_v10_requires_complete_source_and_exact_v9_ancestry(self):
+        root = ROOT / "fixtures/cnr-001-evidence"
+        archive, sidecar = root / "cnr001-v10.tar.gz", root / "cnr001-v10.sha256"
+        self.assertTrue(archive.is_file(), "missing newly published v10 packet")
+        self.assertTrue(sidecar.is_file(), "missing independently retained v10 digest")
+        words = sidecar.read_text("ascii").split()
+        self.assertEqual(len(words), 2)
+        self.assert_sidecar(archive, sidecar, words[0])
+        members = self.read_packet(archive)
+        manifest = self.assert_members(members, "v10", "v9", V9_SHA256)
+        self.assertEqual(manifest["source_delta"], EXPORT_SOURCE_DELTA)
+        self.assert_current_request(parse_json(members["v10/cnr-request.json"], canonical=True))
+
+    def test_archive_and_sidecar_corruption_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "cnr001-v10.tar.gz"
+            sidecar = Path(temporary) / "cnr001-v10.sha256"
+            # Structural negative fixture only; no CNR candidate is generated.
+            archive.write_bytes(b"custody boundary test only")
+            digest = identity(archive.read_bytes())[7:]
+            exact = digest + "  " + archive.name + "\n"
+            sidecar.write_text(exact, encoding="ascii")
+            self.assert_sidecar(archive, sidecar, digest)
+            for malformed in (exact.rstrip(), exact.replace("  ", " "),
+                              exact.replace("v10", "v9"), exact.upper(),
+                              "0" * 64 + "  " + archive.name + "\n", exact + "\n"):
+                sidecar.write_text(malformed, encoding="ascii")
+                with self.subTest(sidecar=malformed), self.assertRaises(AssertionError):
+                    self.assert_sidecar(archive, sidecar, digest)
+            sidecar.unlink()
+            with self.assertRaises(AssertionError):
+                self.assert_sidecar(archive, sidecar, digest)
+            sidecar.write_text(exact, encoding="ascii")
+            archive.write_bytes(archive.read_bytes() + b" ")
+            with self.assertRaises(AssertionError):
+                self.assert_sidecar(archive, sidecar, digest)
+
+    def test_parent_inventory_and_every_member_corruption_fail_closed(self):
+        members = self.historical_v9()
+        with self.assertRaises(AssertionError):
+            self.assert_members(members, "v9", "v8", "0" * 64)
+        for name in PACKET_FILES:
+            changed = dict(members)
+            changed["v9/" + name] += b" "
+            with self.subTest(member=name), self.assertRaises(AssertionError):
+                self.assert_members(changed, "v9", "v8", V8_SHA256)
+            changed = dict(members)
+            del changed["v9/" + name]
+            with self.subTest(missing=name), self.assertRaises(AssertionError):
+                self.assert_members(changed, "v9", "v8", V8_SHA256)
+        changed = dict(members, unexpected=b"{}\n")
+        with self.assertRaises(AssertionError):
+            self.assert_members(changed, "v9", "v8", V8_SHA256)
+
+    def test_complete_request_rejects_added_removed_modified_source(self):
+        from scripts import run_cnr001 as runner
+        request = runner.expected_request()
+        for mutation in ("added", "removed", "modified"):
+            changed = parse_json(json_bytes(request), canonical=True)
+            if mutation == "added":
+                changed["source"]["src/trinite/unrequested.py"] = "sha256:" + "0" * 64
+            elif mutation == "removed":
+                del changed["source"][EXPORT_SOURCE_DELTA["added"][0]]
+            else:
+                changed["source"][EXPORT_SOURCE_DELTA["added"][0]] = "sha256:" + "0" * 64
+            with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                self.assert_current_request(changed)
 
 
 if __name__=="__main__":
