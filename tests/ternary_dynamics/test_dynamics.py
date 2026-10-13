@@ -36,7 +36,8 @@ def fixture_checkpoint(root, step, *, seed=1, tamper=None):
     payload=save(model_tensors)
     meta={'schema':'trinite.comparison-checkpoint.v1','step':step,'lane':'ternary',
           'plan':{'seed':seed,'model':model.to_dict()},
-          'source':{'fixture':'synthetic-conformance-only'},
+          'source':{'fixture':'synthetic-conformance-only',
+                    'quantizer.py':dynamics.source_closure()['src/trinite/quantizer.py']},
           'environment':{'backend':'synthetic-test'},
           'dataset_identity':identity(b'test-training-only'),
           'manifest_identity':identity(b'test-manifest'),
@@ -121,6 +122,8 @@ class TernaryDynamicsTests(unittest.TestCase):
         self.assertEqual(first['schema'],dynamics.REPORT_SCHEMA)
         self.assertFalse(first['incoming_training_gradients_available'])
         self.assertFalse(first['full_optimizer_replay'])
+        self.assertEqual(first['observer_environment'],req['observer_environment'])
+        self.assertEqual(first['observer_environment'],dynamics.observer_environment())
         self.assertFalse(first['phase5_ready'])
         self.assertEqual(len(first['samples']),2)
         self.assertEqual(len(first['transitions']),1)
@@ -194,11 +197,70 @@ class TernaryDynamicsTests(unittest.TestCase):
             report_for(altered,self.root)
         raw=(self.root/'1.json').read_bytes()
         m=parse_json(raw,canonical=True)
-        m['source']={'fixture':'silently changed producer'}
+        m['source']={'fixture':'silently changed producer',
+                     'quantizer.py':dynamics.source_closure()['src/trinite/quantizer.py']}
         (self.root/'1.json').write_bytes(json_bytes(m))
         req=freeze_request(make_selection(),self.root)
         with self.assertRaisesRegex(ContractError,'context drift'):
             report_for(req,self.root)
+
+    def test_observer_environment_is_bound_to_request_and_report(self):
+        from trinite.training import require_environment
+        with mock.patch('trinite.training.require_environment', wraps=require_environment) as guard:
+            request=freeze_request(make_selection(),self.root)
+            result=report_for(request,self.root)
+        self.assertGreaterEqual(guard.call_count,3)  # freeze, measure, post-measure
+        self.assertEqual(result['observer_environment'],request['observer_environment'])
+        self.assertEqual(result['observer_environment'],require_environment())
+        self.assertEqual(request['schema'],'trinite.ternary-dynamics-request.v2')
+        self.assertEqual(result['schema'],'trinite.ternary-dynamics-report.v2')
+        self.assertIn('src/trinite/training.py',request['source'])
+        altered=copy.deepcopy(request)
+        altered['observer_environment']={'device':'foreign'}
+        with self.assertRaisesRegex(ContractError,'observer runtime'):
+            report_for(altered,self.root)
+        missing=copy.deepcopy(request)
+        del missing['observer_environment']
+        with self.assertRaises(ContractError):report_for(missing,self.root)
+
+    def test_foreign_or_changing_observer_runtime_fails_closed(self):
+        with mock.patch('trinite.training.require_environment',side_effect=ContractError('foreign numerical backend')):
+            with self.assertRaisesRegex(ContractError,'foreign numerical backend'):
+                freeze_request(make_selection(),self.root)
+        request=freeze_request(make_selection(),self.root)
+        with mock.patch('trinite.training.require_environment',side_effect=ContractError('foreign numerical backend')):
+            with self.assertRaisesRegex(ContractError,'foreign numerical backend'):
+                report_for(request,self.root)
+        runtime=dynamics.observer_environment()
+        with mock.patch('trinite.training.require_environment',side_effect=[runtime,{'system':'changed'}]):
+            with self.assertRaisesRegex(ContractError,'changed during numeric inspection'):
+                report_for(request,self.root)
+
+    def test_checkpoint_must_bind_identical_quantizer_before_metrics(self):
+        for change in ('missing','mismatched'):
+            with self.subTest(change=change):
+                for step in (0,1):
+                    fixture_checkpoint(self.root,step)
+                    path=self.root/f'{step}.json'
+                    metadata=parse_json(path.read_bytes(),canonical=True)
+                    if change=='missing':del metadata['source']['quantizer.py']
+                    else:metadata['source']['quantizer.py']=identity(b'a different quantizer')
+                    path.write_bytes(json_bytes(metadata))
+                request=freeze_request(make_selection(),self.root)
+                # Both snapshots carry the *same* fake binding; a mere
+                # across-step source-consistency check would accept this.
+                with self.assertRaisesRegex(ContractError,'producer quantizer source differs'):
+                    report_for(request,self.root)
+
+    def test_dense_only_task_balance_schema_is_not_advertised_as_ternary(self):
+        self.assertNotIn('trinite.maths-task-balance-checkpoint.v1',dynamics.SNAPSHOT_SCHEMAS)
+        meta=self.root/'0.json'
+        raw=parse_json(meta.read_bytes(),canonical=True)
+        raw['schema']='trinite.maths-task-balance-checkpoint.v1'
+        del raw['lane']
+        meta.write_bytes(json_bytes(raw))
+        with self.assertRaisesRegex(ContractError,'unsupported native ternary snapshot schema'):
+            report_for(freeze_request(make_selection(),self.root),self.root)
 
     def test_invalid_extra_optimizer_tensor_is_not_accepted(self):
         cfg=ModelConfig(context_length=8,blocks=1,width=4,heads=2,feed_forward_width=8)

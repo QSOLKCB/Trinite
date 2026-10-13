@@ -18,6 +18,8 @@ class TernaryDynamicsContracts(unittest.TestCase):
         self.assertIn('no update/replay/causal',doc['scope'])
         self.assertTrue((ROOT/'scripts/analyze_ternary_dynamics.py').is_file())
         self.assertFalse((ROOT/'src/trinite/ternary_dynamics.py').exists())
+        runner=(ROOT/'scripts/check_research_cpu.py').read_text()
+        self.assertIn("'ternary_dynamics'", runner.split('RESEARCH_SUITES = ', 1)[1].split('\n', 1)[0])
 
 
 if __name__=='__main__':unittest.main()

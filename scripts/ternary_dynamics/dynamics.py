@@ -20,11 +20,10 @@ ROOT = Path(__file__).resolve().parents[2]
 PROTOCOL_IDENTITY = 'sha256:14261ecc9c6bf5f9487a71a1def5ce9115298de6cefd9fd9b702eb91a06bbebf'
 PROTOCOL_PATH = Path(__file__).with_name('protocol.json')
 SELECTION_SCHEMA = 'trinite.ternary-dynamics-selection.v1'
-REQUEST_SCHEMA = 'trinite.ternary-dynamics-request.v1'
-REPORT_SCHEMA = 'trinite.ternary-dynamics-report.v1'
+REQUEST_SCHEMA = 'trinite.ternary-dynamics-request.v2'
+REPORT_SCHEMA = 'trinite.ternary-dynamics-report.v2'
 SNAPSHOT_SCHEMAS = frozenset(('trinite.training-checkpoint.v1',
-                              'trinite.comparison-checkpoint.v1',
-                              'trinite.maths-task-balance-checkpoint.v1'))
+                              'trinite.comparison-checkpoint.v1'))
 PARTS = ('q', 'k', 'v', 'o', 'up', 'down')
 _SAFE_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z')
 MAX_MODEL_TENSORS = 1024
@@ -45,8 +44,18 @@ def source_closure() -> dict[str, str]:
              'scripts/analyze_ternary_dynamics.py',
              'src/trinite/contracts.py', 'src/trinite/model.py',
              'src/trinite/inspection.py', 'src/trinite/quantizer.py',
-             'requirements.lock')
+             'src/trinite/training.py', 'requirements.lock')
     return {name: identity((ROOT/name).read_bytes()) for name in names}
+
+
+def observer_environment() -> dict:
+    """Use the native CPU training guard as the observer's numeric trust gate.
+
+    This observes the executing process, not the historical checkpoint's
+    producer environment. Both identities are preserved independently.
+    """
+    from trinite.training import require_environment
+    return require_environment()
 
 
 def _bounded_file(path: Path, limit: int) -> bytes:
@@ -97,6 +106,7 @@ def selection(value: object) -> dict:
 def freeze_request(selected: dict, input_root: Path) -> dict:
     """Hash existing bytes without examining model tensors or outcome metrics."""
     selection(selected)
+    runtime = observer_environment()  # Refuse a foreign observer before sampling even file hashes.
     input_root = Path(input_root).absolute()
     snapshots = []
     for item in selected['snapshots']:
@@ -105,7 +115,8 @@ def freeze_request(selected: dict, input_root: Path) -> dict:
         snapshots.append({**item, 'payload_identity': identity(payload),
                           'metadata_identity': identity(metadata)})
     return {'schema': REQUEST_SCHEMA, 'protocol_identity': PROTOCOL_IDENTITY,
-            'source': source_closure(), 'selection': selected, 'snapshots': snapshots,
+            'source': source_closure(), 'observer_environment': runtime,
+            'selection': selected, 'snapshots': snapshots,
             'assurance': 'digest-bound-descriptive; not optimizer/custody replay'}
 
 
@@ -144,6 +155,13 @@ def _validate_checkpoint(payload: bytes, metadata: bytes, step: int, seed: int) 
             type(m.get('manifest_identity')) is not str or
             type(m.get('model_identity')) is not str):
         raise ContractError('snapshot lacks its source, environment or model bindings')
+    # Both admitted ternary snapshot producers bind the original quantizer
+    # as 'quantizer.py' in their native source receipt. Reject different or
+    # missing implementations rather than reinterpret old weights through
+    # today's forward/STE masks. Dense task-balance is not a ternary producer.
+    current_quantizer = source_closure()['src/trinite/quantizer.py']
+    if m['source'].get('quantizer.py') != current_quantizer:
+        raise ContractError('snapshot producer quantizer source differs from this observer')
     for name in ('dataset_identity', 'manifest_identity', 'model_identity'):
         require_identity(m[name])
     try:
@@ -258,12 +276,15 @@ def transition(prior: tuple[torch.Tensor, torch.Tensor], later: tuple[torch.Tens
 
 def report_for(request: dict, input_root: Path) -> dict:
     """Revalidate the complete frozen request and all snapshot bytes per read."""
-    exact_keys(request, {'schema', 'protocol_identity', 'source', 'selection', 'snapshots',
-                         'assurance'}, 'ternary dynamics request')
+    runtime = observer_environment()  # Fail closed in a foreign CPU/kernel/dependency lane.
+    exact_keys(request, {'schema', 'protocol_identity', 'source', 'observer_environment',
+                         'selection', 'snapshots', 'assurance'}, 'ternary dynamics request')
     if (request['schema'] != REQUEST_SCHEMA or request['protocol_identity'] != PROTOCOL_IDENTITY
             or request['source'] != source_closure() or
             request['assurance'] != 'digest-bound-descriptive; not optimizer/custody replay'):
         raise ContractError('ternary-dynamics request source/protocol differs from checked observer')
+    if request['observer_environment'] != runtime:
+        raise ContractError('observer runtime differs from the frozen selection request')
     selection(request['selection'])
     if type(request['snapshots']) is not list or len(request['snapshots']) != len(request['selection']['snapshots']):
         raise ContractError('ternary-dynamics selected snapshot inventory differs')
@@ -310,9 +331,11 @@ def report_for(request: dict, input_root: Path) -> dict:
                       'matrices': per_matrix})
         if len(steps) < len(request['snapshots']):
             transitions.append({'from_step': item['step'], 'to_step': None, 'matrices': {}})
+    if observer_environment() != runtime:
+        raise ContractError('observer runtime changed during numeric inspection')
     return {'schema': REPORT_SCHEMA, 'protocol_identity': PROTOCOL_IDENTITY,
             'request_identity': identity(json_bytes(request)), 'observer_source': source_closure(),
-            'context': expected_context, 'samples': steps, 'transitions': transitions,
+            'observer_environment': runtime, 'context': expected_context, 'samples': steps, 'transitions': transitions,
             'evidence_class': 'DESCRIPTIVE', 'full_optimizer_replay': False,
             'incoming_training_gradients_available': False,
             'phase5_ready': False, 'release_ready': False,
