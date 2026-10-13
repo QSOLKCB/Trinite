@@ -12,6 +12,31 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 class CNR001FullBiology(unittest.TestCase):
+    def assert_retained_sha256(self, archive, sidecar, expected):
+        """Require the independently retained checksum as well as archive bytes."""
+        self.assertTrue(sidecar.is_file(), "missing retained sidecar: " + sidecar.name)
+        self.assertEqual(sidecar.read_text(encoding="ascii"),
+                         expected + "  " + archive.name + "\n")
+        self.assertEqual(identity(archive.read_bytes()), "sha256:" + expected)
+
+    def test_sidecar_deletion_and_rewrite_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "cnr001-v7.tar.gz"
+            sidecar = Path(temporary) / "cnr001-v7.sha256"
+            archive.write_bytes(b"synthetic archive contents")
+            digest = identity(archive.read_bytes())[7:]
+            sidecar.write_text(digest + "  " + archive.name + "\n", encoding="ascii")
+            self.assert_retained_sha256(archive, sidecar, digest)
+            sidecar.unlink()
+            with self.assertRaises(AssertionError):
+                self.assert_retained_sha256(archive, sidecar, digest)
+            for modified in (("0" * 64) + "  " + archive.name + "\n",
+                             digest + "  cnr001-v6.tar.gz\n",
+                             digest + " " + archive.name + "\n"):
+                sidecar.write_text(modified, encoding="ascii")
+                with self.subTest(sidecar=modified), self.assertRaises(AssertionError):
+                    self.assert_retained_sha256(archive, sidecar, digest)
+
     def test_real_connectome_ingestion_and_baseline_measurement(self):
         ids, edges, metadata=core.biological_graph()  # requires real pyarrow v21
         self.assertEqual(len(ids),100)
@@ -74,8 +99,10 @@ class CNR001FullBiology(unittest.TestCase):
             self.assertEqual(identity(v6_archive.read_bytes()),
                              "sha256:86cb1be634f41cceabb7f1b49c5b5d4803b5a182ca04167b27ff96aea36a0aa4")
             v7_archive = ROOT / "fixtures/cnr-001-evidence/cnr001-v7.tar.gz"
-            self.assertEqual(identity(v7_archive.read_bytes()),
-                             "sha256:03327a365b76474bfaf0956eb06766cabdf9de02e5ca1162c0c1474f9d893288")
+            v7_sidecar = ROOT / "fixtures/cnr-001-evidence/cnr001-v7.sha256"
+            self.assert_retained_sha256(
+                v7_archive, v7_sidecar,
+                "03327a365b76474bfaf0956eb06766cabdf9de02e5ca1162c0c1474f9d893288")
             v8_archive = ROOT / "fixtures/cnr-001-evidence/cnr001-v8.tar.gz"
             v8_sidecar = ROOT / "fixtures/cnr-001-evidence/cnr001-v8.sha256"
             self.assertTrue(v8_archive.is_file(), "missing newly published v8 packet")
