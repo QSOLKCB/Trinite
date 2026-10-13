@@ -646,8 +646,14 @@ implementation and conformance milestones.
 The [new v3 cursor experiment](PROCEDURAL-QEC-V3.md) freezes a distinct
 protocol before outcomes; four final-only and procedural cells must be
 rerun under one new research request. Only the procedural example cursor
-advances independently; final-only control, model, optimizer, dataset,
-update budget, seeds and original answer+EOS scorer remain unchanged.
+advances independently by design; model, optimizer, mathematical examples,
+update budget, seeds and original answer+EOS scorer remain fixed. However,
+the [historical control audit](PROCEDURAL-QEC-V3.md#historical-control-ordering-audit-13-october-2026)
+found that changed generator-source identities reorder the current final-only
+stream relative to the historical v2 producer. Same-current-row function
+parity does not establish historical parity. Preserve this additional
+comparison limitation and require a separately frozen, reviewed correction;
+do not claim an isolated cursor-only effect.
 New reports distinguish full/final/per-mode losses, actual
 exposure and visited/unvisited auxiliary correctness. No completed v3 matrix
 is yet retained in this record; no improvement is presumed. Original composed task

@@ -3,8 +3,9 @@
 **Status:** corrected implementation merged in PR #36, followed by PR #37
 evidence/CI hardening and PR #38 installed-wheel compatibility; verified
 source baseline `cc996e272800a5c02667001f7c96c8d11cb513cc`. The previous v2 four-cell
-result was negative and remains immutable; v3 has no completed full research
-outcomes yet. See [retained negative result](PROCEDURAL-QEC-NEGATIVE-RESULT.md).
+result was negative and remains immutable. No completed v3 full-research
+evidence is yet retained here. A source-identity-induced historical control
+ordering mismatch has now been confirmed; see the audit below. See [retained negative result](PROCEDURAL-QEC-NEGATIVE-RESULT.md).
 
 ## Frozen experiment
 
@@ -23,10 +24,11 @@ counts, two seeds 0 and 1 and geometry loss zero are unchanged.
 Per update the arms still consume four R/-namespaced arithmetic finals, two
 original fold-sum finals and one GF(3) final. The eighth slot is either
 the original final-answer-only example or a procedural prefix/trace. The
-**only changed training input** is the procedural stream's row index:
+**intended protocol manipulation** is the procedural stream's row index:
 each (fold/GF3, prefix/trace) stream increments its own cursor *only when
-that exact mode is visited*. The final-only stream preserves v2's sequence,
-checked by an independent row-identity regression in both seeds.
+that exact mode is visited*. The final-only regression checks equality with the v2 scheduling function
+when both functions receive the **current** regenerated rows. That check does
+not establish equality with the historical v2 producer's actual sequence.
 
 Under the fixed research budget each mode receives 1024 visits:
 - fold prefix: 1024 distinct / 1150 available;
@@ -39,9 +41,43 @@ incorrectly coupling row parity to mode. The corrected code fails closed if
 distinct coverage is smaller than `min(visits,available)`. A complete fold
 auxiliary pass still requires at least 4600 total updates under this cadence;
 increasing the budget is not part of v3. Both even and odd stream widths and
-two full cycling rounds are tested. The only planned causal manipulation is
-cursor behavior, not an auxiliary-loss coefficient, exposure increase or
-capacity change.
+two full cycling rounds are tested. The planned manipulation is cursor behavior, not an auxiliary-loss coefficient,
+exposure increase or capacity change. The historical ordering audit below
+shows an additional realized change, so cursor-only causal isolation is not
+established by this current producer.
+
+## Historical control ordering audit (13 October 2026)
+
+The source portability correction changes `data.py` and its generator-source
+receipt. The generator includes that receipt's revision in each row's
+`example_identity`; both schedulers seed-rank those identities. Consequently a
+source-only change can reorder mathematically identical training rows.
+
+A read-only reconstruction from historical producer
+`93522bf8f18fe38970ceafdd2ace792f8922c382` exactly regenerated its independently
+recorded dataset SHA-256
+`120b95ac68825b50b92dc0210d1f142a30980bfe5acedcfafe6d8f3cdadf83c4`.
+The current `cc996e272800a5c02667001f7c96c8d11cb513cc` producer generates
+`9ea3223ebd099933f9c05a3ccb9db43e4a7d19e3c1edf5922c326c2eec16d944`.
+The full mathematical row content, after removing only each row's
+`generator_revision` and `example_identity`, agrees exactly. Yet the
+final-only mathematical sequence differs at **32,576 of 32,768 visits in
+seed 0** and **32,521 of 32,768 visits in seed 1**.
+
+This violates the intended preservation of the historical final-only order.
+It is a scientific comparison limitation even when current-source software
+conformance and complete native optimizer replay pass. A newly executed
+current-producer matrix must retain all outcomes and this mismatch; it cannot
+be described as an isolated cursor correction relative to the immutable v2
+result. Its actual host must also be reported separately from the historical
+host. No source metadata, original row identities, old requests or numerical
+results may be patched to manufacture historical parity.
+
+Correcting the source-dependent ranking requires a separately reviewed,
+prospectively frozen protocol/producer and fresh request. Do not modify the
+frozen v3 protocol, silently change its ordering, or execute that new scientific
+comparison without the applicable authorization. Geometry, learning adequacy,
+format selection, scaling and release gates remain unchanged.
 
 ## Loss interpretation repair
 
