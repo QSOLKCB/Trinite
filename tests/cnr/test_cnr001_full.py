@@ -96,9 +96,41 @@ class CNR001FullBiology(unittest.TestCase):
                     raw_member = archive.extractfile(member).read()
                     self.assertEqual(attrs, {"bytes": len(raw_member),
                                              "sha256": identity(raw_member)[7:]})
-                self.assertEqual(before[0], archive.extractfile("v6/cnr-request.json").read())
-                self.assertEqual(before[1], archive.extractfile("v6/cnr-analysis.json").read())
-                self.assertEqual(json_bytes(got), archive.extractfile("v6/cnr-verification.json").read())
+                # The externally pinned v6 bytes must remain immutable, but a
+                # *current* source-bound request must change when first-party
+                # source bytes change. Preserve the historical result instead
+                # of resealing it to match the newer implementation.
+                v6_request = archive.extractfile("v6/cnr-request.json").read()
+                v6_analysis = archive.extractfile("v6/cnr-analysis.json").read()
+                v6_verify = archive.extractfile("v6/cnr-verification.json").read()
+                previous_v6 = json.loads(v6_request)
+                current_v6 = json.loads(before[0])
+                self.assertEqual(
+                    {k: v for k, v in previous_v6.items() if k != "source"},
+                    {k: v for k, v in current_v6.items() if k != "source"})
+                self.assertNotEqual(before[0], v6_request)
+                self.assertNotEqual(current_v6["source"], previous_v6["source"])
+
+                historical_analysis = json.loads(v6_analysis)
+                current_analysis = json.loads(before[1])
+                self.assertEqual(
+                    {k: v for k, v in historical_analysis.items()
+                     if k != "request_identity"},
+                    {k: v for k, v in current_analysis.items()
+                     if k != "request_identity"})
+                self.assertEqual(historical_analysis["request_identity"],
+                                 identity(v6_request))
+                self.assertEqual(current_analysis["request_identity"], req_id)
+                historic_receipt = json.loads(v6_verify)
+                self.assertEqual(historic_receipt["request_identity"],
+                                 identity(v6_request))
+                self.assertEqual(historic_receipt["analysis_identity"],
+                                 identity(v6_analysis))
+                self.assertEqual(historic_receipt["status"], "passed")
+                self.assertTrue(historic_receipt["read_only"])
+                self.assertEqual(got["request_identity"], req_id)
+                self.assertEqual(got["analysis_identity"],
+                                 identity(before[1]))
             with self.assertRaises(FileExistsError):
                 module.freeze(rpath)
             apath.write_bytes(before[1] + b" ")
