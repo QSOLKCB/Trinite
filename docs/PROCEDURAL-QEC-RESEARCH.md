@@ -99,3 +99,24 @@ The v3 research launcher remains **checkout-only**: it requires the fixed
 entrypoint, native CPU lock, and complete repository source closure. No
 numerical updater, admitted dataset, protocol hash, historical packet or
 immutable tag was edited. Invariants: TRI-I01, TRI-I07, TRI-I12, TRI-I14.
+
+
+### Installed/checkout source-label parity (PR #38 review correction)
+
+The procedural source receipt now emits stable logical `src/trinite/...`
+names for identical source bytes in both a checkout and a non-editable wheel
+installation. The absolute installation directory does not enter the dataset
+or admission identity. The real-wheel test independently regenerates the
+authoritative checkout data and manifest in a separate interpreter, then
+requires **byte-for-byte equality** with the installed wheel, verifies
+cross-installation admission, relocates the installation and repeats the
+comparison. A modified installed v2 protocol still invalidates admission.
+
+The original v2 negative-result producer at commit `93522bf8` and its
+historical dataset SHA-256
+`120b95ac68825b50b92dc0210d1f142a30980bfe5acedcfafe6d8f3cdadf83c4`
+are unchanged and remain bound to their archived producer. The present
+correction changes the `data.py` source bytes, so *new* generated data and
+source requests have new identities even though the mathematical labels and
+training algorithm are unchanged. Do not relabel or reseal historical
+research records.
