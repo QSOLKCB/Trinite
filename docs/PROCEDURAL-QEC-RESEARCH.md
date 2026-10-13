@@ -1,6 +1,6 @@
 # Procedural QEC research execution and lossless archive (PR #35)
 
-**Status: research execution and archival tooling, not a completed full research result.** PR #34 established QEC GF(3)/fold-sum procedural targets and an actual two-seed/two-arm CPU smoke. Its 4,096-update research matrix remains unmeasured. This increment closes the execution/evidence workflow, without changing any model, numerical method or frozen experiment data.
+**Current evidence status (13 October 2026): complete, verified negative training result.** PR #34 established QEC GF(3)/fold-sum procedural learning. After PR #35 merged, the full 4,096-update four-cell research matrix ran on [GitHub Actions run 38355170260](https://github.com/QSOLKCB/Trinite/actions/runs/38355170260): all source/custody/AdamW replay checks passed, but original final-answer training accuracy **failed** the preregistered joint gate in both procedural seeds. See [exact negative-result record](PROCEDURAL-QEC-NEGATIVE-RESULT.md), original archive SHA-256 `ac3b3627a27bcf6d43f89b31eeabaf1859949ae939784da06ba49916b495fdca`, and the separately verified [historical full-source supplement](PROCEDURAL-QEC-NEGATIVE-RESULT.md#additive-source-closure-supplement). The original experiment producer, protocol and outcomes are unchanged.
 
 ## Frozen scientific boundary
 
