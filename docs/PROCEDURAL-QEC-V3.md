@@ -145,9 +145,24 @@ a successful numerical replay does not clear the ordering limitation above.
 Any new exact-parity comparison must first pass the separate protocol/review/
 authorization gate in [the next-step contract](PROCEDURAL-QEC-NEGATIVE-RESULT.md#required-next-comparison).
 
-From the [hash-locked CPU environment](GETTING_STARTED.md), use distinct
-new output paths and independently retain the identities returned by
-each command:
+Use a **separate, clean detached checkout of the identified producer**, not
+the latest `main` or the checkout containing this document. V3 inventories
+all first-party `src` files; even an unrelated additive package changes its
+source closure. With the pinned commit already fetched, choose an unused
+worktree path and verify the actual checkout before importing or freezing:
+
+```sh
+git worktree add --detach /tmp/trinite-qec-v3-cc996e cc996e272800a5c02667001f7c96c8d11cb513cc
+cd /tmp/trinite-qec-v3-cc996e
+test "$(git rev-parse HEAD)" = cc996e272800a5c02667001f7c96c8d11cb513cc
+test -z "$(git status --porcelain)"
+```
+
+Run the following commands **from that pinned checkout**, using the
+[hash-locked CPU environment](GETTING_STARTED.md), `PYTHONPATH=src`, distinct
+new output paths, and independently retained returned identities. A fresh
+request binds the actual new environment; a different host is a separately
+identified execution, not verification of the original request's fingerprint.
 
 ```sh
 export PYTHONPATH=src OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
@@ -175,13 +190,18 @@ python scripts/archive_procedural_qec_v3.py --verify-archive \
   --archive-identity sha256:ARCHIVE --inventory-identity sha256:INVENTORY
 ```
 
-The existing [manual full research workflow](../.github/workflows/procedural-qec-v3-research.yml)
-remains available for explicitly requested reproduction of this identified
-current producer, including complete replay and archival verification. It is
-**not eligible for the next exact-historical-parity comparison**. Do not launch
-it merely because the implementation merged or CI passed. PR conformance runs
-only the small-model smoke. A corrected scientific comparison needs a distinct
-reviewed and authorized protocol/producer before any new target outcomes.
+The unchanged [manual full research workflow](../.github/workflows/procedural-qec-v3-research.yml)
+checks out its selected branch/tag; it is **not pinned to `cc996e`**. Running
+it on current `main` creates a different source-bound request and cannot be
+described as reproduction of this identified producer. Use the local pinned
+route above for an explicitly requested reproduction. A hosted reproduction
+would additionally require an eligible selected ref independently verified to
+resolve to this exact commit; do not assume that a dispatch UI accepts an
+arbitrary commit SHA, create a new ref, or launch it from these instructions.
+Current v3 is **not eligible for the next exact-historical-parity comparison**.
+PR conformance runs only the small-model smoke. A corrected scientific
+comparison needs a distinct reviewed and authorized protocol/producer before
+any new target outcomes.
 
 Previous negative results are permanently documented in
 [PROCEDURAL-QEC-NEGATIVE-RESULT.md](PROCEDURAL-QEC-NEGATIVE-RESULT.md).
