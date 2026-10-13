@@ -63,6 +63,17 @@ model semantics change. Full artifact rejection, final-forward code/scale
 extraction, logit/token/capture parity, resource measurement, independent
 replication and release gates remain unfulfilled by this preparation.
 
+## Encode-only final-forward candidate
+
+The additive [immutable export increment](FORWARD-EXPORT.md) extracts the actual
+native final-forward codes/scales into immutable canonical manifest, packed-code
+and float32 safetensors bytes. It validates the complete in-memory model profile
+and resource bounds, and records separately captured source-byte identities.
+Test-only effective-weight reconstruction has exact logit/capture/greedy-token
+parity on tiny and reference shapes; it is not a shipping importer. Strict
+untrusted-artifact rejection, packed-resident execution, production generation,
+resource performance and Phase 6 completion remain unfulfilled.
+
 ## Honest resource accounting
 
 For the first configuration, 1,179,648 linear codes need 294,912 bytes at fixed 2-bit packing. The 67,584 non-ternary parameters need 270,336 bytes as float32, plus 36 float32 matrix scales (144 bytes): **565,392 bytes** of these tensor payloads before metadata/alignment. This is arithmetic from the proposed shapes, not a measured artifact or peak-memory result. The theoretical log2(3) bits per code is not the fixed 2-bit format size.

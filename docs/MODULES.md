@@ -277,3 +277,19 @@ source-bound requests and an external result-identity verifier. A separate
 `run_lattice_observation.py` performs immutable freeze, run and verification.
 No native model, loss, admission, optimizer, prior reference producer or
 historical packet is modified. See [ACTIVATION-LATTICE.md](ACTIVATION-LATTICE.md).
+
+
+## Immutable final-forward export candidate
+
+`forward_export/` is the additive encode-only boundary documented in
+[FORWARD-EXPORT.md](FORWARD-EXPORT.md). Its standard-library `source.py` provides
+an explicit bounded read of installed source bytes. `encoder.py` accepts that
+immutable captured input plus the native ternary Decoder, validates canonical
+structure/bounds, delegates the existing quantizer, tensor identity and packed
+codec, and serializes float exceptions/scales with `safetensors.torch.save`.
+The returned members are immutable bytes; no exporter file write, checkpoint
+reader, training import, numerical updater, second tensor reader, CLI, generation
+path or alternative backend is added. Only tests reconstruct trusted encoder
+output with the authoritative safetensors reader and native dense Decoder.
+Historical flat source closures remain unchanged. This is engineering
+preparation, not format selection or completed Phase 6.
