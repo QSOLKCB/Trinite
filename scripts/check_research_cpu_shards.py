@@ -30,6 +30,9 @@ SHARDS = (
      'convergence', 'fold_exposure', 'fold_order'),
 )
 BASELINE_V020_CASES = 261
+# Exact ordered ID list from the immutable v0.2.0 GitHub Actions run
+# 38332138644; Python 3.11/3.12/3.13 logged identical 261-case sequences.
+BASELINE_V020_TEST_IDS_SHA256 = 'c56dc906f821a9fd5fe789c2a69660bbb7220c5199bbce7893181472803429d7'
 SCHEMA = 'trinite.opt-research-ci-shard.v1'
 
 
@@ -124,6 +127,9 @@ def audit(full, names, *, shards=SHARDS, expected_cases=BASELINE_V020_CASES,
             raise CoverageError('empty shard after full-suite discovery')
     digests = {'full_test_ids_sha256': hashlib.sha256(json.dumps(
         all_ids, ensure_ascii=True, separators=(',', ':')).encode('utf-8')).hexdigest()}
+    if (expected_cases == BASELINE_V020_CASES and
+            digests['full_test_ids_sha256'] != BASELINE_V020_TEST_IDS_SHA256):
+        raise CoverageError('ordered test identities differ from immutable v0.2.0 baseline')
     return suites, all_ids, digests
 
 

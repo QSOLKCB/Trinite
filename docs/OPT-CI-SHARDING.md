@@ -41,6 +41,8 @@ The historical `model-conformance (3.11/3.12/3.13)` check names are retained as 
 
 A shard exits nonzero if the suite partition omits/repeats suites, changes their relative order, discovers a different total case count, discovers duplicate/empty test cases, fails/skips tests, or executes a different ordered list from its assigned cases. Every shard re-discovers the full authoritative suite list and emits its own **post-success** JSON execution disclosure with the full ordered ID digest, selected ID digest, current source/requirements-lock digests, count and test-only `float.hex` elapsed time. The disclosure is not a cryptographically signed independent PROVENANCE receipt.
 
+The exact **ordered v0.2.0 baseline case list** was reconstructed from the complete GitHub Actions logs of Python 3.11/3.12/3.13 on commit `30350e2e82c2e3e7fec913ff4d20f3faac42f7e0`; all three sequences were identical, with SHA-256 `c56dc906f821a9fd5fe789c2a69660bbb7220c5199bbce7893181472803429d7` over the canonical compact JSON string array of unittest IDs. In addition to the 261-case count and full-vs-independent-discovery comparison, the shard runner checks **that frozen exact identity**. A same-count replacement or rename fails closed. Future additions require an explicit reviewed rebaseline, not a silent count substitution.
+
 The original sequential combined runner is **still available byte-for-byte unchanged** at its v0.2.0 Git blob SHA `d55f8736b43d80386ba77fda5369684beba00446`. Run it as the reference:
 
 ```sh

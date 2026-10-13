@@ -1,14 +1,17 @@
 """Stdlib-only adversarial checks for the OPT model CI partition, not a model test."""
 from pathlib import Path
 import hashlib
+import json
 import io
 import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'scripts'))
+import check_research_cpu_shards as shard_module
+from unittest import mock
 from check_research_cpu_shards import (
-    BASELINE_V020_CASES, SHARDS, CoverageError, RecordingResult, audit,
+    BASELINE_V020_CASES, BASELINE_V020_TEST_IDS_SHA256, SHARDS, CoverageError, RecordingResult, audit,
     case_ids, main, required_suites, successful, validate_partition,
     validate_shard_index,
 )
@@ -47,6 +50,8 @@ class OptCiShardingContract(unittest.TestCase):
         self.assertEqual(set().union(*map(set, SHARDS)), set(names))
         self.assertEqual(len({name for group in SHARDS for name in group}), len(names))
         self.assertEqual(BASELINE_V020_CASES, 261)
+        self.assertEqual(BASELINE_V020_TEST_IDS_SHA256,
+            'c56dc906f821a9fd5fe789c2a69660bbb7220c5199bbce7893181472803429d7')
         self.assertEqual(SHARDS[0][0], 'task_balance')
         self.assertIn('retention_budget', SHARDS[1])
         self.assertIn('retention_v2', SHARDS[2])
@@ -116,6 +121,24 @@ class OptCiShardingContract(unittest.TestCase):
             audit(unittest.TestSuite([unittest.TestSuite([case('alpha')])]),
                   names,shards=assignments,expected_cases=3,
                       discovered=fake_discovered())
+
+    def test_frozen_test_identity_rejects_same_count_replacements(self):
+        names=('alpha','beta','gamma')
+        plan=(('alpha','beta'),('gamma',))
+        reference=[case('alpha').id(),case('beta').id(),case('gamma').id()]
+        digest=hashlib.sha256(json.dumps(reference,ensure_ascii=True,
+                          separators=(',',':')).encode()).hexdigest()
+        # The genuine runner pins 261 IDs. Isolate the exact same digest gate
+        # with three synthetic cases to prove count-preserving ID swaps fail.
+        with mock.patch.object(shard_module,'BASELINE_V020_CASES',3), \
+             mock.patch.object(shard_module,'BASELINE_V020_TEST_IDS_SHA256',digest):
+            audit(fake_parts(),names,shards=plan,expected_cases=3,
+                  discovered=fake_discovered())
+            changed=unittest.TestSuite([case('alpha'),case('beta'),case('REPLACED')])
+            altered=fake_discovered()
+            altered['gamma']=unittest.TestSuite([case('REPLACED')])
+            with self.assertRaisesRegex(CoverageError,'immutable v0.2.0 baseline'):
+                audit(changed,names,shards=plan,expected_cases=3,discovered=altered)
 
     def test_true_execution_ids_and_required_skip_fail_closed(self):
         log = io.StringIO()
