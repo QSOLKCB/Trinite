@@ -61,5 +61,28 @@ class V3NativeSmoke(unittest.TestCase):
                 self.assertFalse(report["held_out_scored"])
 
 
+            archive = root/"v3-evidence.zip"
+            archiver = ROOT/"scripts/archive_procedural_qec_v3.py"
+            cmd = [sys.executable,str(archiver),"--archive",
+                   "--output",str(archive),"--run",str(run),
+                   "--request",str(request),"--request-identity",frozen["request_identity"],
+                   "--verification-request",str(verifier),
+                   "--verification-request-identity",measured["verification_request_identity"]]
+            proc=subprocess.run(cmd,cwd=ROOT,env=ENV,capture_output=True,text=True,timeout=900)
+            self.assertEqual(proc.returncode,0,proc.stdout[-2000:]+proc.stderr[-2000:])
+            archived=json.loads(proc.stdout)
+            self.assertEqual(archived["outcome"],"passed")
+            self.assertEqual(archived["evidence_class"],"integration-smoke-only")
+            check=subprocess.run([sys.executable,str(archiver),"--verify-archive",
+                "--archive-file",str(archive),
+                "--archive-identity",archived["archive_identity"],
+                "--inventory-identity",archived["inventory_identity"]],
+                cwd=ROOT,env=ENV,capture_output=True,text=True,timeout=120)
+            self.assertEqual(check.returncode,0,check.stderr)
+            self.assertEqual(json.loads(check.stdout)["outcome"],"passed")
+            self.assertEqual(before,{str(p.relative_to(root)):p.read_bytes()
+                                     for p in root.rglob("*") if p.is_file() and p != archive})
+
+
 if __name__=="__main__":
     unittest.main()
