@@ -1,0 +1,3 @@
+65cc25d600e30a35c6ad3daefae6f92979162dfcb38e515397185aa952154d79  Trinite-procedural-QEC-research-v3.zip
+5b7fd56a20e9f111cdf4d9b278c89de9e23ff3715cfcb2a8d9c2ccfa4ede1d87  Trinite-v3-full-source-cc996e272800.tar.gz
+e34ca0cc3f7a908036ff21ad9813b8343f9d91b12085e96dc91dc904335a4b4a  Trinite-v3-verification-records-final.zip

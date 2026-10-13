@@ -3,9 +3,12 @@
 **Status:** corrected implementation merged in PR #36, followed by PR #37
 evidence/CI hardening and PR #38 installed-wheel compatibility; verified
 source baseline `cc996e272800a5c02667001f7c96c8d11cb513cc`. The previous v2 four-cell
-result was negative and remains immutable. No completed v3 full-research
-evidence is yet retained here. A source-identity-induced historical control
-ordering mismatch has now been confirmed; see the audit below. See [retained negative result](PROCEDURAL-QEC-NEGATIVE-RESULT.md).
+result was negative and remains immutable. The [complete local v3 negative
+study](PROCEDURAL-QEC-V3-NEGATIVE-RESULT.md) is now retained: four research cells,
+all six assurance checks, three complete native replay passes and immutable
+archival verification. The training gate failed. A source-identity-induced
+historical control ordering mismatch is retained separately; see the audit
+below. The [original v2 negative result](PROCEDURAL-QEC-NEGATIVE-RESULT.md) is unchanged.
 
 ## Frozen experiment
 

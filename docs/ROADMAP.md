@@ -655,8 +655,14 @@ stream relative to the historical v2 producer. Same-current-row function
 parity does not establish historical parity. Preserve this additional
 comparison limitation and require a separately frozen, reviewed correction;
 do not claim an isolated cursor-only effect.
-New reports distinguish full/final/per-mode losses, actual
-exposure and visited/unvisited auxiliary correctness. No completed v3 matrix
-is yet retained in this record; no improvement is presumed. Original composed task
-adequacy, unseen-family confirmation, format, geometry, scaling and
-release remain separately blocked.
+The [complete local v3 negative study](PROCEDURAL-QEC-V3-NEGATIVE-RESULT.md)
+now retains all four 4,096-update cells, exact original final-answer+EOS counts,
+full/final/per-mode losses, exposure and visited/unvisited auxiliary correctness.
+All six assurance checks and three native replay passes succeeded; all 107 run
+files stayed byte-identical through replay/archive verification. Both procedural
+seeds fail the training gate; fold counts change from 808 to 614 and 778 to 762
+against their current-source controls. Private retention of the complete
+research/source/verification artifacts is verified; permanent public publication
+and independent-host replication are not claimed. Historical-order parity still
+fails. Original composed task adequacy, unseen-family confirmation, format,
+geometry, scaling and release remain separately blocked.
