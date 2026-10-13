@@ -78,7 +78,7 @@ class CNR001FullBiology(unittest.TestCase):
             self.assertEqual(recorded[1], "cnr001-v6.tar.gz")
             # Independent reviewed release commitment, not a value learned
             # from the packet being verified in this test.
-            self.assertRegex(recorded[0], r"^[0-9a-f]{64}$")  # Pin the independent digest after v6 capture
+            self.assertEqual(recorded[0], "86cb1be634f41cceabb7f1b49c5b5d4803b5a182ca04167b27ff96aea36a0aa4")
             self.assertEqual(identity(new_archive.read_bytes()), "sha256:" + recorded[0])
             with tarfile.open(new_archive, "r:gz") as archive:
                 names = archive.getnames()
