@@ -259,6 +259,59 @@ class ForwardExportTests(unittest.TestCase):
         with torch.autocast("cpu", dtype=torch.bfloat16):
             with self.assertRaises(ContractError): self.encode(Decoder(TINY))
 
+    def test_partial_storage_overlap_rejected_and_adjacent_storage_accepted(self):
+        # Independent from_numpy wrappers have zero offsets, exact byte sizes,
+        # and distinct starting pointers despite physically overlapping bytes.
+        for offset in (1, 255):
+            for reverse in (False, True):
+                with self.subTest(offset=offset, reverse=reverse):
+                    model = Decoder(TINY)
+                    backing = np.ones(256+offset, dtype=np.float32)
+                    first = torch.from_numpy(backing[:256]).reshape(16, 16)
+                    second = torch.from_numpy(backing[offset:offset+256]).reshape(16, 16)
+                    if reverse:
+                        first, second = second, first
+                    model.blocks[0].q.weight = nn.Parameter(first)
+                    model.blocks[0].k.weight = nn.Parameter(second)
+                    self.assertNotEqual(first.data_ptr(), second.data_ptr())
+                    self.assertEqual(abs(first.data_ptr()-second.data_ptr()), offset*4)
+                    for tensor in (first, second):
+                        self.assertTrue(tensor.is_contiguous())
+                        self.assertEqual(tensor.storage_offset(), 0)
+                        self.assertEqual(tensor.untyped_storage().nbytes(), 1024)
+                    model.validate_state()  # The native state API allows this layout.
+                    with patch("trinite.forward_export.encoder.quantize",
+                               side_effect=AssertionError("overlap reached quantization")):
+                        with self.assertRaisesRegex(ContractError, "overlapping parameter storage"):
+                            self.encode(model)
+        # Floating exceptions have the same no-overlap requirement as matrices.
+        model = Decoder(TINY)
+        backing = np.ones(512, dtype=np.float32)
+        model.position_embedding = nn.Parameter(torch.from_numpy(backing).reshape(32, 16))
+        model.final_norm.weight = nn.Parameter(torch.from_numpy(backing[1:17]))
+        with self.assertRaisesRegex(ContractError, "overlapping parameter storage"):
+            self.encode(model)
+        # Adjacent half-open intervals share an owning NumPy allocation, but no
+        # physical bytes. They are valid and must not be mistaken for overlap.
+        for reverse in (False, True):
+            model = Decoder(TINY)
+            backing = np.arange(512, dtype=np.float32)
+            original = backing.copy()
+            first = torch.from_numpy(backing[:256]).reshape(16, 16)
+            second = torch.from_numpy(backing[256:]).reshape(16, 16)
+            if reverse:
+                first, second = second, first
+            model.blocks[0].q.weight = nn.Parameter(first)
+            model.blocks[0].k.weight = nn.Parameter(second)
+            self.assertEqual(abs(first.data_ptr()-second.data_ptr()), 1024)
+            artifact = self.encode(model)
+            dense = oracle_reconstruction(artifact)
+            ids = torch.tensor([[256, 49, 257]])
+            mask = torch.ones_like(ids, dtype=torch.bool)
+            self.assertTrue(torch.equal(model(ids, mask).logits, dense(ids, mask).logits))
+            self.assertTrue(np.array_equal(backing, original))
+            self.assertIs(model.token_embedding, model.output_weight)
+
     def test_registered_parameter_and_child_attribute_shadows_are_rejected(self):
         # nn.Module.__setattr__ normally protects registration. These adversarial
         # __dict__ edits bypass it while leaving registered classes/names intact.

@@ -94,7 +94,7 @@ def _preflight(model, max_payload_bytes, max_manifest_bytes):
             raise ContractError("global module hooks are outside the export profile")
     modules = {}
     parameters = {}
-    seen_storage = set()
+    seen_storage = []
     for name, kind, parameter_names, child_names in specifications:
         if not name:
             module = model
@@ -140,10 +140,15 @@ def _preflight(model, max_payload_bytes, max_manifest_bytes):
                     or tensor.storage_offset() != 0
                     or tensor.untyped_storage().nbytes() != tensor.numel()*4):
                 raise ContractError("export requires canonical contiguous CPU float32 parameters")
-            pointer = tensor.untyped_storage().data_ptr()
-            if pointer in seen_storage:
-                raise ContractError("unexpected shared parameter storage")
-            seen_storage.add(pointer)
+            start = tensor.untyped_storage().data_ptr()
+            end = start + tensor.untyped_storage().nbytes()
+            # Separately wrapped external buffers can have distinct storage
+            # objects and starting pointers while still sharing physical bytes.
+            # Half-open intervals reject every intersection but allow adjacency.
+            if any(start < previous_end and previous_start < end
+                   for previous_start, previous_end in seen_storage):
+                raise ContractError("unexpected overlapping parameter storage")
+            seen_storage.append((start, end))
             parameters[path] = tensor
     # Call the authoritative validation operation without trusting an instance override.
     Decoder.validate_state(model)

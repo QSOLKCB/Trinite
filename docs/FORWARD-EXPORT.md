@@ -74,7 +74,10 @@ serialization-profile checks:
 - Exact native block, linear, norm and ModuleList types; no extra parameters,
   buffers, modules, hooks, compiled or instance-overridden execution.
 - Finite, contiguous, zero-offset CPU float32 Parameters with canonical storage;
-  no shared parameter storage except the registered token/output embedding alias.
+  no intersecting physical storage-byte intervals except the registered
+  token/output embedding alias. Separately wrapped overlapping external buffers
+  are rejected even when their storage objects and starting pointers differ;
+  adjacent non-overlapping intervals remain valid.
   Attribute resolution must reach each registered parameter/child exactly;
   instance-dictionary shadows are rejected, even if they currently point at the
   same object. This includes root embeddings/output, every linear/norm weight
@@ -158,7 +161,8 @@ not ship in the package. There is no production generation claim.
 Other tests cover repeatable complete export bytes; odd matrix dimensions and
 padding; full membership/alias/hash/count consistency; post-initialization
 latent edits; zero, tiny and extreme finite inputs; nonfinite parameters/scales;
-wrong lanes/shapes/layouts/dtypes; extra/shared tensors; every registered
+wrong lanes/shapes/layouts/dtypes; extra/shared tensors, partially overlapping
+external-buffer storage and valid adjacent storage; every registered
 parameter/child attribute-shadow boundary; hooks and execution
 replacement; stale config/source; malformed source snapshots; pre-allocation
 bounds; mutation detection; and unchanged parameters, gradients, RNGs, modes and
