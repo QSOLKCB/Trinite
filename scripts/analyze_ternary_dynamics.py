@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import sys
 
+import torch
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'src'))
 sys.path.insert(0, str(ROOT/'scripts'))
@@ -71,6 +73,12 @@ def main(argv=None):
     p.add_argument('--verify-only',action='store_true')
     args=p.parse_args(argv)
     try:
+        # A fresh PyTorch interpreter does not enable deterministic execution.
+        # Establish only the two explicit native CPU runner settings before
+        # freeze/report invokes trinite.training.require_environment(). That
+        # strict guard still rejects changed packages, dtype, device or backend.
+        torch.set_num_threads(1)
+        torch.use_deterministic_algorithms(True)
         protocol()
         src=args.freeze_selection or args.request
         output=safe_output(args.output,args.root,src)

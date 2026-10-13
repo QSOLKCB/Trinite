@@ -1,6 +1,8 @@
 """Real tensor/quantizer conformance only; synthetic snapshots are NOT learning evidence."""
 import copy
 import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -271,6 +273,44 @@ class TernaryDynamicsTests(unittest.TestCase):
         (self.root/'1.safetensors').write_bytes(save(tensors))
         with self.assertRaisesRegex(ContractError,'unexpected optimizer'):
             report_for(freeze_request(make_selection(),self.root),self.root)
+
+    def test_fresh_cli_process_initializes_cpu_before_guard(self):
+        # Unit tests configure the parent Torch process above; a newly spawned
+        # interpreter does NOT inherit those flags. Run the documented CLI in
+        # genuinely fresh child processes with the opposite thread default.
+        base = Path(self.tmp.name)
+        select_file = base/'fresh-selection.json'
+        request_file = base/'fresh-request.json'
+        report_file = base/'fresh-report.json'
+        select_file.write_bytes(json_bytes(make_selection()))
+        env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(ROOT/'src'), str(ROOT/'scripts'))),
+                   OMP_NUM_THREADS='4', MKL_NUM_THREADS='4', OPENBLAS_NUM_THREADS='1')
+        probe = subprocess.run([sys.executable, '-c',
+            'import torch; assert torch.get_num_threads() != 1; '
+            'assert not torch.are_deterministic_algorithms_enabled()'],
+            env=env, cwd=ROOT, capture_output=True, text=True, timeout=45)
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+
+        def run(*args):
+            result = subprocess.run([sys.executable, str(ROOT/'scripts/analyze_ternary_dynamics.py'),
+                                    *map(str, args)], env=env, cwd=ROOT,
+                                    capture_output=True, text=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return result
+
+        run('--freeze-selection', select_file, '--root', self.root, '--output', request_file)
+        request = parse_json(request_file.read_bytes(), canonical=True)
+        self.assertEqual(request['observer_environment']['threads'], 1)
+        self.assertIs(request['observer_environment']['deterministic'], True)
+        request_identity = identity(request_file.read_bytes())
+        run('--request', request_file, '--request-identity', request_identity,
+            '--root', self.root, '--output', report_file)
+        old = report_file.read_bytes()
+        report = parse_json(old, canonical=True)
+        self.assertEqual(report['observer_environment'], request['observer_environment'])
+        run('--request', request_file, '--request-identity', request_identity,
+            '--root', self.root, '--output', report_file, '--verify-only')
+        self.assertEqual(report_file.read_bytes(), old)
 
     def test_cli_freeze_analyze_verify_and_no_overwrite(self):
         select_file=Path(self.tmp.name)/'select.json'
