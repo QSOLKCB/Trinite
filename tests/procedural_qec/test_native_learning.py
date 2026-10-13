@@ -55,6 +55,34 @@ class NativeProceduralSmoke(unittest.TestCase):
                 self.assertTrue(cell["report"]["scores"]["prefix"]["tasks"])
                 self.assertTrue(cell["report"]["scores"]["trace"]["tasks"])
                 self.assertFalse(cell["report"]["held_out_scored"])
+            # Next-phase archive transport: a second FULL native replay is
+            # required before immutable output bytes can be retained.
+            archive = root / "evidence.zip"
+            archive_tool = ROOT / "scripts/archive_procedural_qec.py"
+            created = subprocess.run([sys.executable, str(archive_tool), "--archive",
+                "--output", str(archive), "--run", str(output),
+                "--request", str(request), "--request-identity", frozen["request_identity"],
+                "--verification-request", str(verification),
+                "--verification-request-identity", measured["verification_request_identity"]],
+                cwd=ROOT, env=ENV, capture_output=True, text=True, timeout=900)
+            self.assertEqual(created.returncode, 0,
+                             created.stdout[-3000:] + created.stderr[-3000:])
+            a = json.loads(created.stdout)
+            self.assertEqual(a["outcome"], "passed")
+            self.assertEqual(a["evidence_class"], "integration-smoke-only")
+            self.assertFalse(a["learning_adequacy"])
+            before_archive_read = {str(p.relative_to(output)): p.read_bytes()
+                                   for p in output.rglob("*") if p.is_file()}
+            checked = subprocess.run([sys.executable, str(archive_tool), "--verify-archive",
+                "--archive-file", str(archive), "--archive-identity", a["archive_identity"],
+                "--inventory-identity", a["inventory_identity"]],
+                cwd=ROOT, env=ENV, capture_output=True, text=True, timeout=120)
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+            self.assertEqual(json.loads(checked.stdout)["outcome"], "passed")
+            after_archive_read = {str(p.relative_to(output)): p.read_bytes()
+                                  for p in output.rglob("*") if p.is_file()}
+            self.assertEqual(before_archive_read, after_archive_read)
+            self.assertFalse(any("torch" in k for k in json.loads(checked.stdout)))
             # External verification-request identity is not optional or inferred.
             rejected = subprocess.run([sys.executable, str(SCRIPT), "--verify-only",
                 "--request", str(request), "--request-identity", frozen["request_identity"],
