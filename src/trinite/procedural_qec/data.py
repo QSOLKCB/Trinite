@@ -14,7 +14,7 @@ from ..curriculum_oracle import solve as scalar_solve
 from ..qec_source import verify_pin
 from ..tokenizer import ByteTokenizer
 
-SCHEMA = "trinite.procedural-qec-data.v1"
+SCHEMA = "trinite.procedural-qec-data.v2"
 KIND = ("arithmetic", "fold-sum", "gf3")
 MODES = ("final", "prefix", "trace")
 MAX_ROWS = 12000
@@ -24,6 +24,7 @@ def source_receipt():
     package = Path(__file__).resolve().parent
     root = package.parent
     names = (package / "data.py", package / "protocol.json",
+             package / "protocol-v2.json",
              root / "curriculum_data.py", root / "curriculum_oracle.py",
              root / "learning_data.py", root / "qec_source.py",
              root / "_qec/qutrit/gf3.py", root / "qec-pin.json",
@@ -103,7 +104,7 @@ def derive(parent, kind, mode, *, index=None, revision):
 
 
 def dataset():
-    verify_pin()
+    pin = verify_pin()
     parents = {}
     parent_bindings = {}
     for workload in ("arithmetic", "fold"):
@@ -120,13 +121,13 @@ def dataset():
             continue
         core = {"kind": "arithmetic", "task": item["task"], "mode": "final",
                 "values": [item["formal"]["a"], item["formal"]["b"]],
-                "carrier": item["carrier"], "prompt": item["prompt"],
-                "answer": item["answer"], "text": item["text"],
+                "carrier": item["carrier"], "prompt": "R/" + item["prompt"],
+                "answer": item["answer"], "text": "R/" + item["text"],
                 "split": item["split"], "family_id": item["family_id"],
                 "semantic_identity": item["semantic_identity"],
                 "parent_example_identity": item["example_identity"],
                 "transformation_lineage": {"parent_example_identity": item["example_identity"],
-                                           "operation": "unchanged-arithmetic.v1",
+                                           "operation": "namespace-arithmetic.v2",
                                            "prefix_index": None},
                 "generator_revision": revision,
                 "source_ids": item["source_ids"] + [SCHEMA],
@@ -161,7 +162,7 @@ def dataset():
         base = {"values": values, "carrier": carrier, "split": "train",
                 "family_id": "gf3:" + semantic, "semantic_identity": semantic,
                 "parent_example_identity": identity(json_bytes({"formal": formal, "carrier": carrier})),
-                "source_ids": ["QSOLKCB/QEC:" + verify_pin()["revision"]]}
+                "source_ids": ["QSOLKCB/QEC:" + pin["revision"]]}
         rows.append(derive(base, "gf3", "final", revision=revision))
         rows.append(derive(base, "gf3", "prefix", index=2, revision=revision))
         rows.append(derive(base, "gf3", "trace", revision=revision))
@@ -174,16 +175,16 @@ def dataset():
     counts = {kind: {mode: sum(r["kind"] == kind and r["mode"] == mode for r in rows)
                      for mode in MODES} for kind in KIND}
     raw = json_bytes({"schema": SCHEMA, "examples": sorted(rows, key=lambda e: e["example_identity"])})
-    manifest = json_bytes({"schema": "trinite.procedural-qec-admission.v1",
+    manifest = json_bytes({"schema": "trinite.procedural-qec-admission.v2",
         "dataset_identity": identity(raw), "parent_identities": parent_bindings,
-        "qec_dependency": verify_pin(), "generator_source": source,
+        "qec_dependency": pin, "generator_source": source,
         "family_splits": {e["family_id"]: "train" for e in rows},
         "counts": counts,
         "admission": {"source_id": SCHEMA, "outcome": "admitted",
             "origin": "existing family-preserved fold/arithmetic facts plus exhaustive local GF(3) triples",
             "author": "QSOL-IMC commissioned exact procedural generator",
             "rights_basis": "independently generated integer/finite-field facts, minimal symbolic carriers, no donor prose",
-            "generation": "pinned QEC GF(3) add and independent sum-modulo oracle; independent fold-sum oracle; source-bound parent admission",
+            "generation": "pinned QEC GF(3) add and independent sum-modulo oracle; independent fold-sum oracle; source-bound parent admission; arithmetic R/ namespace separates the original subtract/fold sum collision",
             "scope": "this bounded train-only experiment, not new external/generalization data",
             "reviewer": "automated exact-oracle, family, source, rights and tokenizer audit",
             "reviewed_on": "2026-10-13",
