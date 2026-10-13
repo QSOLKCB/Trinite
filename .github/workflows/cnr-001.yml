@@ -138,7 +138,7 @@ jobs:
           print('ETQ-303 full walk/event:',report['graph_provenance']['etq_diagnostics'])
           print('v0.1.0 baseline:',report['baseline'])
           PY
-      - name: Verify immutable v5 and source-bound v6 packet byte-for-byte
+      - name: Verify immutable v5/v6 packets and current source-bound CNR separately
         if: success()
         shell: bash
         run: |
@@ -184,15 +184,49 @@ jobs:
               if attrs != {"sha256":sha(raw),"bytes":len(raw)}:
                   raise RuntimeError("v6 member identity/size mismatch: " + name)
           temp=Path(os.environ["RUNNER_TEMP"])
-          files=("cnr-request.json","cnr-analysis.json","cnr-freeze-receipt.json",
-                 "cnr-run-receipt.json","cnr-verification.json")
-          for name in files:
-              if contents["v6/"+name] != (temp/name).read_bytes():
-                  raise RuntimeError("v6 source-bound producer replay mismatch: " + name)
-          if (manifest["request_identity"] != "sha256:"+sha(contents["v6/cnr-request.json"])
-                  or manifest["analysis_identity"] != "sha256:"+sha(contents["v6/cnr-analysis.json"])):
-              raise RuntimeError("v6 independent commitment identity mismatch")
-          print("Historical v5 archive remains immutable; all new v6 request/analysis/receipts exactly match current verified producer.")
+          historical_request=contents["v6/cnr-request.json"]
+          historical_analysis=contents["v6/cnr-analysis.json"]
+          historical_receipt=json.loads(contents["v6/cnr-verification.json"])
+          historical_freeze=json.loads(contents["v6/cnr-freeze-receipt.json"])
+          historical_run=json.loads(contents["v6/cnr-run-receipt.json"])
+          archived_request_sha="sha256:"+sha(historical_request)
+          archived_analysis_sha="sha256:"+sha(historical_analysis)
+          if (manifest["request_identity"] != archived_request_sha
+                  or manifest["analysis_identity"] != archived_analysis_sha
+                  or historical_freeze["request_identity"] != archived_request_sha
+                  or historical_run["analysis_identity"] != archived_analysis_sha
+                  or historical_receipt["request_identity"] != archived_request_sha
+                  or historical_receipt["analysis_identity"] != archived_analysis_sha
+                  or historical_receipt["status"] != "passed"
+                  or historical_receipt["read_only"] is not True):
+              raise RuntimeError("v6 historical custody chain or independent commitment mismatch")
+          # Only the original pinned producer can regenerate the exact v6 source
+          # receipt. A new source-bound request and its output MUST differ.
+          new_request=(temp/"cnr-request.json").read_bytes()
+          new_analysis=(temp/"cnr-analysis.json").read_bytes()
+          current_request=json.loads(new_request)
+          old_request=json.loads(historical_request)
+          if ({k:v for k,v in current_request.items() if k!="source"}
+                  != {k:v for k,v in old_request.items() if k!="source"}
+                  or current_request["source"] == old_request["source"]):
+              raise RuntimeError("v6 historical/current source boundary inconsistent")
+          old_analysis=json.loads(historical_analysis)
+          fresh_analysis=json.loads(new_analysis)
+          if (old_analysis["source"] != old_request["source"]
+                  or fresh_analysis["source"] != current_request["source"]
+                  or old_analysis["request_identity"] != archived_request_sha
+                  or fresh_analysis["request_identity"] != "sha256:"+sha(new_request)
+                  or {k:v for k,v in old_analysis.items()
+                      if k not in ("source","request_identity")}
+                     != {k:v for k,v in fresh_analysis.items()
+                         if k not in ("source","request_identity")}):
+              raise RuntimeError("CNR analysis changed beyond source-bound identities")
+          new_receipt=json.loads((temp/"cnr-verification.json").read_bytes())
+          if (new_receipt["status"] != "passed" or new_receipt["read_only"] is not True
+                  or new_receipt["request_identity"] != "sha256:"+sha(new_request)
+                  or new_receipt["analysis_identity"] != "sha256:"+sha(new_analysis)):
+              raise RuntimeError("fresh CNR source-bound replay not verified")
+          print("v5/v6 historical packets remain byte-bound and unchanged; new producer has separately verified fresh source-bound replay with unchanged source-independent CNR results.")
           PY
       - name: Retain all research results, including failure logs
         if: always()
