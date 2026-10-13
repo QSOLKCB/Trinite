@@ -1,5 +1,9 @@
 name: Historical QEC research full-source supplement
 on:
+  pull_request:
+    paths:
+      - 'scripts/supplement_procedural_qec_source.py'
+      - '.github/workflows/procedural-qec-source-supplement.yml'
   workflow_dispatch:
 
 permissions:
@@ -32,7 +36,7 @@ jobs:
             --verify "$RUNNER_TEMP/Trinite-93522bf-QEC-full-source-supplement.zip" \
             --expected-sha256 "$EXPECTED"
       - name: Retain standalone source supplement and external digest
-        if: always()
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trinite-93522bf-full-source-supplement
