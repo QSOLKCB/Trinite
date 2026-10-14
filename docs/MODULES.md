@@ -293,3 +293,16 @@ path or alternative backend is added. Only tests reconstruct trusted encoder
 output with the authoritative safetensors reader and native dense Decoder.
 Historical flat source closures remain unchanged. This is engineering
 preparation, not format selection or completed Phase 6.
+
+## Non-displacing auxiliary engineering composition
+
+`procedural_qec_auxiliary/inputs.py` owns isolated actual historical/current
+admission and full-row bijection; `scheduler.py` owns mapped historical ranking
+and separate eight-row additional updates. `spec.py` describes a reviewable,
+not-scientifically-frozen candidate and a bounded engineering-only profile.
+`experiment.py` composes existing native training, scorer, safe tensor reader and
+closed observer, with new source-bound checkpoint/full-replay schemas.
+`archive.py` retains exact source and run bytes after fresh numerical replay;
+transport verification remains standard-library only. Fixed launcher scripts
+provide explicit checkout-only entrypoints. Research execution is disabled.
+See [the implementation boundary](PROCEDURAL-QEC-AUXILIARY-IMPLEMENTATION.md).

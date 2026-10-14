@@ -685,3 +685,18 @@ The existing numerical updater, original evidence and acceptance thresholds are
 unchanged. Additional updates alter the optimizer trajectory; the proposal is
 not historical reproduction, a cursor-only comparison or an unlocked Phase 5,
 format, scaling or release milestone.
+
+## Non-displacing auxiliary implementation for review
+
+The [additive engineering implementation](PROCEDURAL-QEC-AUXILIARY-IMPLEMENTATION.md)
+implements actual historical input mapping, paired eight-row update scheduling,
+source-bound native checkpoint/replay and archival support under a tiny fixed
+engineering-only profile. The [original review-only proposal](PROCEDURAL-QEC-NONDISPLACING-PROPOSAL.md)
+and all retained evidence remain unchanged. Its historical statement that no
+learner was implemented describes that original proposal, not this later code.
+
+The candidate scientific profile remains disabled and unfrozen. Engineering
+conformance is not a learning result. A separately reviewed scientific freeze
+and explicit host, total time, memory/storage and full-replay authorization are
+still required before any 4,096-round target cell. Existing learning thresholds,
+negative results and blocked milestones are unchanged.

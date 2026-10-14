@@ -98,3 +98,5 @@ matched lattice controls, split-restricted normalization and no new training.
 replay, ETQ-101/303 reduced graph comparisons, exact full 303-state cycle and
 actual lifted-graph walk, degree-preserving controls and separate read-only
 research evidence. No trained model changes or Phase 5 claim.
+
+- [Non-displacing auxiliary engineering implementation](PROCEDURAL-QEC-AUXILIARY-IMPLEMENTATION.md): actual historical mapping and bounded native conformance; scientific execution remains disabled.
