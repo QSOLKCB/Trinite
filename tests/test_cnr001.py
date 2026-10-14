@@ -18,9 +18,10 @@ V9_SHA256 = "44c5dc8906c9a747498288a027aab907998b03ca0d508437b6a53b1b8d2aa59d"
 # Independently captured from hosted run 38422757597, job 115384119235.
 V10_SHA256 = "6059a5f97f7d6783e7d489c6787205d7c0402647173d2e96e5cc7321a630fc38"
 V10_BYTES = 12184
-# Populated only from the separately retained fresh v11 capture, never the sidecar.
-V11_SHA256 = None
-V11_BYTES = None
+# Independently captured from hosted run 38642825390, job 116122306581.
+# Exact archive also reproduced by a separate local unchanged CNR replay.
+V11_SHA256 = "7d52dc711da37a5889810199910384c287a7d8f91f4f286b81bb2343de39b647"
+V11_BYTES = 12496
 AUXILIARY_SOURCE_DELTA = {
     "added": ["src/trinite/procedural_qec_auxiliary/__init__.py",
               "src/trinite/procedural_qec_auxiliary/archive.py",
