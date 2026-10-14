@@ -49,6 +49,81 @@ class AuxiliaryNativeTests(unittest.TestCase):
                 x.prepare_request(path, 'research', self.inputs)
             self.assertFalse(path.exists())
 
+    def test_dormant_candidate_plan_and_all_unique_diagnostics_without_model_calls(self):
+        with patch.object(x, 'Decoder', side_effect=AssertionError('model construction forbidden')):
+            plan = x.candidate_plan_for(0, 'research')
+            self.assertEqual(plan.steps, 8192)
+            self.assertEqual(plan.batch_size, 8)
+            self.assertEqual(plan.model.width, 64)
+            self.assertEqual(plan.model.blocks, 2)
+            for mode, count in (('final', 1468), ('prefix', 1204), ('trace', 1204)):
+                actual = x.diagnostic_rows(self.inputs.items, 'research', mode)
+                self.assertEqual(len(actual), count)
+                self.assertEqual(actual, x.v3.scoring_view(self.inputs.items, 'research', mode))
+                self.assertEqual(x.diagnostic_rows(self.inputs.items, 'engineering', mode),
+                    x.v3.scoring_view(self.inputs.items, 'smoke', mode))
+            with self.assertRaisesRegex(ContractError, 'disabled'):
+                x.plan_for(0, 'research')
+            with self.assertRaisesRegex(ContractError, 'disabled'):
+                x.report_for(None, None, 0, 'extra-final', 'research', self.request_id, '0x0p+0', 1)
+            with self.assertRaisesRegex(ContractError, 'disabled'):
+                x.summary_for(None, {'run_profile': 'research'}, None, self.request_id,
+                              None, self.request_id, None, {})
+            with self.assertRaisesRegex(ContractError, 'disabled'):
+                x.verification_core(None, self.request_id, 'research')
+            with self.assertRaisesRegex(ContractError, 'disabled'):
+                x.train_cell(None, 0, 'extra-final', 'research', None, self.request_id, None)
+            with self.assertRaisesRegex(ContractError, 'disabled'):
+                x.verify_cell(None, 0, 'extra-final', 'research', None, self.request_id, None, {})
+            with self.assertRaisesRegex(ContractError, 'disabled'):
+                x.read_verification(None, self.request_id, None, self.request_id, 'research')
+
+    def test_dormant_candidate_summary_requires_full_checks_and_retains_negative_cells(self):
+        records = []
+        for seed, arm in x.cells():
+            scores = {}
+            for mode in ('final', 'prefix', 'trace'):
+                tasks = {task: {'examples': total, 'correct': threshold +
+                         int(task == 'fold-sum' and arm == 'extra-procedural')}
+                         for task, (threshold, total) in x.specification()['gates'].items()
+                         if mode == 'final' or task in ('fold-sum', 'gf3')}
+                scores[mode] = {'tasks': tasks, 'examples': sum(v['examples'] for v in tasks.values()),
+                                'correct': sum(v['correct'] for v in tasks.values())}
+            report = {'scores': scores, 'initialization_identity': str(seed), 'plan': {}, 'inputs': {},
+                'schedule': {'primary': {key: str(seed) for key in ('original_row_sequence_identity',
+                    'prospective_row_sequence_identity', 'normalized_row_sequence_identity')}},
+                **x.report_assessment('research', scores)}
+            records.append({'seed': seed, 'arm': arm, 'outcome': 'completed', 'report': report,
+                'checks': {key: True for key in ('closed_custody', 'request_and_source_binding',
+                    'safe_tensor_structure', 'scheduled_visits_and_targets',
+                    'final_predictions_and_loss', 'complete_optimizer_replay')}})
+        def assess(value=records, errors=None):
+            return x.assemble_summary('research', value, errors or {}, self.request_id, self.request_id)
+        result = assess()
+        self.assertTrue(result['training_gate_pass'])
+        self.assertTrue(result['positive_fold_contrast_both_seeds'])
+        self.assertIsNone(result['selected_arm'])
+        self.assertFalse(result['learning_adequacy'])
+        bad = copy.deepcopy(records)
+        bad[0]['checks']['complete_optimizer_replay'] = False
+        with self.assertRaises(ContractError):
+            assess(bad)
+        bad = copy.deepcopy(records)
+        bad[0]['report']['schedule']['primary']['original_row_sequence_identity'] = 'different'
+        result = assess(bad)
+        self.assertEqual(result['outcome'], 'failed')
+        self.assertFalse(result['training_gate_evaluated'])
+        bad = copy.deepcopy(records)
+        bad[0] = {'seed': 0, 'arm': 'extra-final', 'outcome': 'failed', 'error': 'synthetic timeout'}
+        result = assess(bad, {x.cell_name(0, 'extra-final'): 'synthetic timeout'})
+        self.assertEqual(len(result['cells']), 4)
+        self.assertFalse(result['training_gate_evaluated'])
+        self.assertFalse(result['positive_fold_contrast_both_seeds'])
+        bad = copy.deepcopy(records)
+        bad[1]['report']['training_gate_pass'] = False
+        with self.assertRaises(ContractError):
+            assess(bad)
+
     def test_every_cell_padded_batch_and_odd_even_restart_full_adamw_replay(self):
         initial = {}
         for seed, arm in x.cells():

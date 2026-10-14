@@ -42,10 +42,83 @@ def miniature_history():
     return members, snapshot
 
 
-def packet(history=None):
+def research_fixture(fold_bonus=1):
+    """Invented bytes only: no admitted scientific request, model, or training."""
+    from trinite.procedural_qec_auxiliary.spec import specification
+    candidate = specification()["research_candidate"]
+    gates = specification()["gates"]
+    totals = {"final": {task: total for task, (_, total) in gates.items()},
+              "prefix": {"fold-sum": 1150, "gf3": 54}, "trace": {"fold-sum": 1150, "gf3": 54}}
+    items = []
+    for mode, tasks in totals.items():
+        for task, count in tasks.items():
+            for index in range(count):
+                items.append({"example_identity": a.identity(f"synthetic/{mode}/{task}/{index}".encode()),
+                    "mode": mode, "task": task, "kind": task if task in ("fold-sum", "gf3") else "arithmetic",
+                    "split": "train"})
+    support = {}
+    for seed in (0, 1):
+        for arm in ("extra-final", "extra-procedural"):
+            name = f"auxiliary-qec-{seed}-{arm}"
+            used = [i["example_identity"] for i in items if arm == "extra-procedural" or i["mode"] == "final"]
+            visits = [used[i % len(used)] for i in range(65536)]
+            history = [{"step": i + 1, "examples": visits[i * 8:(i + 1) * 8],
+                "target_tokens": 16, "loss_hex": float(1).hex(), "gradient_norm_hex": float(1).hex()}
+                for i in range(8192)]
+            diagnostics = [{"step": i, "loss_hex": float(1).hex()} for i in (2048, 4096, 6144, 8192)]
+            predictions, scores, observed = {}, {}, {}
+            for mode, tasks in totals.items():
+                predictions[mode], counters = [], dict.fromkeys(tasks, 0)
+                task_scores = {task: {"correct": 0, "examples": 0} for task in tasks}
+                for item in [i for i in items if i["mode"] == mode]:
+                    task = item["task"]
+                    limit = gates[task][0] + (fold_bonus if task == "fold-sum" and arm == "extra-procedural" else 0)
+                    correct = counters[task] < limit
+                    counters[task] += 1
+                    predictions[mode].append({"example_identity": item["example_identity"],
+                                             "task": task, "split": "train", "correct": correct})
+                    task_scores[task]["examples"] += 1
+                    task_scores[task]["correct"] += int(correct)
+                    if mode != "final":
+                        group = observed.setdefault(item["kind"] + "/" + mode,
+                            {"visited": {"correct": 0, "examples": 0}, "unvisited": {"correct": 0, "examples": 0}})
+                        part = group["visited" if arm == "extra-procedural" else "unvisited"]
+                        part["examples"] += 1
+                        part["correct"] += int(correct)
+                scores[mode] = {"examples": sum(v["examples"] for v in task_scores.values()),
+                                "correct": sum(v["correct"] for v in task_scores.values()), "tasks": task_scores}
+            for group in observed.values():
+                for part in group.values():
+                    part["accuracy_defined"] = part["examples"] > 0
+            schedule = {"seed": seed, "arm": arm, "macro_rounds": 4096, "native_updates": 8192,
+                "padded_encoded_positions": 4194304, "model_input_positions": 4128768,
+                "within_existing_target_ceiling": True, "schedule_identity": a.identity(a.canonical(visits)),
+                "combined": {"totals": {"visits": 65536, "target_tokens": 131072}},
+                "primary": {key: a.identity(f"synthetic-primary/{seed}/{key}".encode()) for key in
+                    ("original_row_sequence_identity", "prospective_row_sequence_identity", "normalized_row_sequence_identity")}}
+            support[name] = {"schedule": schedule, "steps": {"steps": history, "train_diagnostics": diagnostics},
+                "predictions": {"predictions": predictions}, "scores": scores, "observed": observed,
+                "plan": {"steps": 8192, "batch_size": 8, "validation_every": 2048, "seed": seed,
+                    "max_seconds": candidate["max_seconds"], "max_target_tokens": candidate["max_target_tokens"],
+                    "model": {key: candidate[key] for key in ("blocks", "width", "heads", "feed_forward_width", "context_length")},
+                    **specification()["optimizer"]},
+                "losses": {mode: {"all_loss_hex": float(1).hex(), "tasks": dict.fromkeys(tasks, float(1).hex())}
+                           for mode, tasks in totals.items()}}
+    return {"examples": items}, support
+
+
+def packet(history=None, *, profile="engineering", fold_bonus=1):
+    research = profile == "research"
+    prefix = "trinite.procedural-qec-auxiliary-" + ("research-" if research else "")
+    evidence_class = "training-only-exploratory-candidate" if research else "engineering-conformance-only"
+    if research:
+        from trinite.procedural_qec_auxiliary.spec import specification as candidate_spec, assess_training_counts
+        current_dataset, support = research_fixture(fold_bonus)
+    else:
+        current_dataset, support = {"synthetic": "current data"}, {}
     members, snapshot = deepcopy(history or miniature_history())
     historical_data, historical_manifest = {"synthetic": "historical data"}, {"synthetic": "historical manifest"}
-    material = {"dataset.json": a.canonical({"synthetic": "current data"}),
+    material = {"dataset.json": a.canonical(current_dataset),
         "manifest.json": a.canonical({"synthetic": "current manifest"}),
         "historical-dataset.json": a.canonical(historical_data),
         "historical-manifest.json": a.canonical(historical_manifest),
@@ -59,12 +132,15 @@ def packet(history=None):
         "prospective_manifest_identity": a.identity(material["manifest.json"])}
     material["mapping-receipt.json"] = a.canonical(receipt)
     members.update({"inputs/" + p: raw for p, raw in material.items()})
-    specification = {"research_execution_enabled": False}
+    specification = candidate_spec() if research else {"research_execution_enabled": False}
     source = b"# synthetic prospective source\n"
-    request = {"schema": "trinite.procedural-qec-auxiliary-request.v1", "run_profile": "engineering",
+    request = {"schema": prefix + "request.v1", "run_profile": profile,
         "specification": specification, "specification_identity": a.identity(a.canonical(specification)),
         "source": {"src/trinite/mock.py": a.identity(source)},
         "inputs": {field: a.identity(material[path]) for path, field in a.INPUT_COMMITMENTS.items()}}
+    if research:
+        request["schedules"] = {name: v["schedule"] for name, v in support.items()}
+        request["environment"] = {"synthetic": "transport-only, never native execution"}
     request_raw = a.canonical(request)
     members["source/src/trinite/mock.py"] = source
     members["external/request.json"] = members["run/request.json"] = request_raw
@@ -75,14 +151,36 @@ def packet(history=None):
         for seed in (0, 1):
             for arm in ("extra-final", "extra-procedural"):
                 name = f"auxiliary-qec-{seed}-{arm}"
-                report = {"schema": "trinite.procedural-qec-auxiliary-report.v1", "seed": seed,
-                    "arm": arm, "run_profile": "engineering", "evidence_class": "engineering-conformance-only",
+                report = {"schema": prefix + "report.v1", "seed": seed,
+                    "arm": arm, "run_profile": profile, "evidence_class": evidence_class,
                     **{key: False for key in ("held_out_scored", "training_gate_evaluated", "learning_adequacy",
                                              "phase5_ready", "format_selection_eligible", "release_ready")}}
+                if research:
+                    data = support[name]
+                    report.update(steps=8192, plan=data["plan"], schedule=data["schedule"], target_tokens=131072,
+                        request_identity=a.identity(request_raw), scores=data["scores"], source=request["source"],
+                        inputs=request["inputs"], environment=request["environment"], specification_identity=request["specification_identity"],
+                        initialization_identity=a.identity(f"synthetic-init-{seed}".encode()),
+                        model_identity=a.identity(f"synthetic-final-{seed}-{arm}".encode()),
+                        auxiliary_visited_unvisited=data["observed"], loss_by_mode_and_task=data["losses"],
+                        mixed_all_modes_loss_hex=float(1).hex(), final_only_loss_hex=float(1).hex(),
+                        training_gate_evaluated=True,
+                        training_task_failures=(["fold-sum"] if arm == "extra-procedural" and fold_bonus < 0 else []),
+                        training_gate_pass=not (arm == "extra-procedural" and fold_bonus < 0))
                 root = Path(temp) / name
                 root.mkdir()
                 for path in a.CELL_COMMITTED - {"verification.json", "provenance/manifest.json"}:
                     (root / path).write_bytes(a.canonical(report) if path == "report.json" else (name + "/" + path).encode())
+                if research:
+                    (root / "steps.json").write_bytes(a.canonical(data["steps"]))
+                    (root / "predictions.json").write_bytes(a.canonical(data["predictions"]))
+                    (root / "metadata.json").write_bytes(a.canonical({"schema": prefix + "checkpoint.v1",
+                        "run_profile": profile, "seed": seed, "arm": arm, "step": 8192, "cursor": 65536,
+                        "target_tokens": 131072, "history": data["steps"]["steps"],
+                        "validation": data["steps"]["train_diagnostics"], "plan": data["plan"],
+                        "request_identity": a.identity(request_raw),
+                        **{key: report[key] for key in ("source", "inputs", "environment", "specification_identity",
+                                                       "initialization_identity", "model_identity", "schedule")}}))
                 observer = BundleObserver(root / "provenance")
                 observer.record("synthetic-transport-fixture", inputs={"request.json": request_raw,
                     "inputs.json": material["mapping-receipt.json"], "dataset.json": material["dataset.json"],
@@ -95,24 +193,28 @@ def packet(history=None):
                 commitments[name] = {path: a.identity(members["run/" + name + "/" + path]) for path in a.CELL_COMMITTED}
                 cells.append({"seed": seed, "arm": arm, "outcome": "completed", "report": report,
                     "report_identity": a.identity(a.canonical(report)), "checks": dict.fromkeys(a.CHECKS, True)})
-    verification = {"schema": "trinite.procedural-qec-auxiliary-verification-request.v1",
+    verification = {"schema": prefix + "verification-request.v1",
         "request_identity": a.identity(request_raw),
         "root_artifacts": {p: a.identity(members["run/" + p]) for p in a.ROOT_COMMITTED}, "cells": commitments}
     verification_raw = a.canonical(verification)
     members["external/verification-request.json"] = verification_raw
-    summary = {"schema": "trinite.procedural-qec-auxiliary-summary.v1", "run_profile": "engineering",
-        "evidence_class": "engineering-conformance-only", "outcome": "completed", "selected_arm": None,
+    summary = {"schema": prefix + "summary.v1", "run_profile": profile,
+        "evidence_class": evidence_class, "outcome": "completed", "selected_arm": None,
         "worker_errors": {}, "pairing_errors": [], "request_identity": a.identity(request_raw),
         "verification_request_identity": a.identity(verification_raw), "cells": cells,
         **{key: False for key in ("held_out_scored", "training_gate_evaluated", "training_gate_pass",
             "learning_adequacy", "phase5_ready", "format_selection_eligible", "release_ready")}}
+    if research:
+        criteria = assess_training_counts({name: data["scores"]["final"]["tasks"] for name, data in support.items()})
+        summary.update(training_gate_evaluated=True, training_gate_pass=criteria["treatment_training_gate_pass"],
+            positive_fold_contrast_both_seeds=criteria["positive_fold_contrast_both_seeds"], contrasts=criteria["contrasts"])
     members["run/summary.json"] = a.canonical(summary)
     members["audit/replay.json"] = a.canonical({"outcome": "completed", "replayed_cells": 4,
         "summary_identity": a.identity(members["run/summary.json"]), "verification_request_identity": a.identity(verification_raw),
-        "learning_adequacy": False, "phase5_ready": False, "evidence_class": "engineering-conformance-only"})
-    inventory = {"schema": a.SCHEMA, "request_identity": a.identity(request_raw),
+        "learning_adequacy": False, "phase5_ready": False, "evidence_class": evidence_class})
+    inventory = {"schema": a.RESEARCH_SCHEMA if research else a.SCHEMA, "request_identity": a.identity(request_raw),
         "verification_request_identity": a.identity(verification_raw), "summary_identity": a.identity(members["run/summary.json"]),
-        "run_profile": "engineering", "evidence_class": "engineering-conformance-only", "source": request["source"],
+        "run_profile": profile, "evidence_class": evidence_class, "source": request["source"],
         "inputs": {p: a.identity(raw) for p, raw in material.items()}, "historical_source": snapshot,
         "members": {name: {"identity": a.identity(raw), "bytes": len(raw)} for name, raw in members.items()}}
     return members, inventory
@@ -339,6 +441,164 @@ class AuxiliaryArchiveTests(unittest.TestCase):
         result = subprocess.run([sys.executable, "-I", "-S", "-B",
             str(ROOT / "scripts/archive_procedural_qec_auxiliary.py"), "--verify-archive"], capture_output=True)
         self.assertNotEqual(result.returncode, 0)
+
+
+
+class DormantResearchArchiveTests(unittest.TestCase):
+    """Synthetic shape/count checks only; public scientific execution stays shut."""
+    @classmethod
+    def setUpClass(cls):
+        cls.history = miniature_history()
+        cls.template = packet(cls.history, profile="research")
+
+    def setUp(self):
+        for name, value in (("HISTORICAL_COMMIT", self.history[1]["commit"]),
+                            ("HISTORICAL_TREE", self.history[1]["tree"])):
+            patcher = patch.object(a, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.members, self.inventory = deepcopy(self.template)
+        self.request = a.parse(self.members["external/request.json"])
+        self.summary = a.parse(self.members["run/summary.json"])
+
+    def test_private_full_matrix_contract_is_transport_only(self):
+        result = a._verify_profile_contract(self.members, self.inventory, "research")
+        self.assertEqual(result["outcome"], "passed")
+        self.assertEqual(result["schema"], "trinite.procedural-qec-auxiliary-research-archive-verification.v1")
+        self.assertEqual(result["verification_scope"], "byte-transport-only")
+        self.assertFalse(result["numerical_replay_performed"])
+        self.assertFalse(result["custody_admission_performed"])
+        self.assertTrue(self.summary["training_gate_pass"])
+        self.assertTrue(self.summary["positive_fold_contrast_both_seeds"])
+        self.assertEqual(sum(c["report"]["steps"] for c in self.summary["cells"]), 32768)
+        self.assertFalse(self.request["specification"]["research_execution_enabled"])
+
+    def test_zero_negative_contrasts_remain_valid_without_arm_selection(self):
+        for bonus in (0, -1):
+            with self.subTest(bonus=bonus):
+                members, inventory = packet(self.history, profile="research", fold_bonus=bonus)
+                result = a._verify_profile_contract(members, inventory, "research")
+                summary = a.parse(members["run/summary.json"])
+                self.assertEqual(result["outcome"], "passed")
+                self.assertEqual(summary["training_gate_pass"], bonus == 0)
+                self.assertFalse(summary["positive_fold_contrast_both_seeds"])
+                self.assertIsNone(summary["selected_arm"])
+                self.assertFalse(summary["learning_adequacy"])
+
+    def test_every_public_archive_path_rejects_research(self):
+        with self.assertRaisesRegex(a.ArchiveError, "research execution"):
+            a.verify_contract(self.members, self.inventory)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            path = root / "synthetic.zip"
+            ids = zip_packet(path, self.members, self.inventory)
+            with self.assertRaisesRegex(a.ArchiveError, "research execution"):
+                a.verify_archive(path, *ids)
+            with self.assertRaisesRegex(a.ArchiveError, "research execution"):
+                a.restore_historical_source(path, *ids, root / "restored")
+            self.assertFalse((root / "restored").exists())
+            request, verification = root / "request.json", root / "verification.json"
+            request.write_bytes(self.members["external/request.json"])
+            verification.write_bytes(self.members["external/verification-request.json"])
+            with patch.object(a, "tree_bytes") as scan:
+                with self.assertRaisesRegex(a.ArchiveError, "research execution"):
+                    a.build_archive(root / "forbidden.zip", root / "run", request,
+                        a.identity(request.read_bytes()), verification, a.identity(verification.read_bytes()), root / "old")
+                scan.assert_not_called()
+            self.assertFalse((root / "forbidden.zip").exists())
+
+    def test_incomplete_history_cadence_or_checkpoint_rejected(self):
+        prefix = "run/auxiliary-qec-0-extra-final/"
+        for field, mutate in (
+            ("steps.json", lambda v: v["steps"].pop()),
+            ("steps.json", lambda v: v["train_diagnostics"].pop()),
+            ("metadata.json", lambda v: v.update(schema="trinite.procedural-qec-auxiliary-checkpoint.v1")),
+            ("metadata.json", lambda v: v.update(cursor=32768)),
+        ):
+            with self.subTest(field=field):
+                members = dict(self.members)
+                record = a.parse(members[prefix + field])
+                mutate(record)
+                members[prefix + field] = a.canonical(record)
+                with self.assertRaises(a.ArchiveError):
+                    a._verify_research_records(members, self.request, self.summary)
+
+    def test_candidate_checkpoint_metadata_bound_is_enforced_before_parse(self):
+        from trinite.procedural_qec_auxiliary.spec import metadata_limit
+        name = "run/auxiliary-qec-0-extra-final/metadata.json"
+        self.assertGreater(len(self.members[name]), metadata_limit("engineering"))
+        self.assertLessEqual(len(self.members[name]), metadata_limit("research"))
+        oversized = b"x" * (metadata_limit("research") + 1)
+        with self.assertRaisesRegex(a.ArchiveError, "candidate byte bound"):
+            a._verify_research_records({**self.members, name: oversized}, self.request, self.summary)
+
+    def test_repeated_missing_or_held_out_predictions_rejected(self):
+        name = "run/auxiliary-qec-0-extra-final/predictions.json"
+        for mutate in (
+            lambda v: v["predictions"]["final"].append(v["predictions"]["final"][0]),
+            lambda v: v["predictions"]["prefix"].pop(),
+            lambda v: v["predictions"]["trace"][0].update(split="test"),
+            lambda v: v["predictions"]["final"][1].update(example_identity=v["predictions"]["final"][0]["example_identity"]),
+        ):
+            value = a.parse(self.members[name])
+            mutate(value)
+            with self.assertRaises(a.ArchiveError):
+                a._verify_research_records({**self.members, name: a.canonical(value)}, self.request, self.summary)
+
+    def test_gate_contrast_auxiliary_counts_and_loss_inventory_rejected(self):
+        for mutate in (
+            lambda s: s.update(training_gate_pass=False),
+            lambda s: s.update(positive_fold_contrast_both_seeds=False),
+            lambda s: s["contrasts"]["0"].update(add=True),
+            lambda s: s["cells"][0]["report"].update(training_task_failures=["add"]),
+            lambda s: s["cells"][0]["report"]["scores"]["final"]["tasks"]["add"].update(examples=132),
+            lambda s: s["cells"][0]["report"]["auxiliary_visited_unvisited"]["fold-sum/prefix"]["visited"].update(accuracy_defined=True),
+            lambda s: s["cells"][0]["report"]["loss_by_mode_and_task"].pop("trace"),
+        ):
+            summary = deepcopy(self.summary)
+            mutate(summary)
+            with self.assertRaises(a.ArchiveError):
+                a._verify_research_records(self.members, self.request, summary)
+
+    def test_request_checkpoint_environment_and_paired_bindings_rejected(self):
+        for field in ("source", "inputs", "environment", "schedule", "initialization_identity"):
+            with self.subTest(field=field):
+                name = "run/auxiliary-qec-0-extra-final/metadata.json"
+                metadata = a.parse(self.members[name])
+                metadata[field] = "changed checkpoint context"
+                with self.assertRaises(a.ArchiveError):
+                    a._verify_research_records({**self.members, name: a.canonical(metadata)}, self.request, self.summary)
+        summary = deepcopy(self.summary)
+        summary["cells"][0]["report"]["plan"]["model"]["width"] = 16
+        with self.assertRaisesRegex(a.ArchiveError, "model/resource/optimizer"):
+            a._verify_research_records(self.members, self.request, summary)
+        summary, request, members = deepcopy(self.summary), deepcopy(self.request), dict(self.members)
+        treatment = next(c["report"] for c in summary["cells"] if c["seed"] == 0 and c["arm"] == "extra-procedural")
+        schedule = treatment["schedule"]
+        schedule["primary"]["original_row_sequence_identity"] = "sha256:" + "0" * 64
+        request["schedules"]["auxiliary-qec-0-extra-procedural"] = schedule
+        name = "run/auxiliary-qec-0-extra-procedural/metadata.json"
+        metadata = a.parse(members[name])
+        metadata["schedule"] = schedule
+        members[name] = a.canonical(metadata)
+        with self.assertRaisesRegex(a.ArchiveError, "paired original primary"):
+            a._verify_research_records(members, request, summary)
+
+    def test_required_replay_check_and_external_commitment_cannot_be_resealed(self):
+        summary = deepcopy(self.summary)
+        summary["cells"][0]["checks"]["complete_optimizer_replay"] = False
+        update(self.members, self.inventory, "run/summary.json", a.canonical(summary))
+        self.inventory["summary_identity"] = a.identity(self.members["run/summary.json"])
+        audit = a.parse(self.members["audit/replay.json"])
+        audit["summary_identity"] = self.inventory["summary_identity"]
+        update(self.members, self.inventory, "audit/replay.json", a.canonical(audit))
+        with self.assertRaisesRegex(a.ArchiveError, "replay checks"):
+            a._verify_profile_contract(self.members, self.inventory, "research")
+        members, inventory = deepcopy(self.template)
+        target = "run/auxiliary-qec-1-extra-procedural/tensors.safetensors"
+        update(members, inventory, target, b"forged optimizer bytes")
+        with self.assertRaisesRegex(a.ArchiveError, "committed run bytes"):
+            a._verify_profile_contract(members, inventory, "research")
 
 
 if __name__ == "__main__":

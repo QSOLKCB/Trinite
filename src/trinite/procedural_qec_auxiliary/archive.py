@@ -10,6 +10,7 @@ fixture archives. No original request, source, evidence or digest is rewritten.
 from io import BytesIO
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -20,6 +21,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[3]
 SCHEMA = "trinite.procedural-qec-auxiliary-archive.v1"
+RESEARCH_SCHEMA = "trinite.procedural-qec-auxiliary-research-archive.v1"
 MAX_MEMBERS = 2048
 MAX_MEMBER_BYTES = 64 * 1024 * 1024
 MAX_TOTAL_BYTES = 512 * 1024 * 1024
@@ -306,12 +308,29 @@ def _run_inventory(members):
 
 
 def verify_contract(members, inventory):
-    """Closed byte transport validation; deliberately never imports numerical code."""
+    """Public engineering-only closed transport boundary; research stays disabled."""
+    require(type(inventory) is dict and inventory.get("run_profile") == "engineering",
+            "archive research execution/claims disabled")
+    return _verify_profile_contract(members, inventory, "engineering")
+
+
+def _verify_profile_contract(members, inventory, profile):
+    """Dormant profile-aware byte contract; no model calls or execution authority.
+
+    The private research branch is exercised only by synthetic structural tests.
+    Public builders/verifiers cannot enter it before a separately reviewed,
+    source-changing scientific activation and immutable protocol freeze.
+    """
+    require(profile in ("engineering", "research"), "unknown archival profile")
+    research = profile == "research"
+    schema = RESEARCH_SCHEMA if research else SCHEMA
+    prefix = "trinite.procedural-qec-auxiliary-" + ("research-" if research else "")
+    evidence_class = "training-only-exploratory-candidate" if research else "engineering-conformance-only"
     require(type(members) is dict and type(inventory) is dict, "invalid archive structure")
     keys = {"schema", "request_identity", "verification_request_identity", "summary_identity",
             "run_profile", "evidence_class", "source", "inputs", "historical_source", "members"}
-    require(set(inventory) == keys and inventory["schema"] == SCHEMA, "invalid archive inventory schema")
-    require(inventory["run_profile"] == "engineering" and inventory["evidence_class"] == "engineering-conformance-only",
+    require(set(inventory) == keys and inventory["schema"] == schema, "invalid archive inventory schema")
+    require(inventory["run_profile"] == profile and inventory["evidence_class"] == evidence_class,
             "archive research execution/claims disabled")
     require(all(type(raw) is bytes for raw in members.values())
             and 0 < len(members) <= MAX_MEMBERS and sum(map(len, members.values())) <= MAX_TOTAL_BYTES,
@@ -339,25 +358,27 @@ def verify_contract(members, inventory):
     summary = parse(members["run/summary.json"])
     audit = parse(members["audit/replay.json"])
     require(all(type(r) is dict for r in (request, verification, summary, audit)), "invalid evidence object")
-    require(request.get("schema") == "trinite.procedural-qec-auxiliary-request.v1"
-            and request.get("run_profile") == "engineering"
+    require(request.get("schema") == prefix + "request.v1"
+            and request.get("run_profile") == profile
             and type(request.get("specification")) is dict
             and request["specification"].get("research_execution_enabled") is False
             and request.get("specification_identity") == identity(canonical(request["specification"])),
             "request is not engineering-only candidate")
-    require(summary.get("schema") == "trinite.procedural-qec-auxiliary-summary.v1"
+    require(summary.get("schema") == prefix + "summary.v1"
             and summary.get("request_identity") == request_id
             and summary.get("verification_request_identity") == verification_id
-            and summary.get("run_profile") == "engineering" and summary.get("outcome") == "completed"
+            and summary.get("run_profile") == profile and summary.get("outcome") == "completed"
             and summary.get("selected_arm") is None and summary.get("worker_errors") == {}
             and summary.get("pairing_errors") == [] and parse(members["run/worker-errors.json"]) == {},
             "archive requires complete four-cell engineering result")
     for record in (summary, audit):
-        require(record.get("evidence_class") == "engineering-conformance-only"
+        require(record.get("evidence_class") == evidence_class
                 and record.get("learning_adequacy") is False and record.get("phase5_ready") is False,
                 "archived receipt claims unsupported scientific evidence")
-    require(all(summary.get(k) is False for k in ("held_out_scored", "training_gate_evaluated",
-        "training_gate_pass", "format_selection_eligible", "release_ready")), "archived summary claims a research outcome")
+    require(all(summary.get(k) is False for k in ("held_out_scored", "format_selection_eligible", "release_ready"))
+            and summary.get("training_gate_evaluated") is research
+            and (research or summary.get("training_gate_pass") is False),
+            "archived summary claims an unsupported outcome")
     require(audit.get("outcome") == "completed" and type(audit.get("replayed_cells")) is int
             and audit["replayed_cells"] == 4 and audit.get("summary_identity") == summary_id
             and audit.get("verification_request_identity") == verification_id,
@@ -377,15 +398,16 @@ def verify_contract(members, inventory):
         raw = members.get("run/" + name + "/report.json", b"")
         report = parse(raw)
         require(identity(raw) == cell.get("report_identity") and report == cell.get("report")
-                and report.get("schema") == "trinite.procedural-qec-auxiliary-report.v1"
+                and report.get("schema") == prefix + "report.v1"
                 and report.get("seed") == cell["seed"] and report.get("arm") == cell["arm"]
-                and report.get("run_profile") == "engineering"
-                and report.get("evidence_class") == "engineering-conformance-only"
-                and all(report.get(k) is False for k in ("held_out_scored", "training_gate_evaluated",
+                and report.get("run_profile") == profile
+                and report.get("evidence_class") == evidence_class
+                and report.get("training_gate_evaluated") is research
+                and all(report.get(k) is False for k in ("held_out_scored",
                     "learning_adequacy", "phase5_ready", "format_selection_eligible", "release_ready")),
                 "cell summary/report commitments or engineering scope differ")
     require(records == CELLS and set(verification) == {"schema", "request_identity", "root_artifacts", "cells"}
-            and verification["schema"] == "trinite.procedural-qec-auxiliary-verification-request.v1"
+            and verification["schema"] == prefix + "verification-request.v1"
             and verification["request_identity"] == request_id
             and type(verification["cells"]) is dict and set(verification["cells"]) == CELLS
             and type(verification["root_artifacts"]) is dict
@@ -434,13 +456,207 @@ def verify_contract(members, inventory):
             "original historical payload differs from retained data")
     expected.update(verify_historical(members, inventory["historical_source"]))
     require(set(members) == expected, "unexpected archive member outside closed inventory")
-    return {"schema": "trinite.procedural-qec-auxiliary-archive-verification.v1",
+    if research:
+        _verify_research_records(members, request, summary)
+    return {"schema": prefix + "archive-verification.v1",
         "outcome": "passed", "verification_scope": "byte-transport-only",
         "numerical_replay_performed": False, "custody_admission_performed": False,
-        "run_profile": "engineering", "evidence_class": "engineering-conformance-only",
+        "run_profile": profile, "evidence_class": evidence_class,
         "request_identity": request_id, "verification_request_identity": verification_id,
         "summary_identity": summary_id, "member_count": len(members),
         "learning_adequacy": False, "phase5_ready": False}
+
+
+def _finite_hex(value):
+    try:
+        number = float.fromhex(value)
+    except (TypeError, ValueError) as exc:
+        raise ArchiveError("noncanonical retained numerical diagnostic") from exc
+    require(type(value) is str and math.isfinite(number) and number >= 0 and number.hex() == value,
+            "noncanonical retained numerical diagnostic")
+
+
+def _verify_research_records(members, request, summary):
+    """Dormant count/shape contract, not numerical truth or research authority.
+
+    Complete histories and unique predictions are transport requirements. The
+    unchanged production replay must establish their numerical correctness.
+    Reuse pure candidate criteria rather than defining another gate scorer.
+    """
+    from .spec import assess_training_counts, metadata_limit, profile_settings, specification
+    candidate = profile_settings("research")
+    require(request["specification"].get("research_candidate") == candidate
+            and request["specification"].get("batch_size") == 8
+            and request["specification"].get("pad_to") == 64, "dormant research request budget differs")
+    dataset = parse(members["inputs/dataset.json"])
+    require(type(dataset) is dict and type(dataset.get("examples")) is list
+            and len(dataset["examples"]) == 3876, "research needs all unique admitted diagnostic rows")
+    items = {}
+    for item in dataset["examples"]:
+        require(type(item) is dict and item.get("split") == "train"
+                and item.get("mode") in ("final", "prefix", "trace")
+                and type(item.get("task")) is str and type(item.get("kind")) is str,
+                "research diagnostic row must be training-only")
+        ident = require_id(item.get("example_identity"))
+        require(ident not in items, "duplicate research diagnostic identity")
+        items[ident] = item
+    denominators = {"final": {task: total for task, (_, total) in specification()["gates"].items()},
+        "prefix": {"fold-sum": 1150, "gf3": 54}, "trace": {"fold-sum": 1150, "gf3": 54}}
+    require(type(request.get("schedules")) is dict and set(request["schedules"]) == CELLS,
+            "research requires four complete schedule commitments")
+    all_counts = {}
+    for cell in summary["cells"]:
+        name = f"auxiliary-qec-{cell['seed']}-{cell['arm']}"
+        report, prefix, schedule = cell["report"], "run/" + name + "/", request["schedules"][name]
+        require(type(schedule) is dict and report.get("schedule") == schedule
+                and schedule.get("macro_rounds") == 4096 and type(schedule.get("macro_rounds")) is int
+                and schedule.get("native_updates") == 8192 and type(schedule.get("native_updates")) is int
+                and schedule.get("seed") == cell["seed"] and schedule.get("arm") == cell["arm"]
+                and schedule.get("padded_encoded_positions") == 4194304
+                and schedule.get("model_input_positions") == 4128768
+                and schedule.get("within_existing_target_ceiling") is True,
+                "research schedule is not the complete fixed four-cell budget")
+        require(report.get("steps") == 8192 and type(report.get("steps")) is int
+                and type(report.get("plan")) is dict and report["plan"].get("steps") == 8192
+                and report["plan"].get("batch_size") == 8 and report["plan"].get("validation_every") == 2048,
+                "research report does not retain all 8192 native updates")
+        plan = report["plan"]
+        require(type(plan.get("model")) is dict and all(type(plan["model"].get(key)) is int
+                and plan["model"][key] == candidate[key]
+                for key in ("blocks", "width", "heads", "feed_forward_width", "context_length"))
+                and all(type(plan.get(key)) is int and plan[key] == candidate[key]
+                        for key in ("steps", "validation_every", "max_seconds", "max_target_tokens"))
+                and plan.get("seed") == cell["seed"]
+                and all(plan.get(key) == value for key, value in specification()["optimizer"].items()),
+                "research model/resource/optimizer plan differs from candidate")
+        require(report.get("source") == request["source"] and report.get("inputs") == request["inputs"]
+                and type(request.get("environment")) is dict and report.get("environment") == request["environment"]
+                and report.get("specification_identity") == request["specification_identity"],
+                "research report source/input/specification commitments differ")
+        require_id(report.get("initialization_identity"))
+        require_id(report.get("model_identity"))
+        require(len(members[prefix + "metadata.json"]) <= metadata_limit("research"),
+                "research checkpoint metadata exceeds candidate byte bound")
+        steps, metadata = parse(members[prefix + "steps.json"]), parse(members[prefix + "metadata.json"])
+        require(type(steps) is dict and set(steps) == {"steps", "train_diagnostics"}
+                and type(steps["steps"]) is list and len(steps["steps"]) == 8192
+                and type(steps["train_diagnostics"]) is list and type(metadata) is dict
+                and metadata.get("schema") == "trinite.procedural-qec-auxiliary-research-checkpoint.v1"
+                and metadata.get("run_profile") == "research"
+                and metadata.get("seed") == cell["seed"] and metadata.get("arm") == cell["arm"]
+                and metadata.get("step") == 8192 and type(metadata.get("step")) is int
+                and metadata.get("cursor") == 65536 and type(metadata.get("cursor")) is int
+                and metadata.get("history") == steps["steps"]
+                and metadata.get("validation") == steps["train_diagnostics"]
+                and metadata.get("plan") == report["plan"]
+                and metadata.get("schedule") == report["schedule"]
+                and all(metadata.get(key) == report[key] for key in ("source", "inputs", "environment", "specification_identity",
+                        "initialization_identity", "model_identity"))
+                and metadata.get("request_identity") == summary["request_identity"]
+                and report.get("request_identity") == summary["request_identity"],
+                "research checkpoint/history/request commitments differ")
+        visits, target_total = [], 0
+        for index, step in enumerate(steps["steps"], 1):
+            require(type(step) is dict and step.get("step") == index and type(step.get("step")) is int
+                    and type(step.get("examples")) is list and len(step["examples"]) == 8
+                    and all(type(e) is str and e in items for e in step["examples"])
+                    and type(step.get("target_tokens")) is int and 1 <= step["target_tokens"] <= 512,
+                    "research history has missing, reordered or malformed native updates")
+            _finite_hex(step.get("loss_hex"))
+            _finite_hex(step.get("gradient_norm_hex"))
+            visits.extend(step["examples"])
+            target_total += step["target_tokens"]
+        require([d.get("step") for d in steps["train_diagnostics"] if type(d) is dict]
+                == [2048, 4096, 6144, 8192] and len(steps["train_diagnostics"]) == 4,
+                "research diagnostic cadence differs")
+        for diagnostic in steps["train_diagnostics"]:
+            _finite_hex(diagnostic.get("loss_hex"))
+        require(type(schedule.get("combined")) is dict and type(schedule["combined"].get("totals")) is dict
+                and schedule["combined"]["totals"].get("visits") == 65536
+                and schedule["combined"]["totals"].get("target_tokens") == target_total
+                and 0 < target_total <= 1048576 and report.get("target_tokens") == target_total
+                and metadata.get("target_tokens") == target_total
+                and schedule.get("schedule_identity") == identity(canonical(visits)),
+                "research history target/visit/schedule commitments differ")
+        predictions = parse(members[prefix + "predictions.json"])
+        require(type(predictions) is dict and set(predictions) == {"predictions"}
+                and type(predictions["predictions"]) is dict and set(predictions["predictions"]) == set(denominators)
+                and type(report.get("scores")) is dict and set(report["scores"]) == set(denominators),
+                "research requires complete final/prefix/trace diagnostics")
+        observed, selected = {}, set(visits)
+        for mode, expected_counts in denominators.items():
+            rows, expected = predictions["predictions"][mode], {k for k, item in items.items() if item["mode"] == mode}
+            require(type(rows) is list and len(rows) == sum(expected_counts.values()),
+                    "research diagnostic denominator counts scheduled repetitions")
+            seen, counts = set(), {task: {"correct": 0, "examples": 0} for task in expected_counts}
+            for row in rows:
+                require(type(row) is dict and type(row.get("example_identity")) is str
+                        and row["example_identity"] in expected and row["example_identity"] not in seen
+                        and row.get("split") == "train" and type(row.get("correct")) is bool,
+                        "research predictions omit, repeat or expose held-out examples")
+                ident = row["example_identity"]
+                seen.add(ident)
+                task = items[ident]["task"]
+                require(task in counts and row.get("task") == task, "research prediction task differs")
+                counts[task]["examples"] += 1
+                counts[task]["correct"] += int(row["correct"])
+                if mode != "final":
+                    group = observed.setdefault(items[ident]["kind"] + "/" + mode,
+                        {"visited": {"correct": 0, "examples": 0}, "unvisited": {"correct": 0, "examples": 0}})
+                    part = group["visited" if ident in selected else "unvisited"]
+                    part["examples"] += 1
+                    part["correct"] += int(row["correct"])
+            scores = report["scores"][mode]
+            require(seen == expected and {task: row["examples"] for task, row in counts.items()} == expected_counts
+                    and type(scores) is dict and scores.get("examples") == len(rows)
+                    and scores.get("correct") == sum(row["correct"] for row in counts.values())
+                    and type(scores.get("tasks")) is dict and set(scores["tasks"]) == set(counts),
+                    "research unique diagnostic counts differ")
+            for task, count in counts.items():
+                actual = scores["tasks"][task]
+                require(type(actual) is dict and all(type(actual.get(k)) is int and actual[k] == v for k, v in count.items()),
+                        "research per-task score count differs")
+            if mode == "final":
+                all_counts[name] = counts
+        for group in observed.values():
+            for part in group.values():
+                part["accuracy_defined"] = part["examples"] > 0
+        require(canonical(report.get("auxiliary_visited_unvisited")) == canonical(observed),
+                "research auxiliary diagnostics must use unique exposed/unexposed rows")
+        losses = report.get("loss_by_mode_and_task")
+        require(type(losses) is dict and set(losses) == set(denominators)
+                and type(losses["final"]) is dict
+                and report.get("final_only_loss_hex") == losses["final"].get("all_loss_hex"),
+                "research per-mode/final loss inventory differs")
+        _finite_hex(report.get("mixed_all_modes_loss_hex"))
+        for mode, tasks in denominators.items():
+            require(type(losses[mode]) is dict and type(losses[mode].get("tasks")) is dict
+                    and set(losses[mode]["tasks"]) == set(tasks), "research task loss inventory differs")
+            _finite_hex(losses[mode].get("all_loss_hex"))
+            for value in losses[mode]["tasks"].values():
+                _finite_hex(value)
+    for seed in (0, 1):
+        control, treatment = [next(cell["report"] for cell in summary["cells"]
+                                  if cell["seed"] == seed and cell["arm"] == arm)
+                              for arm in ("extra-final", "extra-procedural")]
+        require(all(control[key] == treatment[key] for key in ("initialization_identity", "inputs", "plan")),
+                "research paired initialization/input/plan differs")
+        for key in ("original_row_sequence_identity", "prospective_row_sequence_identity", "normalized_row_sequence_identity"):
+            primary_control, primary_treatment = control["schedule"].get("primary"), treatment["schedule"].get("primary")
+            require(type(primary_control) is dict and type(primary_treatment) is dict
+                    and require_id(primary_control.get(key)) == require_id(primary_treatment.get(key)),
+                    "research paired original primary schedule differs")
+    criteria = assess_training_counts(all_counts)
+    for cell in summary["cells"]:
+        name = f"auxiliary-qec-{cell['seed']}-{cell['arm']}"
+        report = cell["report"]
+        require(report.get("training_task_failures") == criteria["cells"][name]["training_task_failures"]
+                and report.get("training_gate_pass") is criteria["cells"][name]["training_gate_pass"],
+                "research cell gate differs from original unique task counts")
+    require(summary.get("training_gate_pass") is criteria["treatment_training_gate_pass"]
+            and summary.get("positive_fold_contrast_both_seeds") is criteria["positive_fold_contrast_both_seeds"]
+            and canonical(summary.get("contrasts")) == canonical(criteria["contrasts"]),
+            "research absolute gate and paired fold contrast must remain distinct")
 
 
 def build_archive(path, run, request, request_identity, verification, verification_identity, historical_source):

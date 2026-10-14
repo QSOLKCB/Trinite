@@ -21,7 +21,9 @@ from ..training import (TrainingState, create_optimizer, evaluate, model_identit
 from ..procedural_qec_v3 import experiment as v3
 from .inputs import revalidate
 from .scheduler import coverage, schedule, schedule_receipt
-from .spec import ARMS, SEEDS, cell_name, cells, settings, specification
+from .spec import (ARMS, SEEDS, assess_training_counts, cell_name, cells,
+    diagnostic_profile, diagnostic_rows, metadata_bytes, metadata_limit, profile_settings, report_assessment,
+    schema, settings, specification)
 
 OUTPUTS = evidence.OUTPUTS
 ROOT_ARTIFACTS = (*evidence.ROOT_ARTIFACTS, "inputs.json")
@@ -44,14 +46,20 @@ def sources():
     return dict(sorted(result.items()))
 
 
-def plan_for(seed, run_profile):
+def candidate_plan_for(seed, run_profile):
+    """Build and validate immutable plan data only; no model or native update."""
     cell_name(seed, ARMS[0])
-    s = settings(run_profile)
+    s = profile_settings(run_profile)
     cfg = ModelConfig(context_length=s["context_length"], blocks=s["blocks"],
         width=s["width"], heads=s["heads"], feed_forward_width=s["feed_forward_width"])
     return BudgetRetentionPlan(model=cfg, seed=seed, steps=s["steps"], batch_size=8,
         validation_every=s["validation_every"], max_seconds=s["max_seconds"],
         max_target_tokens=s["max_target_tokens"], **specification()["optimizer"])
+
+
+def plan_for(seed, run_profile):
+    settings(run_profile)  # Execution admission remains disabled for research.
+    return candidate_plan_for(seed, run_profile)
 
 
 def input_commitments(inputs):
@@ -87,7 +95,7 @@ def state_for(seed, arm, run_profile, inputs):
         raise ContractError("auxiliary schedule exceeds target budget")
     # Reuse the established unique, train-only engineering diagnostic view.
     selected_unique = [e for mode in ("final", "prefix", "trace")
-                       for e in v3.scoring_view(inputs.items, "smoke", mode)]
+                       for e in diagnostic_rows(inputs.items, run_profile, mode)]
     unique = [encoded[e["example_identity"]] for e in selected_unique]
     if len({r["identity"] for r in unique}) != len(unique):
         raise ContractError("diagnostic rows must be unique")
@@ -99,7 +107,7 @@ def state_for(seed, arm, run_profile, inputs):
 
 def request_core(run_profile, inputs):
     s = settings(run_profile)
-    return {"schema": "trinite.procedural-qec-auxiliary-request.v1",
+    return {"schema": schema("request", run_profile),
         "run_profile": run_profile, "specification": specification(),
         "specification_identity": identity(json_bytes(specification())),
         "source": sources(), "environment": require_environment(),
@@ -130,14 +138,14 @@ def context(state, seed, arm, run_profile, request_identity, inputs):
     if state.data["train"] != [expected[e["example_identity"]] for e in selected]:
         raise ContractError("auxiliary state schedule/encoding mismatch")
     unique = [expected[e["example_identity"]] for mode in ("final", "prefix", "trace")
-              for e in v3.scoring_view(inputs.items, "smoke", mode)]
+              for e in diagnostic_rows(inputs.items, run_profile, mode)]
     if state.data["validation"] != unique:
         raise ContractError("auxiliary unique diagnostic view mismatch")
     commitments = input_commitments(inputs)
     if (state.dataset_identity != commitments["dataset_identity"]
             or state.manifest_identity != commitments["manifest_identity"]):
         raise ContractError("auxiliary state admission mismatch")
-    return {"schema": "trinite.procedural-qec-auxiliary-checkpoint.v1",
+    return {"schema": schema("checkpoint", run_profile),
         "seed": seed, "arm": arm, "run_profile": run_profile,
         "request_identity": request_identity,
         "specification_identity": identity(json_bytes(specification())),
@@ -151,18 +159,17 @@ def context(state, seed, arm, run_profile, request_identity, inputs):
 def snapshot(state, seed, arm, run_profile, request_identity, inputs):
     core = context(state, seed, arm, run_profile, request_identity, inputs)
     payload = tensor_payload(state)
-    metadata = json_bytes({**core, "model_identity": model_identity(state.model),
+    metadata = metadata_bytes({**core, "model_identity": model_identity(state.model),
         "step": state.step, "cursor": state.cursor, "target_tokens": state.target_tokens,
-        "history": state.history, "validation": state.validation})
-    if len(metadata) > 1024 * 1024:
-        raise ContractError("auxiliary checkpoint metadata exceeds byte budget")
+        "history": state.history, "validation": state.validation}, run_profile)
     return payload, metadata
 
 
 def restore(payload, metadata, seed, arm, run_profile, request_identity,
             expected_identities, inputs):
+    settings(run_profile)
     if (type(payload) is not bytes or type(metadata) is not bytes
-            or len(payload) > 32 * 1024 * 1024 or len(metadata) > 1024 * 1024
+            or len(payload) > 32 * 1024 * 1024 or len(metadata) > metadata_limit(run_profile)
             or (identity(payload), identity(metadata)) != expected_identities):
         raise ContractError("auxiliary checkpoint external identities/type/size mismatch")
     record = parse_json(metadata, canonical=True)
@@ -179,9 +186,14 @@ def restore(payload, metadata, seed, arm, run_profile, request_identity,
 
 
 def report_for(state, inputs, seed, arm, run_profile, request_identity, seconds_hex, rss):
+    settings(run_profile)  # Reject research before any scoring/model access.
     items = inputs.items
-    scores, predictions = v3.scores_for(state.model, items, "smoke")
-    losses = v3.diagnostic_losses(state.model, items, "smoke", 8)
+    for mode in ("final", "prefix", "trace"):
+        if diagnostic_rows(items, run_profile, mode) != v3.scoring_view(
+                items, diagnostic_profile(run_profile), mode):
+            raise ContractError("authoritative scorer diagnostic view differs")
+    scores, predictions = v3.scores_for(state.model, items, diagnostic_profile(run_profile))
+    losses = v3.diagnostic_losses(state.model, items, diagnostic_profile(run_profile), 8)
     selected = schedule(inputs, seed, arm, settings(run_profile)["macro_rounds"])
     exposed = {e["example_identity"] for e in selected}
     mapping = {e["example_identity"]: e for e in items}
@@ -199,7 +211,7 @@ def report_for(state, inputs, seed, arm, run_profile, request_identity, seconds_
         for target in group.values():
             target["accuracy_defined"] = target["examples"] > 0
     return ({**context(state, seed, arm, run_profile, request_identity, inputs),
-        "schema": "trinite.procedural-qec-auxiliary-report.v1", "outcome": "completed",
+        "schema": schema("report", run_profile), "outcome": "completed",
         "model_identity": model_identity(state.model), "steps": state.step,
         "target_tokens": state.target_tokens,
         "mixed_all_modes_loss_hex": evaluate(state.model, state.data["validation"], 8),
@@ -208,13 +220,11 @@ def report_for(state, inputs, seed, arm, run_profile, request_identity, seconds_
         "schedule_coverage": coverage(inputs, selected, arm),
         "training_wall_seconds_hex": seconds_hex, "peak_process_rss_kib": rss,
         "scores": scores, "exposure": v3.exposure(state.data["train"], items),
-        "held_out_scored": False, "training_gate_evaluated": False,
-        "learning_adequacy": False, "phase5_ready": False,
-        "format_selection_eligible": False, "release_ready": False,
-        "evidence_class": "engineering-conformance-only"}, {"predictions": predictions})
+        **report_assessment(run_profile, scores)}, {"predictions": predictions})
 
 
 def train_cell(root, seed, arm, run_profile, request, request_identity, inputs):
+    settings(run_profile)
     _, request_raw = read_request(request, request_identity, inputs)
     root = evidence.safe_path(root)
     root.mkdir(parents=True, exist_ok=False)
@@ -233,7 +243,7 @@ def train_cell(root, seed, arm, run_profile, request, request_identity, inputs):
         evidence.write(root / "predictions.json", predictions)
         read_request(request, request_identity, inputs)
         observer = BundleObserver(root / "provenance")
-        observer.record("procedural-qec-auxiliary-engineering", inputs={
+        observer.record("procedural-qec-auxiliary-" + run_profile, inputs={
             "request.json": request_raw, "dataset.json": inputs.dataset_raw,
             "manifest.json": inputs.manifest_raw, "inputs.json": json_bytes(inputs.receipt)},
             outputs={name: evidence.read_bytes(root / name) for name in OUTPUTS})
@@ -247,26 +257,29 @@ def train_cell(root, seed, arm, run_profile, request, request_identity, inputs):
         raise
 
 
-def verification_core(root, request_identity):
-    return {"schema": "trinite.procedural-qec-auxiliary-verification-request.v1",
+def verification_core(root, request_identity, run_profile="engineering"):
+    settings(run_profile)
+    return {"schema": schema("verification-request", run_profile),
         "request_identity": request_identity,
         "root_artifacts": evidence.commitments(root, ROOT_ARTIFACTS),
         "cells": {cell_name(*c): evidence.commitments(Path(root) / cell_name(*c),
                                                     evidence.ARTIFACTS) for c in cells()}}
 
 
-def read_verification(path, expected_identity, root, request_identity):
+def read_verification(path, expected_identity, root, request_identity, run_profile="engineering"):
+    settings(run_profile)
     require_identity(expected_identity)
     raw = evidence.read_bytes(path, 128 * 1024)
     if identity(raw) != expected_identity:
         raise ContractError("auxiliary external verification identity mismatch")
     record = parse_json(raw, canonical=True)
-    if json_bytes(record) != json_bytes(verification_core(root, request_identity)):
+    if json_bytes(record) != json_bytes(verification_core(root, request_identity, run_profile)):
         raise ContractError("auxiliary artifacts differ from external commitments")
     return record
 
 
 def verify_cell(root, seed, arm, run_profile, request, request_identity, inputs, commitments):
+    settings(run_profile)
     _, request_raw = read_request(request, request_identity, inputs)
     evidence.check_commitments(root, commitments, evidence.ARTIFACTS)
     bound = evidence.read_bound(root, {"request.json": request_raw,
@@ -306,7 +319,8 @@ def verify_cell(root, seed, arm, run_profile, request, request_identity, inputs,
 
 
 def summary_for(root, req, request, request_identity, verification, verification_identity, inputs, errors):
-    v = read_verification(verification, verification_identity, root, request_identity)
+    settings(req["run_profile"])
+    v = read_verification(verification, verification_identity, root, request_identity, req["run_profile"])
     evidence.check_commitments(root, v["root_artifacts"], ROOT_ARTIFACTS)
     if (evidence.read_bytes(Path(root) / "request.json") != evidence.read_bytes(request)
             or evidence.read_bytes(Path(root) / "inputs.json") != json_bytes(inputs.receipt)):
@@ -324,24 +338,70 @@ def summary_for(root, req, request, request_identity, verification, verification
         except (ContractError, OSError, ValueError, KeyError, TypeError, OverflowError) as exc:
             records.append({"seed": seed, "arm": arm, "outcome": "failed",
                             "error": type(exc).__name__ + ": " + str(exc)})
+    return assemble_summary(req["run_profile"], records, errors, request_identity,
+                            verification_identity)
+
+
+def assemble_summary(run_profile, records, errors, request_identity, verification_identity):
+    """Shared pure report assembly. It neither runs nor certifies an experiment.
+
+    Native summary_for admits execution and replays every cell first. Synthetic
+    tests exercise the dormant candidate branch without making target outcomes.
+    """
+    profile_settings(run_profile)
+    require_identity(request_identity)
+    require_identity(verification_identity)
+    names = {cell_name(*c) for c in cells()}
+    if (type(records) is not list or len(records) != len(names)
+            or {cell_name(r["seed"], r["arm"]) for r in records} != names
+            or type(errors) is not dict or not set(errors).issubset(names)):
+        raise ContractError("auxiliary summary requires exact four-cell inventory")
     complete = not errors and all(r["outcome"] == "completed" for r in records)
     pairing_errors = []
     if complete:
+        required_checks = {"closed_custody", "request_and_source_binding", "safe_tensor_structure",
+            "scheduled_visits_and_targets", "final_predictions_and_loss", "complete_optimizer_replay"}
+        for r in records:
+            if (type(r.get("checks")) is not dict or set(r["checks"]) != required_checks
+                    or any(value is not True for value in r["checks"].values())):
+                raise ContractError("auxiliary completed cell lacks full verification checks")
         for seed in SEEDS:
             a, b = [next(r["report"] for r in records if r["seed"] == seed
                          and r["arm"] == arm) for arm in ARMS]
             for key in ("initialization_identity", "plan", "inputs"):
                 if a[key] != b[key]:
                     pairing_errors.append("seed " + str(seed) + " differs in " + key)
-    return {"schema": "trinite.procedural-qec-auxiliary-summary.v1",
+            # A matched plan cannot substitute for the exact original primary sequence.
+            for key in ("original_row_sequence_identity", "prospective_row_sequence_identity",
+                        "normalized_row_sequence_identity"):
+                if a["schedule"]["primary"][key] != b["schedule"]["primary"][key]:
+                    pairing_errors.append("seed " + str(seed) + " differs in " + key)
+    result = {"schema": schema("summary", run_profile),
         "request_identity": request_identity, "verification_request_identity": verification_identity,
-        "run_profile": req["run_profile"], "cells": records, "worker_errors": errors,
+        "run_profile": run_profile, "cells": records, "worker_errors": errors,
         "pairing_errors": pairing_errors,
         "outcome": "completed" if complete and not pairing_errors else "failed",
         "training_gate_evaluated": False, "training_gate_pass": False,
         "selected_arm": None, "held_out_scored": False, "learning_adequacy": False,
         "phase5_ready": False, "format_selection_eligible": False, "release_ready": False,
-        "evidence_class": "engineering-conformance-only"}
+        "evidence_class": "training-only-exploratory-candidate" if run_profile == "research"
+                          else "engineering-conformance-only"}
+    if run_profile == "research":
+        result.update(contrasts={}, positive_fold_contrast_both_seeds=False)
+        if complete and not pairing_errors:
+            for r in records:
+                expected = report_assessment(run_profile, r["report"]["scores"])
+                if any(r["report"].get(key) != value for key, value in expected.items()):
+                    raise ContractError("candidate report gate/claim differs from diagnostic counts")
+            criteria = assess_training_counts({cell_name(r["seed"], r["arm"]): {
+                task: {key: row[key] for key in ("correct", "examples")}
+                for task, row in r["report"]["scores"]["final"]["tasks"].items()}
+                for r in records})
+            result.update(training_gate_evaluated=True,
+                training_gate_pass=criteria["treatment_training_gate_pass"],
+                positive_fold_contrast_both_seeds=criteria["positive_fold_contrast_both_seeds"],
+                contrasts=criteria["contrasts"])
+    return result
 
 
 def run_matrix(output, request, request_identity, verification, inputs):
@@ -363,15 +423,15 @@ def run_matrix(output, request, request_identity, verification, inputs):
         except Exception as exc:
             errors[cell_name(seed, arm)] = type(exc).__name__ + ": " + str(exc)
     evidence.write(output / "worker-errors.json", errors)
-    core = verification_core(output, request_identity)
+    core = verification_core(output, request_identity, req["run_profile"])
     evidence.write(verification, core)
     v_identity = identity(json_bytes(core))
     summary = summary_for(output, req, request, request_identity, verification, v_identity, inputs, errors)
     evidence.write(output / "summary.json", summary)
     return {"outcome": summary["outcome"], "summary_identity": identity(json_bytes(summary)),
         "verification_request_identity": v_identity, "cells": 4,
-        "training_gate_pass": False, "phase5_ready": False,
-        "evidence_class": "engineering-conformance-only"}
+        "training_gate_pass": summary["training_gate_pass"], "phase5_ready": False,
+        "evidence_class": summary["evidence_class"]}
 
 
 def verify_only(output, request, request_identity, verification, verification_identity, inputs):
@@ -386,4 +446,4 @@ def verify_only(output, request, request_identity, verification, verification_id
         "verification_request_identity": verification_identity,
         "replayed_cells": sum(c["outcome"] == "completed" for c in summary["cells"]),
         "learning_adequacy": False, "phase5_ready": False,
-        "evidence_class": "engineering-conformance-only"}
+        "evidence_class": summary["evidence_class"]}

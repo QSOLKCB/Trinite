@@ -16,6 +16,12 @@ New source-bound engineering request, checkpoint, report, verification-request a
 
 The four-cell runner retains failures and every cell. Verification freshly checks original admitted inputs, external commitments, actual closed custody, safe tensor/progress structure, scheduled visits/targets, final predictions/loss and complete seed-started model/AdamW/history replay. The archive adds another full native replay before preserving all run bytes, requests, mapping and exact source custody. Read-only transport verification is explicitly separate from numerical replay.
 
+The dormant candidate uses the same production composition with distinct research schemas. Its data-only plan constructor validates 8,192 native updates and the proposed model bounds without constructing a model. Its shared diagnostic selector enumerates every unique admitted training row: 1,468 final examples and 1,204 each of prefix and trace. It excludes held-out rows and rejects repeated or missing diagnostic denominators. Candidate metadata has an explicit 8 MiB serialization bound for all 8,192 eight-row histories; the engineering bound stays 1 MiB. This byte ceiling is not a storage allocation. Model-facing request, state, report, verification and summary entry points still reject research before model work or artifact creation.
+
+Pure report and aggregate helpers implement the unchanged six absolute task thresholds and report treatment-minus-control differences separately. Both treatment seeds must meet every absolute threshold; positive fold contrast requires a strictly positive difference in both seeds. Neither condition silently substitutes for the other. Failed cells, missing replay checks and mismatched paired primary sequences cannot produce an evaluated aggregate gate. No checkpoint or arm is selected, and no training result establishes held-out adequacy.
+
+The dormant research transport checker validates the full unique diagnostic inventory, native progress/history, gate/contrast arithmetic and required replay receipts under a distinct archive schema. Synthetic packets exercise these branches only as structural tests. Public archive construction, verification and restoration remain engineering-only; no synthetic packet is represented as numerical replay or experimental evidence.
+
 ## Engineering checks and interpretation
 
 The dedicated workflow runs real historical reconstruction, malformed mapping/order/cursor tests, exact planning counts, target/mask checks, native padded forward/loss/gradient conformance, odd/even native-step interruption and replay, checkpoint/source tampering, four native engineering cells, separate read-only replay and archive-time replay. The native padding comparison uses `rtol=1e-5, atol=1e-6`; this is an engineering tolerance, not a historical bitwise-trajectory claim. Same-environment complete checkpoint replay requires exact bytes.
@@ -32,6 +38,7 @@ Use a clean separate checkout of the exact original historical producer. It must
 export PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export TRINITE_HISTORICAL_SOURCE=/absolute/path/to/clean-93522bf-checkout
+python -m unittest discover -s tests -p test_auxiliary_spec.py -v
 python -m unittest discover -s tests -p test_procedural_qec_auxiliary.py -v
 python -m unittest discover -s tests/procedural_qec_auxiliary_data -v
 python -m unittest discover -s tests -p test_procedural_auxiliary_archive.py -v
@@ -48,6 +55,6 @@ Review and approve the hypothesis, extra-final control, full-row historical mapp
 
 The smallest later execution request must name the exact reviewed source/protocol and approved CPU host/environment; authorize the two arms × two seeds × 4,096 paired rounds, all three full replay passes and diagnostics; and provide total wall-time, memory/storage and retained-artifact allowances plus failure/timeout policy. The existing 960-second per-invocation ceiling is only a software bound. It is neither a total allocation nor evidence that a full cell and its diagnostics fit. Exceeding a bound requires a separate reviewed change, never a silent increase or repeated restart until success.
 
-The implemented engineering orchestration, checkpoint/replay and archive path can be exercised safely now. Activating a target experiment requires a separate reviewed source change replacing the disabled candidate boundary with the approved immutable scientific protocol and resource envelope. No merge, tag, release or remote research dispatch follows from this PR.
+The implemented engineering orchestration, checkpoint/replay and archive path can be exercised safely now. Dormant full-profile planning, unique diagnostics, candidate report/contrast assembly and archive validation are covered by data-only and synthetic tests; they require no target research run. Activating a target experiment requires a separate reviewed source change replacing the disabled candidate boundary with the approved immutable scientific protocol and resource envelope. No merge, tag, release or remote research dispatch follows from this PR.
 
 Affected requirements: TRI-I01/I02/I03/I05/I06/I07/I08/I11/I12/I13/I14. TRI-I09/I10 remain claim boundaries. Original folded/composed learning adequacy, fresh family confirmation, independent-host replication, format selection, Phase 5, scaling and release remain blocked.
