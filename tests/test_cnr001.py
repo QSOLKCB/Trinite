@@ -26,6 +26,17 @@ V11_BYTES = 12496
 # Exact archive also reproduced by a separate local unchanged CNR replay.
 V12_SHA256 = "095cb3ecee88841ec9553a08b68d489b12ff51cb2bc35983191abd125d730360"
 V12_BYTES = 12493
+# Captured independently only after the finalized v13 producer is published.
+# Missing anchors deliberately fail retained-evidence checks until real capture.
+V13_SHA256 = None
+V13_BYTES = None
+AUXILIARY_HARDENING_SOURCE_DELTA = {
+    "added": [], "removed": [],
+    "modified": [".github/workflows/cnr-001.yml",
+                 "src/trinite/procedural_qec_auxiliary/archive.py",
+                 "src/trinite/procedural_qec_auxiliary/experiment.py",
+                 "src/trinite/procedural_qec_auxiliary/spec.py"],
+}
 AUXILIARY_REPORT_SOURCE_DELTA = {
     "added": [], "removed": [],
     "modified": [".github/workflows/cnr-001.yml",
@@ -339,13 +350,13 @@ class CNR001SourceCustody(unittest.TestCase):
         # This is exact complete-request equality, without removing source keys.
         from scripts import run_cnr001 as runner
         self.assertEqual(request, runner.expected_request())
-        previous = parse_json(self.retained_v11_members()["v11/cnr-request.json"], canonical=True)
-        self.assert_request_delta(request, previous, AUXILIARY_REPORT_SOURCE_DELTA)
+        previous = parse_json(self.retained_v12_members()["v12/cnr-request.json"], canonical=True)
+        self.assert_request_delta(request, previous, AUXILIARY_HARDENING_SOURCE_DELTA)
 
     def test_immutable_v9_packet_and_independent_sidecar(self):
         self.historical_v9()
 
-    def test_current_source_is_exactly_dormant_auxiliary_report_plumbing(self):
+    def test_current_source_is_exactly_auxiliary_read_only_evidence_hardening(self):
         from scripts import run_cnr001 as runner
         self.assert_current_request(runner.expected_request())
 
@@ -423,7 +434,9 @@ class CNR001SourceCustody(unittest.TestCase):
         members = self.read_packet(archive)
         manifest = self.assert_members(members, "v12", "v11", V11_SHA256)
         self.assertEqual(manifest["source_delta"], AUXILIARY_REPORT_SOURCE_DELTA)
-        self.assert_current_request(parse_json(members["v12/cnr-request.json"], canonical=True))
+        previous = parse_json(self.retained_v11_members()["v11/cnr-request.json"], canonical=True)
+        self.assert_request_delta(parse_json(members["v12/cnr-request.json"], canonical=True),
+                                  previous, AUXILIARY_REPORT_SOURCE_DELTA)
         return members
 
     def test_retained_v12_requires_complete_source_and_exact_v11_ancestry(self):
@@ -448,6 +461,46 @@ class CNR001SourceCustody(unittest.TestCase):
             self.assert_sidecar(archive, sidecar, digest)
             with self.assertRaises(AssertionError):
                 self.retained_v12_members(root)
+        self.assertEqual(original.read_bytes(), raw)
+
+    def retained_v13_members(self, root=None):
+        self.retained_v12_members()
+        root = ROOT / "fixtures/cnr-001-evidence" if root is None else root
+        archive, sidecar = root / "cnr001-v13.tar.gz", root / "cnr001-v13.sha256"
+        self.assertTrue(archive.is_file(), "missing newly published v13 packet")
+        self.assertTrue(sidecar.is_file(), "missing independently retained v13 digest")
+        self.assertIsNotNone(V13_SHA256, "v13 archive identity has not been independently captured")
+        self.assertIsNotNone(V13_BYTES, "v13 archive length has not been independently captured")
+        self.assert_sidecar(archive, sidecar, V13_SHA256)
+        self.assertEqual(len(archive.read_bytes()), V13_BYTES)
+        members = self.read_packet(archive)
+        manifest = self.assert_members(members, "v13", "v12", V12_SHA256)
+        self.assertEqual(manifest["source_delta"], AUXILIARY_HARDENING_SOURCE_DELTA)
+        self.assert_current_request(parse_json(members["v13/cnr-request.json"], canonical=True))
+        return members
+
+    def test_retained_v13_requires_complete_source_and_exact_v12_ancestry(self):
+        self.retained_v13_members()
+
+    def test_coordinated_v13_gzip_metadata_and_sidecar_reseal_is_rejected(self):
+        original = ROOT / "fixtures/cnr-001-evidence/cnr001-v13.tar.gz"
+        expected_members = self.retained_v13_members()
+        raw = original.read_bytes()
+        self.assertEqual(raw[:10], b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff")
+        changed = raw[:4] + (1).to_bytes(4, "little") + raw[8:]
+        self.assertEqual(len(changed), V13_BYTES)
+        self.assertEqual(gzip.decompress(changed), gzip.decompress(raw))
+        digest = identity(changed)[7:]
+        self.assertNotEqual(digest, V13_SHA256)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive, sidecar = root / "cnr001-v13.tar.gz", root / "cnr001-v13.sha256"
+            archive.write_bytes(changed)
+            sidecar.write_text(digest + "  " + archive.name + "\n", encoding="ascii")
+            self.assertEqual(self.read_packet(archive), expected_members)
+            self.assert_sidecar(archive, sidecar, digest)
+            with self.assertRaises(AssertionError):
+                self.retained_v13_members(root)
         self.assertEqual(original.read_bytes(), raw)
 
     def test_coordinated_v10_gzip_metadata_and_sidecar_reseal_is_rejected(self):

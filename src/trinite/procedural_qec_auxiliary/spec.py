@@ -80,7 +80,8 @@ def schema(kind, run_profile):
     if kind not in ("request", "checkpoint", "report", "verification-request", "summary"):
         raise ContractError("unknown auxiliary record kind")
     return "trinite.procedural-qec-auxiliary-" + (
-        "research-" if run_profile == "research" else "") + kind + ".v1"
+        "research-" if run_profile == "research" else "") + kind + (
+        ".v2" if kind == "verification-request" else ".v1")
 
 
 def diagnostic_profile(run_profile):

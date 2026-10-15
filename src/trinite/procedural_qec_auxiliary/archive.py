@@ -407,7 +407,7 @@ def _verify_profile_contract(members, inventory, profile):
                     "learning_adequacy", "phase5_ready", "format_selection_eligible", "release_ready")),
                 "cell summary/report commitments or engineering scope differ")
     require(records == CELLS and set(verification) == {"schema", "request_identity", "root_artifacts", "cells"}
-            and verification["schema"] == prefix + "verification-request.v1"
+            and verification["schema"] == prefix + "verification-request.v2"
             and verification["request_identity"] == request_id
             and type(verification["cells"]) is dict and set(verification["cells"]) == CELLS
             and type(verification["root_artifacts"]) is dict
@@ -415,8 +415,14 @@ def _verify_profile_contract(members, inventory, profile):
             "external verification inventory differs")
     committed = {"run/" + p: digest for p, digest in verification["root_artifacts"].items()}
     for cell, record in verification["cells"].items():
-        require(type(record) is dict and set(record) == CELL_COMMITTED, "external cell inventory differs")
-        committed.update({"run/" + cell + "/" + p: digest for p, digest in record.items()})
+        require(type(record) is dict and set(record) == {"outcome", "artifacts"},
+                "external cell inventory differs")
+        # Failed v2 records retain externally bound partial bytes for read-only
+        # failure verification. They cannot certify completed archive replay.
+        require(record["outcome"] == "completed", "archive requires completed cell artifact inventory")
+        require(type(record["artifacts"]) is dict and set(record["artifacts"]) == CELL_COMMITTED,
+                "external completed cell inventory differs")
+        committed.update({"run/" + cell + "/" + p: digest for p, digest in record["artifacts"].items()})
     for name, digest in committed.items():
         require(name in members and identity(members[name]) == require_id(digest),
                 "archived committed run bytes differ: " + name)

@@ -5,6 +5,9 @@ profile can create requests or states; the proposed research profile is blocked.
 """
 from pathlib import Path
 import math
+import os
+import re
+import stat
 import resource
 import time
 
@@ -27,6 +30,95 @@ from .spec import (ARMS, SEEDS, assess_training_counts, cell_name, cells,
 
 OUTPUTS = evidence.OUTPUTS
 ROOT_ARTIFACTS = (*evidence.ROOT_ARTIFACTS, "inputs.json")
+ROOT = Path(__file__).resolve().parents[3]
+FAILURE_SCHEMA = "trinite.procedural-qec-auxiliary-failure.v1"
+FAILED_MAX_FILES = 128
+FAILED_MAX_BYTES = 128 * 1024 * 1024
+
+
+def output_path(path, inputs):
+    """Reject source destinations before writes, including dot/symlink aliases."""
+    path = evidence.safe_path(path).resolve(strict=False)
+    for source in (ROOT, inputs.repository, inputs.historical_source):
+        source = evidence.safe_path(source).resolve(strict=True)
+        if path == source or source in path.parents:
+            raise ContractError("auxiliary outputs must be outside producer source checkouts")
+    return path
+
+
+def error_text(exc):
+    # JSON can expand each character to six bytes (control escapes); keep four
+    # receipts plus cell names below the 64 KiB root error inventory limit.
+    name = type(exc).__name__.encode("utf-8", "backslashreplace").decode("utf-8")[:128]
+    message = str(exc).encode("utf-8", "backslashreplace").decode("utf-8")
+    return name + ": " + message[:1800] + (" [truncated]" if len(message) > 1800 else "")
+
+
+def failure_record(error):
+    if type(error) is not str or not 1 <= len(error) <= 2048:
+        raise ContractError("invalid auxiliary failure text")
+    return {"schema": FAILURE_SCHEMA, "error": error,
+            "learning_adequacy": False, "phase5_ready": False}
+
+
+def retain_failure(root, error):
+    """Retain failures even when admission failed before train_cell made a dir."""
+    root = evidence.safe_path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    expected = failure_record(error)
+    path = root / "failure.json"
+    if path.exists():
+        if evidence.read_bytes(path, 16 * 1024) != json_bytes(expected):
+            raise ContractError("auxiliary failure receipt differs from worker error")
+    else:
+        evidence.write(path, expected)
+
+
+def worker_errors(root):
+    errors = parse_json(evidence.read_bytes(Path(root) / "worker-errors.json", 64 * 1024), canonical=True)
+    if type(errors) is not dict or not set(errors).issubset({cell_name(*c) for c in cells()}):
+        raise ContractError("invalid auxiliary error inventory")
+    for error in errors.values():
+        failure_record(error)
+    return errors
+
+
+def failed_commitments(root, error):
+    """Bind every bounded partial byte without asserting completed custody."""
+    root = evidence.safe_path(root)
+    if not root.is_dir():
+        raise ContractError("missing auxiliary failed cell directory")
+    allowed_dirs = {"provenance", "provenance/artifacts", "provenance/artifacts/sha256",
+        "provenance/artifact_records", "provenance/artifact_records/sha256",
+        "provenance/events", "provenance/events/sha256"}
+    leaf = re.compile(r"provenance/(?:artifacts/sha256/[0-9a-f]{64}|"
+                      r"(?:artifact_records|events)/sha256/[0-9a-f]{64}\.json)\Z")
+    allowed_files = set(evidence.ARTIFACTS) | {"failure.json"}
+    result, total, entries = {}, 0, 0
+    def scan_error(error):
+        raise ContractError("cannot enumerate auxiliary failed artifacts") from error
+    for directory, dirs, names in os.walk(root, followlinks=False, onerror=scan_error):
+        entries += len(dirs) + len(names)
+        if entries > FAILED_MAX_FILES:
+            raise ContractError("auxiliary failed artifact count exceeded")
+        for name in dirs:
+            path = evidence.safe_path(Path(directory) / name)
+            if path.relative_to(root).as_posix() not in allowed_dirs or not path.is_dir():
+                raise ContractError("unexpected auxiliary failed artifact directory")
+        for name in names:
+            path = evidence.safe_path(Path(directory) / name)
+            relative = path.relative_to(root).as_posix()
+            if (relative not in allowed_files and not leaf.fullmatch(relative)
+                    or not stat.S_ISREG(path.stat().st_mode)):
+                raise ContractError("unexpected auxiliary failed artifact file")
+            raw = evidence.read_bytes(path)
+            total += len(raw)
+            if total > FAILED_MAX_BYTES:
+                raise ContractError("auxiliary failed artifact bytes exceeded")
+            result[relative] = identity(raw)
+    if evidence.read_bytes(root / "failure.json", 16 * 1024) != json_bytes(failure_record(error)):
+        raise ContractError("auxiliary failed receipt differs from worker error")
+    return dict(sorted(result.items()))
 
 
 def sources():
@@ -117,6 +209,8 @@ def request_core(run_profile, inputs):
 
 
 def prepare_request(path, run_profile, inputs):
+    settings(run_profile)
+    path = output_path(path, inputs)
     core = request_core(run_profile, inputs)
     return {"request_identity": evidence.freeze(path, core), "planned_cells": 4,
             "run_profile": run_profile, "scientific_protocol_frozen": False}
@@ -225,8 +319,8 @@ def report_for(state, inputs, seed, arm, run_profile, request_identity, seconds_
 
 def train_cell(root, seed, arm, run_profile, request, request_identity, inputs):
     settings(run_profile)
+    root = output_path(root, inputs)
     _, request_raw = read_request(request, request_identity, inputs)
-    root = evidence.safe_path(root)
     root.mkdir(parents=True, exist_ok=False)
     try:
         state = state_for(seed, arm, run_profile, inputs)
@@ -250,20 +344,27 @@ def train_cell(root, seed, arm, run_profile, request, request_identity, inputs):
         evidence.write(root / "verification.json", observer.finalize())
         return report
     except Exception as exc:
-        evidence.write(root / "failure.json", {
-            "schema": "trinite.procedural-qec-auxiliary-failure.v1",
-            "error": type(exc).__name__ + ": " + str(exc),
-            "learning_adequacy": False, "phase5_ready": False})
+        retain_failure(root, error_text(exc))
         raise
 
 
 def verification_core(root, request_identity, run_profile="engineering"):
     settings(run_profile)
+    errors = worker_errors(root)
+    records = {}
+    for cell in cells():
+        name = cell_name(*cell)
+        directory = Path(root) / name
+        if name in errors:
+            records[name] = {"outcome": "failed", "artifacts": failed_commitments(directory, errors[name])}
+        else:
+            if (directory / "failure.json").exists() or (directory / "failure.json").is_symlink():
+                raise ContractError("unexpected failure receipt in completed auxiliary cell")
+            records[name] = {"outcome": "completed",
+                "artifacts": evidence.commitments(directory, evidence.ARTIFACTS)}
     return {"schema": schema("verification-request", run_profile),
         "request_identity": request_identity,
-        "root_artifacts": evidence.commitments(root, ROOT_ARTIFACTS),
-        "cells": {cell_name(*c): evidence.commitments(Path(root) / cell_name(*c),
-                                                    evidence.ARTIFACTS) for c in cells()}}
+        "root_artifacts": evidence.commitments(root, ROOT_ARTIFACTS), "cells": records}
 
 
 def read_verification(path, expected_identity, root, request_identity, run_profile="engineering"):
@@ -325,8 +426,8 @@ def summary_for(root, req, request, request_identity, verification, verification
     if (evidence.read_bytes(Path(root) / "request.json") != evidence.read_bytes(request)
             or evidence.read_bytes(Path(root) / "inputs.json") != json_bytes(inputs.receipt)):
         raise ContractError("auxiliary retained input/request mismatch")
-    if type(errors) is not dict or not set(errors).issubset({cell_name(*c) for c in cells()}):
-        raise ContractError("invalid auxiliary error inventory")
+    if errors != worker_errors(root):
+        raise ContractError("auxiliary worker error copy differs from retained errors")
     records = []
     for seed, arm in cells():
         name = cell_name(seed, arm)
@@ -334,10 +435,12 @@ def summary_for(root, req, request, request_identity, verification, verification
             if name in errors:
                 raise ContractError(errors[name])
             records.append(verify_cell(Path(root) / name, seed, arm, req["run_profile"],
-                request, request_identity, inputs, v["cells"][name]))
-        except (ContractError, OSError, ValueError, KeyError, TypeError, OverflowError) as exc:
+                request, request_identity, inputs, v["cells"][name]["artifacts"]))
+        except Exception as exc:  # Retain ordinary backend/resource failures, not cancellation.
             records.append({"seed": seed, "arm": arm, "outcome": "failed",
-                            "error": type(exc).__name__ + ": " + str(exc)})
+                            "error": error_text(exc)})
+    # Recheck all cells, including failed partial outputs, after every replay.
+    read_verification(verification, verification_identity, root, request_identity, req["run_profile"])
     return assemble_summary(req["run_profile"], records, errors, request_identity,
                             verification_identity)
 
@@ -405,10 +508,10 @@ def assemble_summary(run_profile, records, errors, request_identity, verificatio
 
 
 def run_matrix(output, request, request_identity, verification, inputs):
+    # Every destination must pass before admission, directory creation or model work.
+    output = output_path(output, inputs)
+    verification = output_path(verification, inputs)
     req, request_raw = read_request(request, request_identity, inputs)
-    # Reject symlinks before resolving dot-segment aliases in the containment test.
-    output = evidence.safe_path(output).resolve(strict=False)
-    verification = evidence.safe_path(verification).resolve(strict=False)
     if (verification == output or output in verification.parents
             or verification in output.parents or verification.exists()):
         raise ContractError("verification request must be new and outside output tree")
@@ -421,7 +524,9 @@ def run_matrix(output, request, request_identity, verification, inputs):
             train_cell(output / cell_name(seed, arm), seed, arm, req["run_profile"],
                        request, request_identity, inputs)
         except Exception as exc:
-            errors[cell_name(seed, arm)] = type(exc).__name__ + ": " + str(exc)
+            error = error_text(exc)
+            retain_failure(output / cell_name(seed, arm), error)
+            errors[cell_name(seed, arm)] = error
     evidence.write(output / "worker-errors.json", errors)
     core = verification_core(output, request_identity, req["run_profile"])
     evidence.write(verification, core)

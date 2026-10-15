@@ -190,10 +190,11 @@ def packet(history=None, *, profile="engineering", fold_bonus=1):
                 verify_observation(root / "provenance")
                 for path, raw in a.tree_bytes(root).items():
                     members["run/" + name + "/" + path] = raw
-                commitments[name] = {path: a.identity(members["run/" + name + "/" + path]) for path in a.CELL_COMMITTED}
+                commitments[name] = {"outcome": "completed", "artifacts": {
+                    path: a.identity(members["run/" + name + "/" + path]) for path in a.CELL_COMMITTED}}
                 cells.append({"seed": seed, "arm": arm, "outcome": "completed", "report": report,
                     "report_identity": a.identity(a.canonical(report)), "checks": dict.fromkeys(a.CHECKS, True)})
-    verification = {"schema": prefix + "verification-request.v1",
+    verification = {"schema": prefix + "verification-request.v2",
         "request_identity": a.identity(request_raw),
         "root_artifacts": {p: a.identity(members["run/" + p]) for p in a.ROOT_COMMITTED}, "cells": commitments}
     verification_raw = a.canonical(verification)
@@ -232,6 +233,20 @@ def update(members, inventory, name, raw):
     inventory["members"][name] = {"identity": a.identity(raw), "bytes": len(raw)}
 
 
+def replace_verification(members, inventory, verification):
+    """Construct a mutually bound synthetic packet to test deeper contracts."""
+    raw = a.canonical(verification)
+    update(members, inventory, "external/verification-request.json", raw)
+    inventory["verification_request_identity"] = a.identity(raw)
+    summary = a.parse(members["run/summary.json"])
+    summary["verification_request_identity"] = a.identity(raw)
+    update(members, inventory, "run/summary.json", a.canonical(summary))
+    inventory["summary_identity"] = a.identity(members["run/summary.json"])
+    audit = a.parse(members["audit/replay.json"])
+    audit.update(verification_request_identity=a.identity(raw), summary_identity=inventory["summary_identity"])
+    update(members, inventory, "audit/replay.json", a.canonical(audit))
+
+
 class AuxiliaryArchiveTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -248,6 +263,12 @@ class AuxiliaryArchiveTests(unittest.TestCase):
         self.members, self.inventory = deepcopy(self.template)
 
     def test_closed_transport_distinguishes_replay_and_admission(self):
+        verification = a.parse(self.members["external/verification-request.json"])
+        self.assertEqual(verification["schema"], "trinite.procedural-qec-auxiliary-verification-request.v2")
+        for cell in verification["cells"].values():
+            self.assertEqual(set(cell), {"outcome", "artifacts"})
+            self.assertEqual(cell["outcome"], "completed")
+            self.assertEqual(set(cell["artifacts"]), a.CELL_COMMITTED)
         result = a.verify_contract(self.members, self.inventory)
         self.assertEqual(result["outcome"], "passed")
         self.assertEqual(result["verification_scope"], "byte-transport-only")
@@ -263,6 +284,63 @@ class AuxiliaryArchiveTests(unittest.TestCase):
                 a.verify_archive(path, "sha256:" + "0" * 64, ids[1])
             with self.assertRaisesRegex(a.ArchiveError, "independently held"):
                 a.verify_archive(path, ids[0], "sha256:" + "0" * 64)
+
+    def test_legacy_verification_inventory_is_not_silently_reinterpreted(self):
+        verification = a.parse(self.members["external/verification-request.json"])
+        verification["schema"] = "trinite.procedural-qec-auxiliary-verification-request.v1"
+        verification["cells"] = {name: record["artifacts"] for name, record in verification["cells"].items()}
+        replace_verification(self.members, self.inventory, verification)
+        with self.assertRaisesRegex(a.ArchiveError, "external verification inventory"):
+            a.verify_contract(self.members, self.inventory)
+
+    def test_completed_verification_inventory_requires_explicit_exact_shape(self):
+        name = "auxiliary-qec-0-extra-final"
+        for mutate in (
+            lambda record: record["artifacts"],
+            lambda record: {**record, "failure": None},
+            lambda record: {"outcome": "completed", "artifacts": []},
+            lambda record: {"outcome": "completed", "artifacts": {}},
+        ):
+            members, inventory = deepcopy(self.template)
+            verification = a.parse(members["external/verification-request.json"])
+            verification["cells"][name] = mutate(verification["cells"][name])
+            replace_verification(members, inventory, verification)
+            with self.subTest(record=verification["cells"][name]), self.assertRaisesRegex(
+                    a.ArchiveError, "cell inventory"):
+                a.verify_contract(members, inventory)
+
+    def test_failed_external_cell_cannot_claim_completed_archive_replay(self):
+        name = "auxiliary-qec-0-extra-final"
+        prefix = "run/" + name + "/"
+        failure = a.canonical({"schema": "trinite.procedural-qec-auxiliary-failure.v1",
+            "error": "RuntimeError: synthetic failure", "learning_adequacy": False, "phase5_ready": False})
+        update(self.members, self.inventory, prefix + "failure.json", failure)
+        verification = a.parse(self.members["external/verification-request.json"])
+        verification["cells"][name] = {"outcome": "failed", "artifacts": {
+            path[len(prefix):]: a.identity(raw) for path, raw in self.members.items() if path.startswith(prefix)}}
+        replace_verification(self.members, self.inventory, verification)
+        with self.assertRaisesRegex(a.ArchiveError, "requires completed cell artifact inventory"):
+            a.verify_contract(self.members, self.inventory)
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "failed.zip"
+            ids = zip_packet(path, self.members, self.inventory)
+            before = path.read_bytes()
+            with self.assertRaisesRegex(a.ArchiveError, "requires completed cell artifact inventory"):
+                a.verify_archive(path, *ids)
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_failure_bytes_cannot_be_hidden_in_completed_inventory(self):
+        name = "auxiliary-qec-0-extra-final"
+        target = "run/" + name + "/failure.json"
+        for committed in (False, True):
+            members, inventory = deepcopy(self.template)
+            update(members, inventory, target, a.canonical({"error": "synthetic retained failure"}))
+            if committed:
+                verification = a.parse(members["external/verification-request.json"])
+                verification["cells"][name]["artifacts"]["failure.json"] = a.identity(members[target])
+                replace_verification(members, inventory, verification)
+            with self.subTest(committed=committed), self.assertRaises(a.ArchiveError):
+                a.verify_contract(members, inventory)
 
     def test_resealed_run_bytes_and_source_rejected(self):
         for name in ("run/worker-errors.json", "run/inputs.json", "source/src/trinite/mock.py",
