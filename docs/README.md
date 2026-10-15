@@ -103,3 +103,5 @@ research evidence. No trained model changes or Phase 5 claim.
 
 - [Fixed-code scale-refit engineering candidate](SCALE-REFIT.md): separately
   versioned numerical approximation tests; no native training-lane activation.
+
+- [Declared-state observation and legacy migration](DECLARED-STATE.md): strict optional label codec, raw-text checks, seven-file audit; no training or epistemic capability claim.

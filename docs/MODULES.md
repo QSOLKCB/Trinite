@@ -306,3 +306,12 @@ closed observer, with new source-bound checkpoint/full-replay schemas.
 transport verification remains standard-library only. Fixed launcher scripts
 provide explicit checkout-only entrypoints. Research execution is disabled.
 See [the implementation boundary](PROCEDURAL-QEC-AUXILIARY-IMPLEMENTATION.md).
+
+## Opt-in declared-state observation
+
+Checkout-only `scripts/declared_state/` owns only a strict five-label base-three codec and immutable
+raw-text syntactic observations. It imports `contracts` and the standard library;
+no core numerical module imports it. It does not read tensors, run inference,
+repair responses, admit data or replace exact-answer scoring. Historical flat
+source closures and the recursive CNR-001 inventory remain unchanged. It is
+not an installed-wheel API. See [DECLARED-STATE.md](DECLARED-STATE.md).
