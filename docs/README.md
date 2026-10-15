@@ -100,3 +100,6 @@ actual lifted-graph walk, degree-preserving controls and separate read-only
 research evidence. No trained model changes or Phase 5 claim.
 
 - [Non-displacing auxiliary engineering implementation](PROCEDURAL-QEC-AUXILIARY-IMPLEMENTATION.md): actual historical mapping and bounded native conformance; scientific execution remains disabled.
+
+- [Fixed-code scale-refit engineering candidate](SCALE-REFIT.md): separately
+  versioned numerical approximation tests; no native training-lane activation.
