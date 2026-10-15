@@ -22,9 +22,10 @@ V10_BYTES = 12184
 # Exact archive also reproduced by a separate local unchanged CNR replay.
 V11_SHA256 = "7d52dc711da37a5889810199910384c287a7d8f91f4f286b81bb2343de39b647"
 V11_BYTES = 12496
-# Populated only from the independently retained fresh v12 capture.
-V12_SHA256 = None
-V12_BYTES = None
+# Independently captured from hosted run 38645902803, job 116132560455.
+# Exact archive also reproduced by a separate local unchanged CNR replay.
+V12_SHA256 = "095cb3ecee88841ec9553a08b68d489b12ff51cb2bc35983191abd125d730360"
+V12_BYTES = 12493
 AUXILIARY_REPORT_SOURCE_DELTA = {
     "added": [], "removed": [],
     "modified": [".github/workflows/cnr-001.yml",
