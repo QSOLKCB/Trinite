@@ -324,3 +324,13 @@ AdamW constructor/validator, but never edits or replaces the native updater.
 Its canonical JSON snapshots use full-prefix replay-to-resume, not a second
 native tensor loader. It is excluded from the installed package and historical
 CNR source closure. [Contract and limits](PCGRAD-ENGINEERING.md).
+
+## Checkout-only learned ternary scale engineering lane
+
+`scripts/learned_scales_v1/` owns the separately versioned matrix-scale surrogate,
+wrapper over unchanged native decoder operations, and four-update synthetic
+matched learned/frozen-scale replay harness. It reuses native initialization,
+AdamW constructor/validation and environment checks; native numerical sources,
+PCGrad and historical closures stay unchanged. New canonical JSON checkpoints
+use full-prefix replay-to-resume, not another tensor loader. Scientific execution
+is hard-closed. [Contract and evidence limits](LEARNED-TERNARY-SCALES.md).

@@ -108,3 +108,5 @@ research evidence. No trained model changes or Phase 5 claim.
 
 - [Matched PCGrad engineering lane](PCGRAD-ENGINEERING.md): exact two-vector
   projection and same-snapshot toy optimizer replay; scientific execution gated.
+
+- [Learned ternary scale engineering](LEARNED-TERNARY-SCALES.md): isolated learned/frozen controls and exact tiny replay; no learning claim.
