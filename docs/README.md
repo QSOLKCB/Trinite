@@ -105,3 +105,6 @@ research evidence. No trained model changes or Phase 5 claim.
   versioned numerical approximation tests; no native training-lane activation.
 
 - [Declared-state observation and legacy migration](DECLARED-STATE.md): strict optional label codec, raw-text checks, seven-file audit; no training or epistemic capability claim.
+
+- [Matched PCGrad engineering lane](PCGRAD-ENGINEERING.md): exact two-vector
+  projection and same-snapshot toy optimizer replay; scientific execution gated.
