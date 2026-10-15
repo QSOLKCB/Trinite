@@ -1,0 +1,1 @@
+{"report_identity":"sha256:41f4d6adcb2b0e96c94bfeb7f3bf9cd25f8bede046006bb8ce1245c75dbbae51","schema":"trinite.learned-scales-engineering-commitment.v1","scope":"source/environment-bound full tiny model/scale/AdamW/RNG/history replay; no learning or custody claim","specification_commit":"430b988a013ec1fa9523c75a293b5c698ebc7b2c"}
