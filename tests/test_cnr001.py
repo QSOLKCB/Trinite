@@ -30,9 +30,10 @@ V12_BYTES = 12493
 # Exact archive also reproduced by a separate local unchanged CNR replay.
 V13_SHA256 = "a151a39199916afc579a5033fb1d1c0870249b4abb7beca0b80b9556e9cd460d"
 V13_BYTES = 12484
-# Populate only from a genuine finalized-producer capture retained externally.
-V14_SHA256 = None
-V14_BYTES = None
+# Independently captured from hosted run 38684722343, job 116256846988.
+# Exact archive also reproduced by a separate local unchanged CNR replay.
+V14_SHA256 = "1e32173bb2c2b9f8d4a1a1acc37d9c27f4ef5b2219f0ffb5172562553c5ab763"
+V14_BYTES = 12484
 AUXILIARY_OUTPUT_GUARD_SOURCE_DELTA = {
     "added": [], "removed": [],
     "modified": [".github/workflows/cnr-001.yml",
