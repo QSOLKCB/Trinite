@@ -1,0 +1,10 @@
+{
+  "base_commit": "5d7e4ba2388afef0049f192dc965d0a4a5121055",
+  "schema": "trinite.declared-state-engineering.v1",
+  "scope": "software-conformance-only; no data admission or model evidence",
+  "sources": {
+    "fixtures/declared-state-v1/input-manifest.json": "sha256:5f4fe31b9453cfe363592858120a4d0796b1bb093836c7b3498507c79171a700",
+    "scripts/declared_state/__init__.py": "sha256:913b0f029093914233c75da7afd75c6484003f09ac0f840db09d8c27759586e7",
+    "tests/test_declared_state.py": "sha256:612c662b26747411396a5a718b1ce7d3482fedfed7467ee003dca1214f97459d"
+  }
+}
