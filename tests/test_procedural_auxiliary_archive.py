@@ -247,6 +247,118 @@ def replace_verification(members, inventory, verification):
     update(members, inventory, "audit/replay.json", a.canonical(audit))
 
 
+class AuxiliaryOutputBoundaryTests(unittest.TestCase):
+    """Disposable source roots and process mocks test preflight, not replay."""
+
+    def assert_preflight_rejects(self, output, current, historical, *, build=True,
+                                 message="outside producer source checkouts"):
+        with patch.object(a, "ROOT", current), patch.object(a, "read") as read, \
+                patch.object(a, "_load_archive") as load, patch.object(a, "_git") as git, \
+                patch.object(a, "tree_bytes") as scan, patch.object(Path, "mkdir") as mkdir:
+            with self.assertRaisesRegex(a.ArchiveError, message):
+                if build:
+                    a.build_archive(output, current.parent / "run", current.parent / "request.json",
+                        "sha256:" + "0" * 64, current.parent / "verification.json",
+                        "sha256:" + "1" * 64, historical)
+                else:
+                    a.restore_historical_source(current.parent / "archive.zip",
+                        "sha256:" + "0" * 64, "sha256:" + "1" * 64, output)
+            for operation in (read, load, git, scan, mkdir):
+                operation.assert_not_called()
+
+    def test_builder_rejects_complete_known_producer_roots(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            current, historical = root / "current", root / "historical"
+            for producer in (current, historical):
+                (producer / "src/nested").mkdir(parents=True)
+                (producer / "tests").mkdir()
+                for suffix in ("", "evidence.zip", "tests/evidence.zip", "src/nested/evidence.zip",
+                               "src/nested/../../evidence.zip", "new/parents/evidence.zip"):
+                    with self.subTest(producer=producer.name, suffix=suffix):
+                        self.assert_preflight_rejects(producer / suffix, current, historical)
+
+    def test_restore_rejects_current_root_before_loading_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            current = Path(temp) / "current"
+            (current / "tests").mkdir(parents=True)
+            for suffix in ("", "restored", "tests/restored", "tests/../restored", "new/parents/restored"):
+                with self.subTest(suffix=suffix):
+                    self.assert_preflight_rejects(current / suffix, current,
+                                                 Path(temp) / "historical", build=False)
+
+    def test_build_and_restore_reject_other_worktrees_and_extracted_producers(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            current = root / "current"
+            current.mkdir()
+            for marker in ("git-directory", "git-file", "git-symlink", "source-tree"):
+                producer = root / marker
+                (producer / "nested").mkdir(parents=True)
+                if marker == "git-directory":
+                    (producer / ".git/objects").mkdir(parents=True)
+                    (producer / ".git/HEAD").write_text("ref: refs/heads/main\n")
+                elif marker == "git-file":
+                    (producer / ".git").write_text("gitdir: ../repository/.git/worktrees/historical\n")
+                elif marker == "git-symlink":
+                    (producer / ".git").symlink_to(root / "unread-git-metadata")
+                else:
+                    (producer / "src/trinite").mkdir(parents=True)
+                for suffix in ("output", "nested/output", "nested/../output", "new/parents/output"):
+                    for build in (True, False):
+                        with self.subTest(marker=marker, suffix=suffix, build=build):
+                            self.assert_preflight_rejects(producer / suffix, current,
+                                root / "separate-historical", build=build)
+
+    def test_build_and_restore_preserve_symlink_parent_rejection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            current = root / "current"
+            (current / "nested").mkdir(parents=True)
+            alias = root / "alias"
+            alias.symlink_to(current / "nested", target_is_directory=True)
+            for output in (alias / "output", alias / "../output"):
+                for build in (True, False):
+                    with self.subTest(output=output, build=build):
+                        self.assert_preflight_rejects(output, current, root / "historical",
+                                                     build=build, message="symlinks")
+
+    def test_shared_guard_protects_extra_roots_but_allows_plain_artifact_siblings(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / ".git").mkdir()  # Managed sandbox placeholder, not a checkout.
+            current, bound = root / "current", root / "bound-producer"
+            current.mkdir()
+            bound.mkdir()
+            with patch.object(a, "ROOT", current):
+                with self.assertRaisesRegex(a.ArchiveError, "outside producer source checkouts"):
+                    a.output_path(bound / "output", bound)
+                output = root / "current-artifacts/new/output"
+                self.assertEqual(a.output_path(output, bound), output)
+                self.assertFalse(output.parent.exists())
+
+    def test_cli_archive_and_restore_reject_source_destinations(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            producer = root / "producer"
+            (producer / "src/trinite").mkdir(parents=True)
+            digest = "sha256:" + "0" * 64
+            modes = (("--archive", "--run", str(root / "run"), "--request", str(root / "request.json"),
+                      "--request-identity", digest, "--verification-request", str(root / "verification.json"),
+                      "--verification-request-identity", digest, "--historical-source", str(root / "historical")),
+                     ("--restore-historical-source", "--archive-file", str(root / "archive.zip"),
+                      "--archive-identity", digest, "--inventory-identity", digest))
+            for mode in modes:
+                with self.subTest(mode=mode[0]):
+                    output = producer / "output"
+                    result = subprocess.run([sys.executable, "-I", "-S", "-B",
+                        str(ROOT / "scripts/archive_procedural_qec_auxiliary.py"),
+                        *mode, "--output", str(output)], capture_output=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(b"outside producer source checkouts", result.stderr)
+                    self.assertFalse(output.exists())
+
+
 class AuxiliaryArchiveTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -466,27 +578,42 @@ class AuxiliaryArchiveTests(unittest.TestCase):
             self.assertEqual(result["historical_commit"], a.HISTORICAL_COMMIT)
             self.assertEqual((output / "src/fixture.py").read_bytes(), self.members["history/source/src/fixture.py"])
             self.assertEqual(a._git(output, "status", "--porcelain"), b"")
-            with self.assertRaisesRegex(a.ArchiveError, "unused directory"):
+            # The completed restoration is itself a protected producer checkout.
+            with self.assertRaisesRegex(a.ArchiveError, "outside producer source checkouts"):
                 a.restore_historical_source(path, *ids, output)
+            existing = temp / "existing"
+            existing.mkdir()
+            with self.assertRaisesRegex(a.ArchiveError, "unused directory"):
+                a.restore_historical_source(path, *ids, existing)
 
-    def test_restoration_keeps_original_sha1_with_global_sha256_default(self):
+    def test_restoration_keeps_original_sha1_with_ambient_sha256_default(self):
         # Temporary HOME only; never read or change the user's Git configuration.
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             home = root / "home"
             home.mkdir()
             config = home / ".gitconfig"
-            configured = b"[init]\n    defaultObjectFormat = sha256\n"
+            configured = b"# Isolated synthetic fixture configuration.\n"
             config.write_bytes(configured)
             path = root / "archive.zip"
             ids = zip_packet(path, self.members, self.inventory)
-            with patch.dict(os.environ, {"HOME": str(home), "XDG_CONFIG_HOME": str(home / "xdg")}):
+            env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+            env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / "xdg"), GIT_DEFAULT_HASH="sha256")
+            with patch.dict(os.environ, env, clear=True):
                 ordinary = root / "ordinary"
                 ordinary.mkdir()
-                a._git(ordinary, "init", "--quiet")
+                # GIT_DEFAULT_HASH works on Git 2.43; init.defaultObjectFormat
+                # is silently ignored there. The control must really be SHA-256.
+                initialized = subprocess.run(["git", "-C", str(ordinary), "init", "--quiet"],
+                                             capture_output=True)
+                self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
                 self.assertEqual(a._git(ordinary, "rev-parse", "--show-object-format"), b"sha256\n")
                 output = root / "restored"
-                result = a.restore_historical_source(path, *ids, output)
+                with patch.object(a, "_git", wraps=a._git) as git:
+                    result = a.restore_historical_source(path, *ids, output)
+                    # _git also removes ambient GIT_* settings. Independently
+                    # retain the explicit original object-format requirement.
+                    git.assert_any_call(output, "init", "--quiet", "--object-format=sha1")
                 self.assertEqual(result["outcome"], "passed")
                 self.assertEqual(a._git(output, "rev-parse", "--show-object-format"), b"sha1\n")
                 self.assertEqual(a._git(output, "rev-parse", "HEAD").decode().strip(), a.HISTORICAL_COMMIT)
@@ -502,7 +629,7 @@ class AuxiliaryArchiveTests(unittest.TestCase):
                            root / "src/nested/../unbound.zip"):
                 with self.subTest(output=output), patch.object(a, "ROOT", root), \
                         patch.object(a, "read") as read, patch.object(a, "tree_bytes") as scan:
-                    with self.assertRaisesRegex(a.ArchiveError, "outside current producer source"):
+                    with self.assertRaisesRegex(a.ArchiveError, "outside producer source checkouts"):
                         a.build_archive(output, root / "run", root / "request.json",
                             "sha256:" + "0" * 64, root / "verification.json",
                             "sha256:" + "1" * 64, root / "historical")

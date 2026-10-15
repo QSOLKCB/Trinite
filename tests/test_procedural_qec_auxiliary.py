@@ -5,10 +5,15 @@ checkout. Root discovery neither skips nor substitutes synthetic evidence for
 that distinct admission/mapping/schedule integration suite.
 """
 import ast
+from contextlib import redirect_stderr
+import importlib.util
+from io import StringIO
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 from trinite.contracts import ContractError, identity, json_bytes
 from trinite.procedural_qec_auxiliary import inputs, scheduler
@@ -17,6 +22,29 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AuxiliaryDataBoundaryTests(unittest.TestCase):
+    def test_cli_rejects_producer_destinations_before_historical_admission(self):
+        spec = importlib.util.spec_from_file_location('auxiliary_cli_path_test',
+            ROOT/'scripts'/'run_procedural_qec_auxiliary.py')
+        cli = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cli)
+        with tempfile.TemporaryDirectory() as temp:
+            temp = Path(temp)
+            history = temp/'history'; history.mkdir()
+            for destination in (ROOT/'must-not-create', history/'must-not-create'):
+                arguments = (
+                    ['--prepare-request', str(destination), '--run-profile', 'engineering'],
+                    ['--run', '--output', str(destination), '--verification-request', str(temp/'verify'),
+                     '--request', str(temp/'request'), '--request-identity', 'sha256:'+'0'*64],
+                    ['--run', '--output', str(temp/'run'), '--verification-request', str(destination),
+                     '--request', str(temp/'request'), '--request-identity', 'sha256:'+'0'*64])
+                for args in arguments:
+                    with self.subTest(args=args), patch.object(inputs, 'materialize_inputs') as materialize, \
+                            redirect_stderr(StringIO()) as errors:
+                        self.assertEqual(cli.main(args+['--historical-source', str(history)]), 1)
+                        self.assertIn('outside producer source', errors.getvalue())
+                        materialize.assert_not_called()
+                        self.assertFalse(destination.exists()); self.assertFalse((temp/'run').exists())
+
     def test_data_modules_import_without_numerical_backend(self):
         program = (
             "import sys;sys.path.insert(0,sys.argv[1]);"

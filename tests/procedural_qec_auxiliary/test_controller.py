@@ -75,6 +75,35 @@ class AuxiliaryControllerTests(unittest.TestCase):
             train.assert_not_called()
         self.assertFalse(self.run.exists())
 
+    def test_sibling_writers_reject_enclosing_git_and_embedded_source_trees(self):
+        for marker in ('git-directory', 'git-worktree-file', 'embedded-source'):
+            producer = self.root/marker
+            producer.mkdir()
+            if marker == 'git-directory':
+                (producer/'.git'/'objects').mkdir(parents=True)
+                (producer/'.git'/'HEAD').write_text('ref: refs/heads/controller-fixture\n')
+            elif marker == 'git-worktree-file':
+                (producer/'.git').write_text('gitdir: /unused/controller-fixture\n')
+            else:
+                (producer/'src'/'trinite').mkdir(parents=True)
+            nested = producer/'nested'; nested.mkdir()
+            for path in (producer/'out', nested/'out', nested/'..'/'out'):
+                with self.subTest(marker=marker, path=path), \
+                        patch.object(x, 'read_request') as read, patch.object(x, 'request_core') as core, \
+                        patch.object(x, 'state_for') as state:
+                    actions = (
+                        lambda: x.prepare_request(path, 'engineering', self.inputs),
+                        lambda: x.train_cell(path, 0, 'extra-final', 'engineering', self.request,
+                                             self.request_id, self.inputs),
+                        lambda: x.run_matrix(path, self.request, self.request_id, self.verification, self.inputs),
+                        lambda: x.run_matrix(self.run, self.request, self.request_id, path, self.inputs),
+                        lambda: x.retain_failure(path, 'RuntimeError: controller fixture'))
+                    for action in actions:
+                        with self.assertRaisesRegex(ContractError, 'outside producer source'):
+                            action()
+                    read.assert_not_called(); core.assert_not_called(); state.assert_not_called()
+                    self.assertFalse(path.exists()); self.assertFalse(self.run.exists())
+
     def test_failed_before_cell_directory_still_retains_four_bound_failure_receipts(self):
         with self.mock_request(), patch.object(x, 'train_cell', side_effect=RuntimeError('injected pre-mkdir')):
             result = self.call()

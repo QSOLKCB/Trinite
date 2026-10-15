@@ -39,6 +39,12 @@ def main(argv=None):
         from trinite.procedural_qec_auxiliary.spec import settings
         if a.prepare_request is not None:
             settings(a.run_profile)  # Reject research before importing a backend.
+        from trinite.procedural_qec_auxiliary.archive import output_path
+        if a.prepare_request is not None:
+            output_path(a.prepare_request, a.historical_source)
+        elif a.run:
+            output_path(a.output, a.historical_source)
+            output_path(a.verification_request, a.historical_source)
         from trinite.procedural_qec_auxiliary.inputs import materialize_inputs
         inputs = materialize_inputs(a.historical_source)
         import torch

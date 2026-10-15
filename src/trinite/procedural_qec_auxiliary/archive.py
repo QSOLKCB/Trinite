@@ -99,6 +99,35 @@ def safe_path(path):
     return path.resolve()
 
 
+def output_path(path, *producer_roots):
+    """Reject whole producer checkouts before any output or producer work.
+
+    Known roots also protect source-only snapshots without checkout markers.
+    Ancestor markers cover other Git worktrees and extracted Trinite producers,
+    including historical roots that transport-only restoration does not receive.
+    This standard-library preflight is shared by numerical writing entrypoints.
+    """
+    path = safe_path(path)
+    for source in (ROOT, *producer_roots):
+        source = safe_path(source)
+        require(path != source and source not in path.parents,
+                "auxiliary outputs must be outside producer source checkouts")
+    for parent in (path, *path.parents):
+        git = parent / ".git"
+        # An empty sandbox .git placeholder is not a checkout. Recognize the
+        # actual metadata layout without invoking Git or following its config.
+        checkout = git.is_symlink()
+        if not checkout and git.is_dir():
+            checkout = (git / "HEAD").is_file() and (
+                (git / "objects").is_dir() or (git / "commondir").is_file())
+        if not checkout and git.is_file():
+            with git.open("rb") as stream:
+                checkout = stream.read(8) == b"gitdir: "
+        require(not (checkout or (parent / "src/trinite").is_dir()),
+                "auxiliary outputs must be outside producer source checkouts")
+    return path
+
+
 def safe_name(name):
     require(type(name) is str and 0 < len(name) <= 512 and "\\" not in name
             and ":" not in name and not name.startswith("/")
@@ -668,14 +697,12 @@ def _verify_research_records(members, request, summary):
 def build_archive(path, run, request, request_identity, verification, verification_identity, historical_source):
     """Fresh materialization and full native replay, followed by exact transport."""
     request_identity, verification_identity = require_id(request_identity), require_id(verification_identity)
-    path, run, request, verification = map(safe_path, (path, run, request, verification))
     historical_source = safe_path(historical_source)
-    current_source = safe_path(ROOT / "src")
-    require(path != current_source and current_source not in path.parents,
-            "archive output must stay outside current producer source tree")
+    path = output_path(path, historical_source)
+    run, request, verification = map(safe_path, (run, request, verification))
     require(not path.exists() and path.parent.is_dir() and path != run and run not in path.parents
             and request != verification and all(p != run and run not in p.parents for p in (request, verification))
-            and path != request and path != verification and historical_source not in path.parents,
+            and path != request and path != verification,
             "archive and external commitments require distinct unused paths outside run/source")
     request_raw, verification_raw = read(request, 128 * 1024), read(verification, 128 * 1024)
     require(identity(request_raw) == request_identity and identity(verification_raw) == verification_identity,
@@ -787,10 +814,10 @@ def restore_historical_source(path, archive_identity, inventory_identity, output
     only for restoration. The original isolated source admission is rerun by
     materialize_inputs; restoration itself makes no numerical/admission claim.
     """
+    output = output_path(output)
+    require(not output.exists() and output.parent.is_dir(), "historical restore needs an unused directory")
     members, inventory = _load_archive(path, archive_identity, inventory_identity)
     verify_contract(members, inventory)
-    output = safe_path(output)
-    require(not output.exists() and output.parent.is_dir(), "historical restore needs an unused directory")
     output.mkdir()
     _git(output, "init", "--quiet", "--object-format=sha1")
     gitdir = output / ".git"

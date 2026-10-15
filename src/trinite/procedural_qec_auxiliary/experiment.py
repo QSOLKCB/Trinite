@@ -22,6 +22,7 @@ from ..tokenizer import ByteTokenizer
 from ..training import (TrainingState, create_optimizer, evaluate, model_identity,
                         require_environment, run_steps)
 from ..procedural_qec_v3 import experiment as v3
+from .archive import ArchiveError, output_path as checked_output_path
 from .inputs import revalidate
 from .scheduler import coverage, schedule, schedule_receipt
 from .spec import (ARMS, SEEDS, assess_training_counts, cell_name, cells,
@@ -36,14 +37,13 @@ FAILED_MAX_FILES = 128
 FAILED_MAX_BYTES = 128 * 1024 * 1024
 
 
-def output_path(path, inputs):
+def output_path(path, inputs=None):
     """Reject source destinations before writes, including dot/symlink aliases."""
-    path = evidence.safe_path(path).resolve(strict=False)
-    for source in (ROOT, inputs.repository, inputs.historical_source):
-        source = evidence.safe_path(source).resolve(strict=True)
-        if path == source or source in path.parents:
-            raise ContractError("auxiliary outputs must be outside producer source checkouts")
-    return path
+    roots = (ROOT,) if inputs is None else (ROOT, inputs.repository, inputs.historical_source)
+    try:
+        return checked_output_path(path, *roots)
+    except ArchiveError as exc:
+        raise ContractError(str(exc)) from exc
 
 
 def error_text(exc):
@@ -63,7 +63,7 @@ def failure_record(error):
 
 def retain_failure(root, error):
     """Retain failures even when admission failed before train_cell made a dir."""
-    root = evidence.safe_path(root)
+    root = output_path(root)
     root.mkdir(parents=True, exist_ok=True)
     expected = failure_record(error)
     path = root / "failure.json"
