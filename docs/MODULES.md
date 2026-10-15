@@ -306,3 +306,21 @@ closed observer, with new source-bound checkpoint/full-replay schemas.
 transport verification remains standard-library only. Fixed launcher scripts
 provide explicit checkout-only entrypoints. Research execution is disabled.
 See [the implementation boundary](PROCEDURAL-QEC-AUXILIARY-IMPLEMENTATION.md).
+
+## Opt-in declared-state observation
+
+Checkout-only `scripts/declared_state/` owns only a strict five-label base-three codec and immutable
+raw-text syntactic observations. It imports `contracts` and the standard library;
+no core numerical module imports it. It does not read tensors, run inference,
+repair responses, admit data or replace exact-answer scoring. Historical flat
+source closures and the recursive CNR-001 inventory remain unchanged. It is
+not an installed-wheel API. See [DECLARED-STATE.md](DECLARED-STATE.md).
+
+## Checkout-only PCGrad engineering lane
+
+`scripts/pcgrad_v1/` owns an opt-in two-objective projection kernel and fixed
+synthetic two-parameter replay harness. It reuses the native environment and
+AdamW constructor/validator, but never edits or replaces the native updater.
+Its canonical JSON snapshots use full-prefix replay-to-resume, not a second
+native tensor loader. It is excluded from the installed package and historical
+CNR source closure. [Contract and limits](PCGRAD-ENGINEERING.md).

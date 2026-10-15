@@ -1,0 +1,13 @@
+{
+  "admitted_for_training": false,
+  "files": {
+    "dataset_generator.py": "sha256:8eb417e5653410f3175b563ae2f479c8b4c0ff2a27ad3303baddc5f109c1af49",
+    "eval_harness.py": "sha256:17933e1eb7e3fe053fa447a679ad58c4a52f42af95adecdf72080b62d6fa5655",
+    "gbnf_grammar.txt": "sha256:9b6fa0fe49f7d26b647bdb485d69c0a030c33186886032b4c0e6f57a3d2a02b1",
+    "inference_wrapper.py": "sha256:620bba52f8f479e8bdecd1449131891500e78328f7e5a580a51b7a24977d8ad0",
+    "project_readme.md": "sha256:cf46961a258ecdb04cae61d8ea4c25cf759c0ed66d0868a1036c96cf1b991a82",
+    "state_engine.py": "sha256:43b0853448347b7e049d1e52d8e6110d25c61ad88e5014955f3560093851ffbc",
+    "training_script.py": "sha256:37100a50c7dc5fbd15f58dfa9b455f69ac3639d81eab37d6890a8661e3b64298"
+  },
+  "schema": "trinite.legacy-declared-inputs.v1"
+}
