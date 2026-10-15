@@ -819,7 +819,8 @@ def restore_historical_source(path, archive_identity, inventory_identity, output
     members, inventory = _load_archive(path, archive_identity, inventory_identity)
     verify_contract(members, inventory)
     output.mkdir()
-    _git(output, "init", "--quiet", "--object-format=sha1")
+    # Ambient templates can omit metadata directories or redirect them via symlinks.
+    _git(output, "init", "--quiet", "--object-format=sha1", "--template=")
     gitdir = output / ".git"
     snapshot = inventory["historical_source"]
     def write_object(oid, kind, raw):
@@ -836,7 +837,9 @@ def restore_historical_source(path, archive_identity, inventory_identity, output
     (gitdir / "shallow").write_text(HISTORICAL_COMMIT + "\n", encoding="ascii")
     _git(output, "config", "core.sparseCheckout", "true")
     _git(output, "config", "core.sparseCheckoutCone", "false")
-    (gitdir / "info" / "sparse-checkout").write_text("/src/\n", encoding="ascii")
+    info = safe_path(gitdir / "info")
+    info.mkdir(exist_ok=True)
+    (info / "sparse-checkout").write_text("/src/\n", encoding="ascii")
     _git(output, "checkout", "--detach", HISTORICAL_COMMIT)
     require(not _git(output, "status", "--porcelain=v1", "--untracked-files=all"), "restored checkout is dirty")
     retained, check = historical_snapshot(output)

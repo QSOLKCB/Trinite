@@ -613,12 +613,87 @@ class AuxiliaryArchiveTests(unittest.TestCase):
                     result = a.restore_historical_source(path, *ids, output)
                     # _git also removes ambient GIT_* settings. Independently
                     # retain the explicit original object-format requirement.
-                    git.assert_any_call(output, "init", "--quiet", "--object-format=sha1")
+                    git.assert_any_call(output, "init", "--quiet", "--object-format=sha1", "--template=")
                 self.assertEqual(result["outcome"], "passed")
                 self.assertEqual(a._git(output, "rev-parse", "--show-object-format"), b"sha1\n")
                 self.assertEqual(a._git(output, "rev-parse", "HEAD").decode().strip(), a.HISTORICAL_COMMIT)
                 self.assertEqual(a._git(output, "status", "--porcelain"), b"")
             self.assertEqual(config.read_bytes(), configured)
+
+    def test_restoration_works_without_git_templates(self):
+        # Real Git with an isolated HOME; empty templates omit optional .git/info.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home, templates = root / "home", root / "empty-templates"
+            home.mkdir()
+            templates.mkdir()
+            config = home / ".gitconfig"
+            path = root / "archive.zip"
+            ids = zip_packet(path, self.members, self.inventory)
+            archive_before = path.read_bytes()
+            env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+            env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / "xdg"))
+            with patch.dict(os.environ, env, clear=True):
+                a._git(home, "config", "--file", str(config), "init.templateDir", str(templates))
+                configured = config.read_bytes()
+                ordinary = root / "ordinary"
+                ordinary.mkdir()
+                a._git(ordinary, "init", "--quiet", "--object-format=sha1")
+                self.assertFalse((ordinary / ".git/info").exists())
+                output = root / "restored"
+                result = a.restore_historical_source(path, *ids, output)
+                self.assertEqual(result["outcome"], "passed")
+                self.assertEqual(a._git(output, "rev-parse", "--show-object-format"), b"sha1\n")
+                self.assertEqual(a._git(output, "rev-parse", "HEAD").decode().strip(), a.HISTORICAL_COMMIT)
+                self.assertEqual(a._git(output, "rev-parse", "HEAD^{tree}").decode().strip(), a.HISTORICAL_TREE)
+                self.assertEqual(a._git(output, "status", "--porcelain=v1", "--untracked-files=all"), b"")
+                self.assertEqual((output / "src/fixture.py").read_bytes(),
+                                 self.members["history/source/src/fixture.py"])
+                self.assertEqual((output / ".git/info/sparse-checkout").read_bytes(), b"/src/\n")
+            self.assertEqual(config.read_bytes(), configured)
+            self.assertEqual(list(templates.iterdir()), [])
+            self.assertEqual(path.read_bytes(), archive_before)
+
+    def test_restoration_ignores_template_metadata_symlinks(self):
+        # Template symlinks must not redirect restored metadata outside output.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home, templates, outside = root / "home", root / "templates", root / "outside"
+            for directory in (home, templates, outside):
+                directory.mkdir()
+            for name in ("info", "objects", "refs", "hooks"):
+                target = outside / name
+                target.mkdir()
+                (target / "sentinel").write_bytes(b"unchanged external bytes\n")
+                (templates / name).symlink_to(target, target_is_directory=True)
+            config = home / ".gitconfig"
+            path = root / "archive.zip"
+            ids = zip_packet(path, self.members, self.inventory)
+            archive_before = path.read_bytes()
+            env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+            env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / "xdg"))
+            with patch.dict(os.environ, env, clear=True):
+                a._git(home, "config", "--file", str(config), "init.templateDir", str(templates))
+                configured = config.read_bytes()
+                ordinary = root / "ordinary"
+                ordinary.mkdir()
+                a._git(ordinary, "init", "--quiet", "--object-format=sha1")
+                for name in ("info", "objects", "refs", "hooks"):
+                    self.assertTrue((ordinary / ".git" / name).is_symlink())
+                outside_before = a.tree_bytes(outside)
+                output = root / "restored"
+                result = a.restore_historical_source(path, *ids, output)
+                self.assertEqual(a.tree_bytes(outside), outside_before)
+                self.assertEqual(result["outcome"], "passed")
+                self.assertFalse(any(p.is_symlink() for p in (output / ".git").rglob("*")))
+                self.assertEqual(a._git(output, "rev-parse", "--show-object-format"), b"sha1\n")
+                self.assertEqual(a._git(output, "rev-parse", "HEAD").decode().strip(), a.HISTORICAL_COMMIT)
+                self.assertEqual(a._git(output, "rev-parse", "HEAD^{tree}").decode().strip(), a.HISTORICAL_TREE)
+                self.assertEqual(a._git(output, "status", "--porcelain=v1", "--untracked-files=all"), b"")
+                self.assertEqual((output / "src/fixture.py").read_bytes(),
+                                 self.members["history/source/src/fixture.py"])
+            self.assertEqual(config.read_bytes(), configured)
+            self.assertEqual(path.read_bytes(), archive_before)
 
     def test_builder_rejects_source_output_before_reading_or_replaying(self):
         # Controller failure injection only: this does not certify native replay.

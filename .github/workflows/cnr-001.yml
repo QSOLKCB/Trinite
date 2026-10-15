@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           python -m pip install setuptools==84.0.0
           python -m unittest discover -s tests/packaging -v 2>&1 | tee "$RUNNER_TEMP/cnr-wheel-tests.log"
-      - name: Require immutable v7, v8, v9, v10, v11, v12 and v13 packets and independent sidecars
+      - name: Require immutable v7, v8, v9, v10, v11, v12, v13 and v14 packets and independent sidecars
         shell: bash
         run: |
           set -euo pipefail
@@ -56,23 +56,24 @@ jobs:
               ("v11", "7d52dc711da37a5889810199910384c287a7d8f91f4f286b81bb2343de39b647"),
               ("v12", "095cb3ecee88841ec9553a08b68d489b12ff51cb2bc35983191abd125d730360"),
               ("v13", "a151a39199916afc579a5033fb1d1c0870249b4abb7beca0b80b9556e9cd460d"),
+              ("v14", "1e32173bb2c2b9f8d4a1a1acc37d9c27f4ef5b2219f0ffb5172562553c5ab763"),
           ):
               packet = root / ("cnr001-" + version + ".tar.gz")
               sidecar = root / ("cnr001-" + version + ".sha256")
               if (hashlib.sha256(packet.read_bytes()).hexdigest() != expected
                       or sidecar.read_bytes() != (expected + "  " + packet.name + "\n").encode("ascii")):
                   raise RuntimeError("immutable " + version + " archive/sidecar changed")
-          print("Historical v7/v8/v9/v10/v11/v12/v13 bytes and sidecars preserved; never regenerate them.")
+          print("Historical v7/v8/v9/v10/v11/v12/v13/v14 bytes and sidecars preserved; never regenerate them.")
           PYCODE
       # Only the missing-packet bootstrap emits candidate bytes; the following
-      # strict tests still fail until the independently committed v14 packet and
+      # strict tests still fail until the independently committed v15 packet and
       # its externally recorded checksum exist. No historical bytes are altered.
-      - name: Emit prospectively source-bound v14 candidate when missing
+      - name: Emit prospectively source-bound v15 candidate when missing
         shell: bash
         run: |
           set -euo pipefail
-          if [ -e fixtures/cnr-001-evidence/cnr001-v14.tar.gz ]; then
-            echo 'v14 evidence packet already retained; test its full exact replay.'
+          if [ -e fixtures/cnr-001-evidence/cnr001-v15.tar.gz ]; then
+            echo 'v15 evidence packet already retained; test its full exact replay.'
           else
             python - <<'PY'
           import base64, gzip, hashlib, io, json, os, tarfile, tempfile
@@ -83,7 +84,7 @@ jobs:
           def sha(raw):
               return hashlib.sha256(raw).hexdigest()
 
-          root = Path(tempfile.mkdtemp(prefix="cnr001-v14-candidate-"))
+          root = Path(tempfile.mkdtemp(prefix="cnr001-v15-candidate-"))
           req, analysis = root/"cnr-request.json", root/"cnr-analysis.json"
           frozen = runner.freeze(req)
           ran = runner.run(req, frozen["request_identity"], analysis)
@@ -92,10 +93,10 @@ jobs:
                                   ran["analysis_identity"])
           if (checked["status"] != "passed" or not checked["read_only"]
                   or before != (req.read_bytes(), analysis.read_bytes())):
-              raise RuntimeError("new CNR v14 candidate failed authentic source-bound replay")
+              raise RuntimeError("new CNR v15 candidate failed authentic source-bound replay")
           # Inspect the actual mismatch, not an inferred or silently resealed ID.
-          with tarfile.open("fixtures/cnr-001-evidence/cnr001-v13.tar.gz", "r:gz") as tar:
-              archived = parse_json(tar.extractfile("v13/cnr-request.json").read(), canonical=True)
+          with tarfile.open("fixtures/cnr-001-evidence/cnr001-v14.tar.gz", "r:gz") as tar:
+              archived = parse_json(tar.extractfile("v14/cnr-request.json").read(), canonical=True)
           fresh = parse_json(req.read_bytes(), canonical=True)
           if set(fresh) != set(archived):
               raise RuntimeError("CNR request fields changed")
@@ -109,27 +110,26 @@ jobs:
               "modified": sorted(k for k in set(oldsource)&set(newsource)
                                  if oldsource[k] != newsource[k]),
           }
-          print("CNR_V14_CHANGED_SOURCE_KEYS:" + json.dumps(changed, sort_keys=True))
+          print("CNR_V15_CHANGED_SOURCE_KEYS:" + json.dumps(changed, sort_keys=True))
           if changed != {
               "added": [], "removed": [],
               "modified": [".github/workflows/cnr-001.yml",
-                           "src/trinite/procedural_qec_auxiliary/archive.py",
-                           "src/trinite/procedural_qec_auxiliary/experiment.py"],
+                           "src/trinite/procedural_qec_auxiliary/archive.py"],
           }:
-              raise RuntimeError("unexpected source change beyond complete auxiliary producer-root destination exclusion and fixed workflow")
-          parent_v13 = Path("fixtures/cnr-001-evidence/cnr001-v13.tar.gz").read_bytes()
-          if sha(parent_v13) != "a151a39199916afc579a5033fb1d1c0870249b4abb7beca0b80b9556e9cd460d":
+              raise RuntimeError("unexpected source change beyond template-independent auxiliary source restoration and fixed workflow")
+          parent_v14 = Path("fixtures/cnr-001-evidence/cnr001-v14.tar.gz").read_bytes()
+          if sha(parent_v14) != "1e32173bb2c2b9f8d4a1a1acc37d9c27f4ef5b2219f0ffb5172562553c5ab763":
               raise RuntimeError("historical parent archive changed")
           items = {
-              "v14/cnr-request.json": req.read_bytes(),
-              "v14/cnr-analysis.json": analysis.read_bytes(),
-              "v14/cnr-freeze-receipt.json": json_bytes(frozen),
-              "v14/cnr-run-receipt.json": json_bytes(ran),
-              "v14/cnr-verification.json": json_bytes(checked),
+              "v15/cnr-request.json": req.read_bytes(),
+              "v15/cnr-analysis.json": analysis.read_bytes(),
+              "v15/cnr-freeze-receipt.json": json_bytes(frozen),
+              "v15/cnr-run-receipt.json": json_bytes(ran),
+              "v15/cnr-verification.json": json_bytes(checked),
           }
           manifest = {
-              "schema": "trinite.cnr-001-evidence-archive.v14",
-              "parent_v13_sha256": sha(parent_v13),
+              "schema": "trinite.cnr-001-evidence-archive.v15",
+              "parent_v14_sha256": sha(parent_v14),
               "source_procedure": "unchanged CNR v4 protocol, new source-bound producer",
               "source_delta": changed,
               "request_identity": frozen["request_identity"],
@@ -148,9 +148,9 @@ jobs:
                       member.uname=member.gname=""
                       tar.addfile(member, io.BytesIO(raw))
           candidate = out.getvalue()
-          print("CNR_V14_ARCHIVE_SHA256:" + sha(candidate))
-          print("CNR_V14_ARCHIVE_BYTES:" + str(len(candidate)))
-          print("CNR_V14_ARCHIVE_BASE64:" + base64.b64encode(candidate).decode("ascii"))
+          print("CNR_V15_ARCHIVE_SHA256:" + sha(candidate))
+          print("CNR_V15_ARCHIVE_BYTES:" + str(len(candidate)))
+          print("CNR_V15_ARCHIVE_BASE64:" + base64.b64encode(candidate).decode("ascii"))
           PY
           fi
       - name: Run bounded native-baseline/CNR experiment and verify exact replay
@@ -175,7 +175,7 @@ jobs:
           print('ETQ-303 full walk/event:',report['graph_provenance']['etq_diagnostics'])
           print('v0.1.0 baseline:',report['baseline'])
           PY
-      - name: Verify current source-bound v14 packet against exact fresh native replay
+      - name: Verify current source-bound v15 packet against exact fresh native replay
         if: success()
         shell: bash
         run: |
@@ -188,55 +188,55 @@ jobs:
           def sha(raw): return hashlib.sha256(raw).hexdigest()
 
           root=Path("fixtures/cnr-001-evidence")
-          parent=(root/"cnr001-v13.tar.gz").read_bytes()
-          if sha(parent) != "a151a39199916afc579a5033fb1d1c0870249b4abb7beca0b80b9556e9cd460d":
-              raise RuntimeError("immutable v13 archive changed")
-          packet=root/"cnr001-v14.tar.gz"
+          parent=(root/"cnr001-v14.tar.gz").read_bytes()
+          if sha(parent) != "1e32173bb2c2b9f8d4a1a1acc37d9c27f4ef5b2219f0ffb5172562553c5ab763":
+              raise RuntimeError("immutable v14 archive changed")
+          packet=root/"cnr001-v15.tar.gz"
           # These independently captured constants live outside the CNR source
           # receipt, so retention never changes this finalized workflow.
           anchors=runpy.run_path("tests/test_cnr001.py")
-          expected_sha, expected_bytes=anchors["V14_SHA256"], anchors["V14_BYTES"]
+          expected_sha, expected_bytes=anchors["V15_SHA256"], anchors["V15_BYTES"]
           if (type(expected_sha) is not str or re.fullmatch(r"[a-f0-9]{64}", expected_sha) is None
                   or type(expected_bytes) is not int or expected_bytes <= 0):
-              raise RuntimeError("v14 external archive identity/length is not captured")
+              raise RuntimeError("v15 external archive identity/length is not captured")
           if sha(packet.read_bytes())!=expected_sha or len(packet.read_bytes())!=expected_bytes:
-              raise RuntimeError("v14 archive differs from the independent capture")
-          recorded=(root/"cnr001-v14.sha256").read_text("ascii").strip().split()
+              raise RuntimeError("v15 archive differs from the independent capture")
+          recorded=(root/"cnr001-v15.sha256").read_text("ascii").strip().split()
           if (len(recorded)!=2 or re.fullmatch(r"[a-f0-9]{64}", recorded[0]) is None
                   or recorded[0]!=expected_sha
-                  or recorded[1]!="cnr001-v14.tar.gz"
-                  or (root/"cnr001-v14.sha256").read_bytes() != (recorded[0]+"  "+packet.name+"\n").encode("ascii")
+                  or recorded[1]!="cnr001-v15.tar.gz"
+                  or (root/"cnr001-v15.sha256").read_bytes() != (recorded[0]+"  "+packet.name+"\n").encode("ascii")
                   or sha(packet.read_bytes())!=recorded[0]):
-              raise RuntimeError("missing or mismatched independent v14 commitment")
+              raise RuntimeError("missing or mismatched independent v15 commitment")
           with tarfile.open(packet,"r:gz") as archive:
               members=archive.getmembers()
               if len(members)!=6 or any(not m.isfile() for m in members) or len({m.name for m in members})!=6:
-                  raise RuntimeError("wrong v14 source-bound packet inventory")
+                  raise RuntimeError("wrong v15 source-bound packet inventory")
               raw={m.name:archive.extractfile(m).read() for m in members}
           files=("cnr-request.json","cnr-analysis.json","cnr-freeze-receipt.json",
                  "cnr-run-receipt.json","cnr-verification.json")
-          expected={"MANIFEST.json"}|{"v14/"+n for n in files}
-          if set(raw)!=expected: raise RuntimeError("missing v14 packet members")
+          expected={"MANIFEST.json"}|{"v15/"+n for n in files}
+          if set(raw)!=expected: raise RuntimeError("missing v15 packet members")
           manifest=parse_json(raw["MANIFEST.json"], canonical=True)
           if (raw["MANIFEST.json"]!=json_bytes(manifest)
-                  or manifest["schema"]!="trinite.cnr-001-evidence-archive.v14"
-                  or manifest["parent_v13_sha256"]!=sha(parent)
+                  or manifest["schema"]!="trinite.cnr-001-evidence-archive.v15"
+                  or manifest["parent_v14_sha256"]!=sha(parent)
                   or set(manifest["entries"])!=expected-{"MANIFEST.json"}):
-              raise RuntimeError("noncanonical/missing v14 historical ancestry")
+              raise RuntimeError("noncanonical/missing v15 historical ancestry")
           for name,attrs in manifest["entries"].items():
               if attrs!={"bytes":len(raw[name]),"sha256":sha(raw[name])}:
-                  raise RuntimeError("v14 member digest differs: "+name)
-          if (manifest["request_identity"]!="sha256:"+sha(raw["v14/cnr-request.json"])
-                  or manifest["analysis_identity"]!="sha256:"+sha(raw["v14/cnr-analysis.json"])):
-              raise RuntimeError("v14 independently committed identities differ")
-          with tarfile.open(root/"cnr001-v13.tar.gz", "r:gz") as archive:
-              previous=parse_json(archive.extractfile("v13/cnr-request.json").read(), canonical=True)
-          request=parse_json(raw["v14/cnr-request.json"], canonical=True)
+                  raise RuntimeError("v15 member digest differs: "+name)
+          if (manifest["request_identity"]!="sha256:"+sha(raw["v15/cnr-request.json"])
+                  or manifest["analysis_identity"]!="sha256:"+sha(raw["v15/cnr-analysis.json"])):
+              raise RuntimeError("v15 independently committed identities differ")
+          with tarfile.open(root/"cnr001-v14.tar.gz", "r:gz") as archive:
+              previous=parse_json(archive.extractfile("v14/cnr-request.json").read(), canonical=True)
+          request=parse_json(raw["v15/cnr-request.json"], canonical=True)
           if set(request)!=set(previous):
-              raise RuntimeError("v14 request fields differ from historical v13")
+              raise RuntimeError("v15 request fields differ from historical v14")
           for key in previous:
               if key!="source" and request[key]!=previous[key]:
-                  raise RuntimeError("v14 protocol/data field changed: "+key)
+                  raise RuntimeError("v15 protocol/data field changed: "+key)
           oldsource, newsource=previous["source"], request["source"]
           delta={"added":sorted(set(newsource)-set(oldsource)),
                  "removed":sorted(set(oldsource)-set(newsource)),
@@ -244,16 +244,15 @@ jobs:
                                    if oldsource[k]!=newsource[k])}
           expected_delta={"added":[], "removed":[],
                           "modified":[".github/workflows/cnr-001.yml",
-                                      "src/trinite/procedural_qec_auxiliary/archive.py",
-                                      "src/trinite/procedural_qec_auxiliary/experiment.py"]}
+                                      "src/trinite/procedural_qec_auxiliary/archive.py"]}
           if (delta!=expected_delta or manifest["source_delta"]!=delta
                   or newsource!=core.source_receipt()):
-              raise RuntimeError("v14 complete source receipt or exact source delta differs")
+              raise RuntimeError("v15 complete source receipt or exact source delta differs")
           current=Path(os.environ["RUNNER_TEMP"])
           for name in files:
-              if raw["v14/"+name]!=(current/name).read_bytes():
-                  raise RuntimeError("v14 exact current producer replay mismatch: "+name)
-          print("v14 packet exactly reproduces current source-bound request, result, and verifier; immutable v13 preserved.")
+              if raw["v15/"+name]!=(current/name).read_bytes():
+                  raise RuntimeError("v15 exact current producer replay mismatch: "+name)
+          print("v15 packet exactly reproduces current source-bound request, result, and verifier; immutable v14 preserved.")
           PY
       - name: Retain all research results, including failure logs
         if: always()
@@ -978,6 +977,99 @@ jobs:
         with:
           name: cnr-001-historical-v13-replay
           path: ${{ runner.temp }}/cnr-historical-v13.log
+          if-no-files-found: warn
+
+  historical-v14-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONHASHSEED: '0'
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: 8107bd6e012a720db0e2551dc904a460458f6733
+          path: v14-producer
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Install original hash-locked authentic CNR reader
+        working-directory: v14-producer
+        run: python -m pip install --require-hashes --no-deps -r requirements.connectome.lock
+      - name: Replay authenticated v14 request and analysis with exact original producer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' 2>&1 | tee "$RUNNER_TEMP/cnr-historical-v14.log"
+          import hashlib, json, os, pathlib, subprocess, sys, tarfile, tempfile
+          def sha(raw): return hashlib.sha256(raw).hexdigest()
+          packet=pathlib.Path("current/fixtures/cnr-001-evidence/cnr001-v14.tar.gz")
+          if sha(packet.read_bytes())!="1e32173bb2c2b9f8d4a1a1acc37d9c27f4ef5b2219f0ffb5172562553c5ab763":
+              raise RuntimeError("v14 external archive identity differs")
+          if len(packet.read_bytes())!=12484:
+              raise RuntimeError("v14 independently captured archive length differs")
+          sidecar=packet.with_name("cnr001-v14.sha256")
+          if sidecar.read_bytes()!=b"1e32173bb2c2b9f8d4a1a1acc37d9c27f4ef5b2219f0ffb5172562553c5ab763  cnr001-v14.tar.gz\n":
+              raise RuntimeError("immutable v14 sidecar differs")
+          with tarfile.open(packet,"r:gz") as tar:
+              members=tar.getmembers()
+              if len(members)!=6 or any(not x.isfile() for x in members) or len({x.name for x in members})!=6:
+                  raise RuntimeError("invalid historical v14 file inventory")
+              retained={x.name:tar.extractfile(x).read() for x in members}
+          names={"MANIFEST.json","v14/cnr-request.json","v14/cnr-analysis.json",
+                 "v14/cnr-freeze-receipt.json","v14/cnr-run-receipt.json","v14/cnr-verification.json"}
+          if set(retained)!=names: raise RuntimeError("historical v14 members missing")
+          from pathlib import Path
+          sys.path.insert(0,str(Path("v14-producer/src").resolve()))
+          from trinite.contracts import json_bytes
+          manifest=json.loads(retained["MANIFEST.json"])
+          if (retained["MANIFEST.json"]!=json_bytes(manifest)
+                  or manifest["schema"]!="trinite.cnr-001-evidence-archive.v14"
+                  or manifest["parent_v13_sha256"]!="a151a39199916afc579a5033fb1d1c0870249b4abb7beca0b80b9556e9cd460d"
+                  or set(manifest["entries"])!=names-{"MANIFEST.json"}):
+              raise RuntimeError("historical v14 manifest or parent commitment invalid")
+          for name,attrs in manifest["entries"].items():
+              if attrs!={"bytes":len(retained[name]),"sha256":sha(retained[name])}:
+                  raise RuntimeError("historical v14 member differs: "+name)
+          req=retained["v14/cnr-request.json"]
+          analysis=retained["v14/cnr-analysis.json"]
+          rid="sha256:"+sha(req)
+          aid="sha256:"+sha(analysis)
+          if manifest["request_identity"]!=rid or manifest["analysis_identity"]!=aid:
+              raise RuntimeError("historical v14 request/analysis identities differ")
+          with tempfile.TemporaryDirectory() as tmp:
+              rp=pathlib.Path(tmp)/"request.json"
+              ap=pathlib.Path(tmp)/"analysis.json"
+              rp.write_bytes(req)
+              ap.write_bytes(analysis)
+              producer=pathlib.Path("v14-producer").resolve()
+              env=dict(os.environ,PYTHONPATH=str(producer/"src"))
+              args=[sys.executable,"scripts/run_cnr001.py","--verify-only",
+                    "--request",str(rp),"--request-identity",rid,
+                    "--output",str(ap),"--analysis-identity",aid]
+              checked=subprocess.run(args,cwd=producer,env=env,capture_output=True,timeout=240)
+              if checked.returncode!=0:
+                  raise RuntimeError("original v14 native replay failed: "+checked.stderr.decode(errors="replace")[-1600:])
+              if checked.stdout!=retained["v14/cnr-verification.json"]:
+                  raise RuntimeError("fresh v14 verifier receipt differs from archived receipt")
+              if rp.read_bytes()!=req or ap.read_bytes()!=analysis:
+                  raise RuntimeError("v14 verification mutated original run bytes")
+          print("Full v14 verifier executed against pinned producer 8107bd6e; original request, analysis, receipt and archive identities match.")
+          PY
+
+      - name: Retain historical v14 replay log including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cnr-001-historical-v14-replay
+          path: ${{ runner.temp }}/cnr-historical-v14.log
           if-no-files-found: warn
 
   historical-v3-replay:

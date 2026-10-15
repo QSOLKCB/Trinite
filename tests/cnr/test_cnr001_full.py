@@ -32,6 +32,14 @@ V13_BYTES = 12484
 # Exact archive also reproduced by a separate local unchanged CNR replay.
 V14_SHA256 = "1e32173bb2c2b9f8d4a1a1acc37d9c27f4ef5b2219f0ffb5172562553c5ab763"
 V14_BYTES = 12484
+# Populate only from a genuine finalized-producer capture retained externally.
+V15_SHA256 = None
+V15_BYTES = None
+AUXILIARY_GIT_INFO_SOURCE_DELTA = {
+    "added": [], "removed": [],
+    "modified": [".github/workflows/cnr-001.yml",
+                 "src/trinite/procedural_qec_auxiliary/archive.py"],
+}
 AUXILIARY_OUTPUT_GUARD_SOURCE_DELTA = {
     "added": [], "removed": [],
     "modified": [".github/workflows/cnr-001.yml",
@@ -112,7 +120,7 @@ class CNR001FullBiology(unittest.TestCase):
             return {m.name: archive.extractfile(m).read() for m in entries}
 
     def test_sidecar_deletion_and_rewrite_fail_closed(self):
-        for version in ("v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14"):
+        for version in ("v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15"):
             with self.subTest(version=version), tempfile.TemporaryDirectory() as temporary:
                 archive = Path(temporary) / ("cnr001-" + version + ".tar.gz")
                 sidecar = Path(temporary) / ("cnr001-" + version + ".sha256")
@@ -164,7 +172,7 @@ class CNR001FullBiology(unittest.TestCase):
         self.retained_v9_members()
 
     def assert_source_delta(self, request):
-        old_request = parse_json(self.retained_v13_members()["v13/cnr-request.json"], canonical=True)
+        old_request = parse_json(self.retained_v14_members()["v14/cnr-request.json"], canonical=True)
         self.assertEqual(set(request), set(old_request))
         for key in old_request:
             if key != "source":
@@ -174,7 +182,7 @@ class CNR001FullBiology(unittest.TestCase):
         self.assertEqual({"added": sorted(set(new) - set(old)),
                           "removed": sorted(set(old) - set(new)),
                           "modified": sorted(key for key in set(old) & set(new)
-                                             if old[key] != new[key])}, AUXILIARY_OUTPUT_GUARD_SOURCE_DELTA)
+                                             if old[key] != new[key])}, AUXILIARY_GIT_INFO_SOURCE_DELTA)
 
     def retained_v10_members(self, root=None):
         self.retained_v9_members()
@@ -367,7 +375,17 @@ class CNR001FullBiology(unittest.TestCase):
         members = self.read_packet(archive)
         manifest = self.assert_packet_members(members, "v14", "v13", V13_SHA256)
         self.assertEqual(manifest["source_delta"], AUXILIARY_OUTPUT_GUARD_SOURCE_DELTA)
-        self.assert_source_delta(parse_json(members["v14/cnr-request.json"], canonical=True))
+        previous = parse_json(self.retained_v13_members()["v13/cnr-request.json"], canonical=True)
+        request = parse_json(members["v14/cnr-request.json"], canonical=True)
+        self.assertEqual(set(request), set(previous))
+        for key in previous:
+            if key != "source":
+                self.assertEqual(request[key], previous[key], key)
+        old, new = previous["source"], request["source"]
+        self.assertEqual({"added": sorted(set(new) - set(old)),
+                          "removed": sorted(set(old) - set(new)),
+                          "modified": sorted(key for key in set(old) & set(new)
+                                             if old[key] != new[key])}, AUXILIARY_OUTPUT_GUARD_SOURCE_DELTA)
         return members
 
     def test_retained_v14_requires_complete_source_and_exact_v13_ancestry(self):
@@ -392,6 +410,46 @@ class CNR001FullBiology(unittest.TestCase):
             self.assert_retained_sha256(archive, sidecar, digest)
             with self.assertRaises(AssertionError):
                 self.retained_v14_members(root)
+        self.assertEqual(original.read_bytes(), raw)
+
+    def retained_v15_members(self, root=None):
+        self.retained_v14_members()
+        root = ROOT / "fixtures/cnr-001-evidence" if root is None else root
+        archive, sidecar = root / "cnr001-v15.tar.gz", root / "cnr001-v15.sha256"
+        self.assertTrue(archive.is_file(), "missing newly published v15 packet")
+        self.assertTrue(sidecar.is_file(), "missing independently retained v15 digest")
+        self.assertIsNotNone(V15_SHA256, "v15 archive identity has not been independently captured")
+        self.assertIsNotNone(V15_BYTES, "v15 archive length has not been independently captured")
+        self.assert_retained_sha256(archive, sidecar, V15_SHA256)
+        self.assertEqual(len(archive.read_bytes()), V15_BYTES)
+        members = self.read_packet(archive)
+        manifest = self.assert_packet_members(members, "v15", "v14", V14_SHA256)
+        self.assertEqual(manifest["source_delta"], AUXILIARY_GIT_INFO_SOURCE_DELTA)
+        self.assert_source_delta(parse_json(members["v15/cnr-request.json"], canonical=True))
+        return members
+
+    def test_retained_v15_requires_complete_source_and_exact_v14_ancestry(self):
+        self.retained_v15_members()
+
+    def test_coordinated_v15_gzip_metadata_and_sidecar_reseal_is_rejected(self):
+        original = ROOT / "fixtures/cnr-001-evidence/cnr001-v15.tar.gz"
+        expected_members = self.retained_v15_members()
+        raw = original.read_bytes()
+        self.assertEqual(raw[:10], b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff")
+        changed = raw[:4] + (1).to_bytes(4, "little") + raw[8:]
+        self.assertEqual(len(changed), V15_BYTES)
+        self.assertEqual(gzip.decompress(changed), gzip.decompress(raw))
+        digest = identity(changed)[7:]
+        self.assertNotEqual(digest, V15_SHA256)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive, sidecar = root / "cnr001-v15.tar.gz", root / "cnr001-v15.sha256"
+            archive.write_bytes(changed)
+            sidecar.write_text(digest + "  " + archive.name + "\n", encoding="ascii")
+            self.assertEqual(self.read_packet(archive), expected_members)
+            self.assert_retained_sha256(archive, sidecar, digest)
+            with self.assertRaises(AssertionError):
+                self.retained_v15_members(root)
         self.assertEqual(original.read_bytes(), raw)
 
     def test_coordinated_v10_gzip_metadata_and_sidecar_reseal_is_rejected(self):
@@ -526,22 +584,22 @@ class CNR001FullBiology(unittest.TestCase):
             self.assert_retained_sha256(
                 v7_archive, v7_sidecar,
                 "03327a365b76474bfaf0956eb06766cabdf9de02e5ca1162c0c1474f9d893288")
-            # V8 through v13 belong to their immutable historical producers.
-            # Complete auxiliary output exclusion requires a separate v14 packet.
+            # V8 through v14 belong to their immutable historical producers.
+            # Template-independent source restoration requires a separate v15 packet.
             v8_archive = ROOT / "fixtures/cnr-001-evidence/cnr001-v8.tar.gz"
             self.assert_retained_sha256(
                 v8_archive, ROOT / "fixtures/cnr-001-evidence/cnr001-v8.sha256",
                 V8_SHA256)
             self.assert_source_delta(current)
-            members = self.retained_v14_members()
+            members = self.retained_v15_members()
             manifest = json.loads(members["MANIFEST.json"])
             self.assertEqual(manifest["request_identity"], req_id)
             self.assertEqual(manifest["analysis_identity"], ran["analysis_identity"])
-            self.assertEqual(members["v14/cnr-request.json"], before[0])
-            self.assertEqual(members["v14/cnr-analysis.json"], before[1])
-            self.assertEqual(members["v14/cnr-freeze-receipt.json"], json_bytes(frozen))
-            self.assertEqual(members["v14/cnr-run-receipt.json"], json_bytes(ran))
-            self.assertEqual(members["v14/cnr-verification.json"], json_bytes(got))
+            self.assertEqual(members["v15/cnr-request.json"], before[0])
+            self.assertEqual(members["v15/cnr-analysis.json"], before[1])
+            self.assertEqual(members["v15/cnr-freeze-receipt.json"], json_bytes(frozen))
+            self.assertEqual(members["v15/cnr-run-receipt.json"], json_bytes(ran))
+            self.assertEqual(members["v15/cnr-verification.json"], json_bytes(got))
             self.assertNotEqual(before[0], old_request)
             with self.assertRaises(FileExistsError):
                 module.freeze(rpath)
