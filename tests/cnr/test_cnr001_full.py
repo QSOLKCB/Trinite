@@ -24,10 +24,10 @@ V11_BYTES = 12496
 # Exact archive also reproduced by a separate local unchanged CNR replay.
 V12_SHA256 = "095cb3ecee88841ec9553a08b68d489b12ff51cb2bc35983191abd125d730360"
 V12_BYTES = 12493
-# Captured independently only after the finalized v13 producer is published.
-# Missing anchors deliberately fail retained-evidence checks until real capture.
-V13_SHA256 = None
-V13_BYTES = None
+# Independently captured from hosted run 38667485611, job 116202641565.
+# Exact archive also reproduced by a separate local unchanged CNR replay.
+V13_SHA256 = "a151a39199916afc579a5033fb1d1c0870249b4abb7beca0b80b9556e9cd460d"
+V13_BYTES = 12484
 AUXILIARY_HARDENING_SOURCE_DELTA = {
     "added": [], "removed": [],
     "modified": [".github/workflows/cnr-001.yml",
