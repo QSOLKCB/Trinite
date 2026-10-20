@@ -1,0 +1,71 @@
+name: Frozen native batch composition v2
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: batch-composition-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pinned-cpu-conformance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    env:
+      PYTHONPATH: src:scripts
+      PYTHONDONTWRITEBYTECODE: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Acquire unchanged hash-locked CPU dependencies
+        run: |
+          python -m pip install --require-hashes --no-deps -r requirements.lock
+          python -m pip check
+      - name: Focused and independent adversarial conformance
+        run: |
+          python -B -m unittest discover -s tests/batch_composition_v1 -v
+          python -B -m unittest discover -s tests/batch_composition_review -v
+      - name: Frozen comparison and exact replay on this published producer
+        run: |
+          request="$RUNNER_TEMP/batch-composition-request.json"
+          report="$RUNNER_TEMP/batch-composition-report.json"
+          request_id=$(python -B scripts/run_batch_composition.py freeze --request "$request")
+          set +e
+          python -B scripts/run_batch_composition.py run --request "$request" --request-identity "$request_id" --output "$report" > "$RUNNER_TEMP/batch-composition-run.log" 2>&1
+          run_exit=$?
+          set -e
+          if [ "$run_exit" -ne 0 ] && [ "$run_exit" -ne 2 ]; then exit "$run_exit"; fi
+          report_id=$(grep '^sha256:' "$RUNNER_TEMP/batch-composition-run.log" | tail -n 1)
+          set +e
+          python -B scripts/run_batch_composition.py verify --request "$request" --request-identity "$request_id" --output "$report" --expected-identity "$report_id" > "$RUNNER_TEMP/batch-composition-replay.log" 2>&1
+          replay_exit=$?
+          set -e
+          if [ "$replay_exit" -ne 0 ]; then exit "$replay_exit"; fi
+          exit "$run_exit"
+      - name: Retain all completed, failed and mismatching evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: batch-composition-v2-${{ matrix.python }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/batch-composition-*
+          if-no-files-found: warn
+          retention-days: 14

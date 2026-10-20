@@ -1,0 +1,1 @@
+{"action":"run","deadline_seconds":300,"expected_identity":null,"final_name":"batch-composition-report.json","request_identity":"sha256:991201297b7f1b1affa5462aec6974a0ed0c7b37c8add1bb4c6aa73c065cd298","schema":"trinite.batch-composition-invocation.v2"}
