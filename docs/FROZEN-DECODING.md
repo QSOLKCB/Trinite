@@ -1,6 +1,6 @@
 # Frozen-model decoding comparison v1
 
-Status: implementation and prospective protocol; target results not yet measured.
+Status: completed visible-fixture comparison; syntax fixes format, but outputs are constant answers.
 
 This additive checkout-only comparison follows [PR #49's training pilot](SCALE-REFIT-TRAINING.md).
 It imports all four existing final-step-60 endpoints (absmean/refit, seeds 0/1)
@@ -79,3 +79,41 @@ Affected requirements: TRI-I01/I02/I03/I05/I06/I07/I08/I10/I11/I12/I13/I14.
 Numerical model, quantizer and original scorer compatibility is preserved. This
 changes decoding policy only. No learning adequacy, original folded/composed-answer
 gate, fresh confirmation, format selection, geometry, scaling or release is unlocked.
+
+
+## Retained result: constant answers, not input-sensitive reasoning
+
+The producer was published before outcomes at
+[baff6270](https://github.com/QSOLKCB/Trinite/commit/baff6270ce868a31bf74f7da41abbed8b3d6b3dc).
+The [commitment](../fixtures/frozen-decoding-v1/commitment.json),
+[request](../fixtures/frozen-decoding-v1/request.json),
+[full report](../fixtures/frozen-decoding-v1/report.json.gz) and
+[timings](../fixtures/frozen-decoding-v1/report.timings.json) retain every cell.
+Read-only inference recomputation exactly matched report identity
+`sha256:7f5b8c6819ab5162546f881a8105148e409b17c37689bd72e52e9799fc06a688`.
+
+Ordinary greedy emits EOS immediately for every example: 0/36 training and 0/6
+validation complete answers in all four endpoints, identical to PR #49. Syntax
+masking produces valid digit-plus-EOS output for all examples, but **every seed-0
+output is the constant digit 2, and every seed-1 output is the constant digit 0**,
+for both absmean and refit. Neither arm shows input-sensitive arithmetic here.
+
+The resulting exact-answer counts are 12/36 training in every cell, and 4/6
+validation for seed 0 versus 2/6 for seed 1. Those counts equal the respective
+constant answers' prevalence: training labels contain twelve zeros and twelve twos;
+validation contains two zeros and four twos. This is descriptive inspection of
+retained predictions, not an additional tuned baseline or selected checkpoint.
+All 24/36 training semantic errors and the 2/6 or 4/6 validation semantic errors
+remain visible. Refit and absmean are identical on these generated outputs.
+
+**Equal caps did not mean equal actual compute:** ordinary greedy uses one token
+and one forward per item, while syntax uses two of each. Across the four endpoints,
+ordinary totals 168 tokens/forwards and syntax totals 336. Observed whole report
+runtime was about 5.50 seconds and replay about 4.37 seconds; the full per-item
+latency sidecar is retained, but fixed order, small workload, masking overhead and
+unequal actual calls preclude a speed/compute-efficiency claim. Peak process RSS
+was approximately 287 MiB. These are observations of this host, not model guarantees.
+
+The format prior improves the harness's exact-answer score by preventing empty
+answers. It does not establish improved learned reasoning, new learning, fresh
+held-out generalization or a quantizer advantage. All prior gates remain blocked.
