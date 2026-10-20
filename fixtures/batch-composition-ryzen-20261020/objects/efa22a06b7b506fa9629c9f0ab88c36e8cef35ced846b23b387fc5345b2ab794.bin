@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "<HOME>/.local/bin/python3.12",
+    "-VV"
+  ],
+  "cwd": "<RUN_ROOT>",
+  "ended_utc": "2026-10-20T19:48:44.315053+00:00",
+  "exit_code": 0,
+  "pid": 63856,
+  "started_utc": "2026-10-20T19:48:44.313859+00:00"
+}

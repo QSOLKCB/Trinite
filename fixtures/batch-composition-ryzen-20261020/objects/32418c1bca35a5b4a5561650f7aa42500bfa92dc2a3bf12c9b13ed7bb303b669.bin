@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "rg",
+    "--files",
+    "--hidden",
+    "-g",
+    "AGENTS.md",
+    "-g",
+    "!.git"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:49:03.919572+00:00",
+  "exit_code": 0,
+  "pid": 63923,
+  "started_utc": "2026-10-20T19:49:03.913865+00:00"
+}

@@ -1,0 +1,63 @@
+{
+  "note": "Network checks used normal require_escalated approval before fresh setup. These are execution-tool observations, not reruns. No system or network settings changed.",
+  "repository": {
+    "argv": [
+      "git",
+      "ls-remote",
+      "https://github.com/QSOLKCB/Trinite.git",
+      "HEAD"
+    ],
+    "exit_code": 0,
+    "output": "f4e393456f0d708af0221a8de4767438c700710a\tHEAD\n"
+  },
+  "lock_source": {
+    "argv": [
+      "curl",
+      "--fail",
+      "--silent",
+      "--show-error",
+      "--location",
+      "https://raw.githubusercontent.com/QSOLKCB/Trinite/f4e393456f0d708af0221a8de4767438c700710a/requirements.lock"
+    ],
+    "exit_code": 0,
+    "index": "https://download.pytorch.org/whl/cpu",
+    "direct_wheel_host": "files.pythonhosted.org",
+    "note": "Retrieved before setup to identify pinned sources. Lock will also be preserved from the verified checkout."
+  },
+  "package_sources": [
+    {
+      "argv": [
+        "curl",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--head",
+        "https://download.pytorch.org/whl/cpu/torch/"
+      ],
+      "name": "cpu-index",
+      "chunk_id": "71f9bb",
+      "wall_time_seconds": 0.00000835,
+      "exit_code": 0,
+      "original_token_count": 145,
+      "output": "HTTP/2 200 \r\ncontent-type: text/html\r\ncontent-length: 414325\r\nserver: AmazonS3\r\ndate: Tue, 20 Oct 2026 19:47:03 GMT\r\nlast-modified: Tue, 20 Oct 2026 19:16:35 GMT\r\netag: \"7600a470f4cdb0d60a0c0feb395e45db\"\r\nx-amz-server-side-encryption: AES256\r\ncache-control: max-age=600, public, must-revalidate\r\nx-amz-version-id: iM3Ml5kYYRpCnqAT1cB_e3cCel2k6mgl\r\naccept-ranges: bytes\r\nx-cache: Hit from cloudfront\r\nvia: 1.1 8f2068fa2463c58a167b7f6ce9c6805a.cloudfront.net (CloudFront)\r\nx-amz-cf-pop: MEL51-P2\r\nx-amz-cf-id: _DNNYlMF5V4AopZ5ap-SsgYj8YA7g1R5JAUQhT5Finf1Cj3JNKhXcQ==\r\nage: 19\r\n\r\n"
+    },
+    {
+      "argv": [
+        "curl",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--head",
+        "https://files.pythonhosted.org/packages/fe/5d/5a514d7b88e310c8b146e2404e0dc161282e78634d9358975fd56dfd14be/safetensors-0.6.2-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+      ],
+      "name": "pinned-safetensors-wheel",
+      "chunk_id": "e6ec92",
+      "wall_time_seconds": 0.00001374,
+      "exit_code": 0,
+      "original_token_count": 254,
+      "output": "HTTP/2 200 \r\nserver: nginx\r\ncontent-type: application/octet-stream\r\nlast-modified: Fri, 08 Aug 2025 13:13:51 GMT\r\netag: \"b0e2f498fa343f43a0920ea3499e76c6\"\r\nx-amz-request-id: af3ad253071fe1a1\r\nx-amz-id-2: aNxpjyTEHNkdmiDEpMOVkvWb3Yy0wRzjC\r\nx-amz-version-id: 4_z179c51e67f11a0ad8f6c0018_f117ea35ce2304dda_d20250808_m131351_c005_v0501036_t0014_u01754658831828\r\ncache-control: max-age=365000000, immutable, public\r\naccept-ranges: bytes\r\nage: 727393\r\ndate: Tue, 20 Oct 2026 19:47:21 GMT\r\nx-served-by: cache-iad-khef600092-IAD, cache-adl2040022-ADL\r\nx-cache: HIT, HIT\r\nx-cache-hits: 14978, 0\r\nx-timer: S1792525642.947889,VS0,VE1\r\nstrict-transport-security: max-age=31536000; includeSubDomains; preload\r\nx-frame-options: deny\r\nx-xss-protection: 1; mode=block\r\nx-content-type-options: nosniff\r\nx-permitted-cross-domain-policies: none\r\nx-robots-header: noindex\r\nx-pypi-file-python-version: cp38\r\nx-pypi-file-version: 0.6.2\r\nx-pypi-file-package-type: bdist_wheel\r\nx-pypi-file-project: safetensors\r\ncontent-length: 485835\r\n\r\n"
+    }
+  ]
+}

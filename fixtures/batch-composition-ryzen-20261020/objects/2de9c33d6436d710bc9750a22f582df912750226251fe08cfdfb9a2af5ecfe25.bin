@@ -1,0 +1,587 @@
+# Getting started
+
+Foundation commands require Python 3.11 or newer and no runtime/test packages. Phase 3 adds optional CPU model/training commands and standard-library evidence verification. Serving remains future work.
+
+From the repository root, run without installing anything:
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -v
+PYTHONPATH=src python3 -m trinite validate-config configs/reference.json
+PYTHONPATH=src python3 -m trinite tokenize 'é=1' --answer-start 3 --pad-to 8
+PYTHONPATH=src python3 -m trinite audit-fixture fixtures/formal-v1
+```
+
+answer-start is a UTF-8 byte offset, not a character offset. BOS/EOS are included in the context limit. Token loss masks mark prediction targets before the future trainer shifts them. PAD/BOS never contribute to loss; EOS does. Generated invalid UTF-8 byte sequences remain available through decode_bytes; text display has an explicit strict/replacement/escaping policy.
+
+Create a fixture in a **new** output directory:
+
+```bash
+PYTHONPATH=src python3 -m trinite generate-fixture <TMP>/trinite-formal-v1
+PYTHONPATH=src python3 -m trinite audit-fixture <TMP>/trinite-formal-v1
+cmp fixtures/formal-v1/dataset.json <TMP>/trinite-formal-v1/dataset.json
+cmp fixtures/formal-v1/manifest.json <TMP>/trinite-formal-v1/manifest.json
+```
+
+The output directory must not already exist; generation never overwrites existing files. IO failures can leave an incomplete directory, which the audit rejects. Reads are bounded to 256 KiB for the dataset and 16 KiB for the manifest. Audit stable directories: this Phase 1 reader does not provide a hostile-concurrent-filesystem snapshot guarantee. Unknown fields, changed schema/source receipts, invalid examples, modified splits/masks, extra/missing files, symlinks, and noncanonical artifact JSON are rejected.
+
+The default seed is 0. --seed changes family assignment deterministically and produces new content identities. Tests and CI compare the seed-0 artifacts byte for byte instead of replacing their expectations.
+
+For optional package installation, use a virtual environment and the pinned build backend:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install 'setuptools==84.0.0'
+python -m pip install --no-build-isolation --no-deps -e .
+trinite validate-config configs/reference.json
+python -m unittest discover -s tests -v
+```
+
+Backend acquisition needs network access or a pre-provisioned wheel. The runtime and source-tree workflow remain offline. The foundation itself has no runtime/test dependencies; requirements.lock is the optional CPU model/training acquisition lane. The package version 0.0.0 denotes unreleased foundation code; this PR creates no tag or release.
+
+CPU CI runs the standard-library suite, config validation, frozen fixture audit, and exact replay under Python 3.11/3.12/3.13. Actions are pinned to full commit identities; hosted jobs have read-only repository access and a five-minute limit. The separate Phase 2 model jobs acquire hash-locked CPU packages before their offline conformance steps and have a ten-minute limit. All jobs use hosted runners with read-only access, without secrets or self-hosted execution.
+
+## CPU reference model
+
+The frozen acquisition lane is Linux x86_64 with CPython 3.11, 3.12 or 3.13. Create a separate environment and install the full CPU lock (about 200 MB of wheel downloads; no GPU packages):
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --no-deps -r requirements.lock
+python -m pip check
+PYTHONPATH=src python -m unittest discover -s tests/model -v
+PYTHONPATH=src python -m trinite inspect-model --lane dense
+PYTHONPATH=src python -m trinite inspect-model --lane ternary --text '(1+1)%2=0' --capture-layer final --capture-position 0
+```
+
+Acquisition needs the official CPU index or a pre-provisioned wheel cache; every selected package/version/hash is pinned, including transitive dependencies. This lock's setuptools is Torch runtime support; optional isolated project builds retain their separately pinned backend. Source-tree model execution does not need a build. To use an offline wheelhouse, supply --no-index --find-links=/path/to/wheels with the same lock. The model suite is separate from foundation discovery and must be run explicitly; it never silently skips missing Torch.
+
+inspect-model builds an untrained reference model. --seed selects a private initialization generator; matching configs/seeds create matching dense/ternary latent tensors without consuming the global Torch RNG. --text runs a forward pass, and paired --capture-layer/--capture-position options select detached states. Supported layers are embedding, block.0 through block.5 for the default model, and final. Positions include BOS/EOS. The CLI returns named tensor/code identities, hex scales, environment and capture metadata; it does not generate text or load a checkpoint. See [PHASE-2.md](PHASE-2.md) for resource bounds and evidence limits.
+
+For arrays through the explicit Python API:
+
+```python
+import torch
+from trinite.model import CaptureSpec, Decoder
+from trinite.tokenizer import ByteTokenizer
+
+encoding = ByteTokenizer().encode('1+1=2')
+model = Decoder(lane='ternary', seed=0)
+ids = torch.tensor([encoding.input_ids], dtype=torch.int64)
+mask = torch.tensor([encoding.attention_mask], dtype=torch.bool)
+with torch.no_grad():
+    output = model(ids, mask, capture=CaptureSpec(('final',), (0, 1)))
+print(output.logits.shape, output.captures['final'].shape)
+```
+
+## Tiny native training and safe resume
+
+After installing the complete CPU lock, run the separate required training and upstream suites explicitly:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests/upstream -v
+PYTHONPATH=src python -m unittest discover -s tests/training -v
+PYTHONPATH=src python -m trinite train <TMP>/trinite-dense --config configs/tiny-training.json --dataset fixtures/formal-v1 --lane dense
+PYTHONPATH=src python -m trinite train <TMP>/trinite-ternary --config configs/tiny-training.json --dataset fixtures/formal-v1 --lane ternary
+PYTHONPATH=src python -m trinite verify-observation <TMP>/trinite-ternary/provenance
+```
+
+Each run uses a new output directory. The default observer is mandatory and pinned; --observer off records explicit unintegrated computation. A successful pause also returns zero; it has compute_outcome=paused. Resume requires the same frozen plan, source, inputs and environment:
+
+```bash
+PYTHONPATH=src python -m trinite train <TMP>/trinite-paused --config configs/tiny-training.json --dataset fixtures/formal-v1 --stop-after 23
+PYTHONPATH=src python -m trinite train <TMP>/trinite-resumed --config configs/tiny-training.json --dataset fixtures/formal-v1 --resume <TMP>/trinite-paused/checkpoint
+cmp <TMP>/trinite-ternary/checkpoint/tensors.safetensors <TMP>/trinite-resumed/checkpoint/tensors.safetensors
+cmp <TMP>/trinite-ternary/checkpoint/metadata.json <TMP>/trinite-resumed/checkpoint/metadata.json
+```
+
+--stop-after is an absolute completed-step number, not an additional-step count. There is no mid-update checkpoint. --source-revision accepts a caller-declared full commit SHA; otherwise the revision is marked unreported. Exact installed procedure files are independently hashed in every checkpoint/context; dirty Git state is explicitly not inspected by the API. Run context/report timestamps and observer overhead differ between invocations; result/history/inventory and final checkpoint bytes replay exactly within the demonstrated scope. See [TRAINING.md](TRAINING.md) for the complete protocol, validation bounds and eligibility distinction.
+
+verify-observation checks a stable frozen bundle with the actual upstream verifier and returns its complete report. It rejects open/missing evidence even if upstream integrity alone passes. It verifies byte integrity and references, not training correctness or custody. A required observation failure returns nonzero while retaining completed computation and a false eligibility flag. report.json includes outcome, errors, complete verification, wall/observer time and Linux process-lifetime peak RSS.
+
+Manual tiny training becomes available after the workflow merges to main. Enter the exact plan and dataset identities printed/recorded by the procedure; [PHASE-3.md](PHASE-3.md) lists the frozen values. The two-lane workflow uses hosted CPU, new temporary directories and 14-day review artifacts. It does not archive a release or acquire the future curriculum.
+
+## Existing checkouts with newline conversion
+
+Source and fixture identities use raw bytes. The LF attributes protect fresh checkouts, but Git can retain CRLF in unchanged files when upgrading an existing checkout. This correction changes all three byte-bound source blobs and both retained fixture blobs so the transition from the initial Phase 1 revision refreshes them. The regression suite exercises a pre-attributes CRLF checkout and a normal two-tree upgrade, including the exact original contracts.py and tokenizer.py blobs.
+
+The source receipt rejects CRLF explicitly and points here instead of hashing converted bytes. If an older working tree still reports this error, first commit or otherwise preserve local edits and confirm that the affected files have no staged or unstaged changes with git status. Then refresh just the tracked byte-bound files from the current index:
+
+```bash
+git checkout-index --force -- src/trinite/contracts.py src/trinite/data.py src/trinite/tokenizer.py fixtures/formal-v1/dataset.json fixtures/formal-v1/manifest.json
+PYTHONPATH=src python3 -m trinite audit-fixture fixtures/formal-v1
+```
+
+The refresh command replaces those working files with indexed content using the current attributes; do not run it over unsaved edits. git add --renormalize alone changes the index and does not guarantee that stale working-tree bytes are refreshed. Keep the retained fixtures intact: regenerating them to match a converted checkout would replace the evidence rather than repair the checkout.
+
+The comparison dependency also pins the exact bytes of
+`src/trinite/QEC-LICENSE.txt`. Its LF attribute protects fresh checkouts. If an
+existing checkout retained CRLF after the attribute was introduced and QEC pin
+verification fails, preserve local edits and confirm this file is clean before
+refreshing it from the current index:
+
+```bash
+git checkout-index --force -- src/trinite/QEC-LICENSE.txt
+PYTHONPATH=src python -c 'from trinite.qec_source import verify_pin; print(verify_pin())'
+```
+
+Do not edit the pin or normalize the license in the verifier to conceal a
+checkout-byte mismatch.
+
+## Detached geometry observation
+
+Use newly trained final checkpoints from the current source tree, the same process environment and the exact tiny training plan above. Different workflow workers may have different strict environment fingerprints; the manual geometry workflow trains both lanes and measures them on one worker. Each output below must be a new directory.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests/geometry -v
+PYTHONPATH=src python -m trinite freeze-observation <TMP>/trinite-geometry-request --dataset fixtures/formal-v1 --training-config configs/tiny-training.json --dense-checkpoint <TMP>/trinite-dense/checkpoint --ternary-checkpoint <TMP>/trinite-ternary/checkpoint
+```
+
+Freeze prints request_file and request_identity. Copy the exact returned identity into REQUEST_ID, then measure that unchanged request:
+
+```bash
+REQUEST_ID='sha256:<paste the returned 64 hex digits>'
+PYTHONPATH=src python -m trinite measure-observation <TMP>/trinite-geometry --request <TMP>/trinite-geometry-request/request.json --request-identity "$REQUEST_ID" --dataset fixtures/formal-v1 --training-config configs/tiny-training.json --dense-checkpoint <TMP>/trinite-dense/checkpoint --ternary-checkpoint <TMP>/trinite-ternary/checkpoint
+PYTHONPATH=src python -m trinite verify-observation <TMP>/trinite-geometry/provenance
+```
+
+Source/input/environment/request changes reject; an observation never updates a model or optimizer. The mandatory pinned observer is the default. --observer off retains explicit unintegrated computation with false evidence eligibility. Required observer failure returns nonzero while preserving completed computational artifacts. Read [GEOMETRY.md](GEOMETRY.md) for schemas, bounds and the frozen control limitation, and [PHASE-4.md](PHASE-4.md) for descriptive results.
+
+The manual geometry workflow uses the frozen plan/dataset identities from PHASE-3, trains both lanes on hosted CPU, freezes the request, measures, verifies and uploads 14-day review artifacts. Download them before expiry when retaining a run; this is not a durable release archive or an edge-device benchmark.
+
+## Combined CPU conformance and performance characterization
+
+CI runs the same required model/training/geometry cases in one process to amortize imports:
+
+```bash
+PYTHONPATH=src python scripts/check_cpu.py
+```
+
+Standalone suite commands above remain supported. Foundation and pinned upstream conformance remain separate standard-library runs. Dependency-consuming workflows cache downloads, install fresh with required hashes, run pip check and execute every current test on all three Python versions. [OPTIMIZATION.md](OPTIMIZATION.md) defines the exact reuse gates and opt-in benchmark commands.
+
+## Three-lane research comparison
+
+[COMPARISON.md](COMPARISON.md) gives frozen dense/ternary/four-state and exact QEC task matrix commands. Run comparison conformance after acquiring the CPU lock:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests/comparison -v
+PYTHONPATH=src python -m trinite inspect-model --lane four-state --text "1+1=2"
+```
+
+
+## Foundations learning gate
+
+The next increment before Phase 5 is runnable through
+[FOUNDATIONS.md](FOUNDATIONS.md). Its data/oracle/admission checks are included in
+root standard-library discovery; after acquiring the CPU lock also run:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests/foundations -v
+```
+
+The manual foundations matrix freezes a new request, trains all 27 cells and
+retains a verified dense-learning decision before any held-out scoring. Blocked
+or failed runs retain their records and exit nonzero. Never copy a request from
+another source/environment or modify historical evidence to make it pass.
+
+## Generalization diagnostics and current research conformance
+
+[GENERALIZATION.md](GENERALIZATION.md) documents the parent-bound diagnostic
+worker and standard-library scalar preparation. Fresh numerical verification
+requires the retained parent's exact environment; different-host conformance
+does not certify that matrix. After acquiring the CPU lock, the complete current
+research runner is:
+
+```sh
+PYTHONPATH=src python scripts/check_research_cpu.py
+```
+
+It executes native model/training/geometry followed by comparison, foundations,
+convergence, budget, learning, generalization and scalar, retaining every standalone
+test ID and explicit subprocess probe. The historical `check_cpu.py` and all
+standalone suite commands remain supported.
+
+### Matched scalar curriculum
+
+[SCALAR-LEARNING.md](SCALAR-LEARNING.md) provides source/environment-bound freeze,
+27-cell training, gated evaluation and read-only verification commands. The
+separately frozen [protocol](SCALAR-LEARNING-PROTOCOL.md) preserves original
+composed-output, Phase 5 and release gates. Run small scalar conformance checks
+with `PYTHONPATH=src python -m unittest discover -s tests/scalar -v` inside the
+locked CPU environment; the grouped research runner includes these cases.
+
+
+For optional external internal-activation capture, follow the separate locked
+backend and explicit offline-input procedure in
+[REFERENCE-GEOMETRY.md](REFERENCE-GEOMETRY.md). The base CPU lock is unchanged;
+pretrained model acquisition is explicit and separate from capture.
+
+## Installed procedural-QEC data versus checkout-only research
+
+The built wheel includes the two original procedural-QEC protocol JSON resources
+(`trinite/procedural_qec/protocol.json` and
+`trinite/procedural_qec/protocol-v2.json`) and the separately frozen v3
+research protocol (`trinite/procedural_qec_v3/protocol.json`). Package
+resources are installed beside their corresponding modules rather than
+reconstructed from or read through the repository checkout.
+
+The standard-library procedural data API (`trinite.procedural_qec.data`)
+can regenerate and audit its admitted training/development data from a
+non-editable installed wheel with no checkout or PyTorch installed.
+The separately importable `trinite.procedural_qec_v3.scheduler` remains
+available without the numerical backend. This is package/data conformance,
+**not** a completed training or generalization claim.
+
+From a checkout with pinned `setuptools==84.0.0` available, run
+`python -m unittest discover -s tests/packaging -p test_procedural_wheel.py -v`
+for the real wheel build, isolated installation after deleting the copied
+project, exact resource membership/hash checks and installed-data tamper test.
+The GitHub v3 workflow runs the same test independently on each PR.
+
+The `scripts/run_procedural_qec_v3.py` research launcher, source-bound
+`experiment.sources()`, research requests and full optimizer/evidence replay
+**still require a source checkout** and the prescribed hash-locked CPU training
+environment. Wheel packaging does not change their scientific protocols,
+historical identities, or release readiness. There is no wheel-only full
+research runner in this phase.
+
+
+Installed procedural data now uses stable logical `src/trinite/...` source
+names, independent of the wheel's installation prefix. The installed-wheel
+test proves exact dataset and manifest parity with a separately regenerated
+checkout, including after moving the installation directory. Historical v2
+evidence remains bound to its original source; any new research execution
+must freeze a new source-bound request.
+"""Fixed fresh-worker launch, hard deadline and no-clobber evidence publication."""
+import argparse
+from pathlib import Path
+import os
+import subprocess
+import sys
+import time
+import uuid
+from trinite.contracts import ContractError, identity, json_bytes, parse_json, require_identity
+from frozen_decoding_transport_v2.artifacts import publish, write_all
+from .spec import ROOT, MAX_SECONDS, MAX_REPORT, MAX_REQUEST, read
+from .validation import validate_report
+
+
+def prepare():
+    import torch
+    torch.set_num_threads(1)
+    torch.use_deterministic_algorithms(True)
+
+
+def worker(args):
+    # The parent deadline starts before process creation, so imports/loading are charged.
+    prepare()
+    import resource
+    from .spec import request
+    from .experiment import report
+    started = time.monotonic()
+    binding = json_bytes(request())
+    raw = read(args.request, MAX_REQUEST)
+    if identity(raw) != require_identity(args.request_identity) or raw != binding:
+        raise ContractError('current source/input/environment request mismatch')
+    expected = None
+    if args.worker_action == 'verify':
+        expected = read(args.output, MAX_REPORT)
+        if identity(expected) != require_identity(args.expected_identity):
+            raise ContractError('externally bound expected report identity mismatch')
+        old = parse_json(expected, canonical=True)
+        if old.get('schema') != 'trinite.batch-composition-report.v2' or old.get('request') != parse_json(raw, canonical=True):
+            raise ContractError('expected report schema/request mismatch')
+        validate_report(old, parse_json(raw, canonical=True))
+    elif args.output.exists() or args.output.is_symlink():
+        raise FileExistsError('final output already exists')
+    attempt = args.attempt
+    partial_path = attempt/'completed-cells.jsonl'
+    layout_path = attempt/'completed-layouts.jsonl'
+    with partial_path.open('xb') as partial, layout_path.open('xb') as layouts:
+        def retain(stream, value):
+            data = json_bytes(value)
+            if stream.tell() + len(data) > MAX_REPORT:
+                raise ContractError('partial records exceed byte bound')
+            write_all(stream, data)
+            stream.flush()
+        value = report(on_cell=lambda cell: retain(partial, cell),
+                       on_layout=lambda layout: retain(layouts, layout))
+    validate_report(value, parse_json(binding, canonical=True))
+    actual = json_bytes(value)
+    if len(actual) > MAX_REPORT:
+        raise ContractError('report exceeds byte bound')
+    # Always retain recomputed bytes before comparison, including negative/mismatch evidence.
+    publish(attempt/'computed-report.json', actual)
+    metrics = {'wall_seconds_hex': (time.monotonic()-started).hex(),
+               'peak_rss_kib': resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+               'scope': 'whole worker process observation, not a speed or whole-system memory claim'}
+    publish(attempt/'measurements.json', json_bytes(metrics))
+    if args.worker_action == 'verify':
+        matched = actual == expected
+        receipt = {'schema': 'trinite.batch-composition-replay-receipt.v2',
+                   'request_identity': identity(raw), 'expected_identity': args.expected_identity,
+                   'actual_identity': identity(actual), 'exact_match': matched,
+                   'conforms': value['conforms'], 'scope': 'same-environment complete inference replay, not optimizer replay'}
+        publish(attempt/'replay-receipt.json', json_bytes(receipt))
+        if not matched:
+            raise ContractError('exact report replay mismatch; both results and false-match receipt retained')
+    else:
+        publish(args.output, actual)
+    print(identity(actual), flush=True)
+    print('conforms=' + str(value['conforms']).lower(), flush=True)
+    return 0 if value['conforms'] else 2
+
+
+def launch(args):
+    if not args.output or not args.request_identity:
+        raise ContractError('run/verify requires output and externally retained request identity')
+    require_identity(args.request_identity)
+    if args.action == 'verify':
+        require_identity(args.expected_identity)
+    elif args.expected_identity is not None:
+        raise ContractError('expected identity is only valid for replay')
+    elif args.output.exists() or args.output.is_symlink():
+        raise FileExistsError('final output already exists')
+    # Validate accessible, bounded bytes before launching; worker additionally compares current bindings.
+    if identity(read(args.request, MAX_REQUEST)) != args.request_identity:
+        raise ContractError('request identity mismatch')
+    if args.action == 'verify' and identity(read(args.output, MAX_REPORT)) != args.expected_identity:
+        raise ContractError('expected report identity mismatch')
+    attempt = args.output.with_name(args.output.name+'.attempt-'+uuid.uuid4().hex)
+    attempt.mkdir()
+    print('attempt_directory=' + str(attempt), flush=True)
+    publish(attempt/'invocation.json', json_bytes({'schema': 'trinite.batch-composition-invocation.v2',
+        'action': args.action, 'request_identity': args.request_identity, 'expected_identity': args.expected_identity,
+        'deadline_seconds': MAX_SECONDS, 'final_name': args.output.name}))
+    command = [sys.executable, '-B', str(ROOT/'scripts/run_batch_composition.py'), '_worker',
+               '--worker-action', args.action, '--request', str(args.request.resolve()),
+               '--request-identity', args.request_identity, '--output', str(args.output.absolute()),
+               '--attempt', str(attempt.resolve())]
+    if args.expected_identity:
+        command += ['--expected-identity', args.expected_identity]
+    env = dict(os.environ, PYTHONPATH=str(ROOT/'src')+os.pathsep+str(ROOT/'scripts'),
+               PYTHONDONTWRITEBYTECODE='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1')
+    start = time.monotonic()
+    outcome, code = 'failed', 1
+    with (attempt/'worker.log').open('xb') as log:
+        process = None
+        try:
+            process = subprocess.Popen(command, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
+            code = process.wait(timeout=max(0.0, MAX_SECONDS-(time.monotonic()-start)))
+            outcome = 'completed' if code == 0 else 'completed_nonconformant' if code == 2 else 'failed'
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            outcome, code = 'timeout', 124
+        except OSError as error:
+            if process is not None:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+                process.wait()
+            outcome, code = ('launch_failed' if process is None else 'controller_failed'), 1
+            write_all(log, (type(error).__name__ + ': ' + str(error) + '\n').encode())
+        except BaseException:
+            if process is not None:
+                process.kill()
+                process.wait()
+            publish(attempt/'status.json', json_bytes({'schema': 'trinite.batch-composition-status.v2',
+                'outcome': 'interrupted', 'exit_code': 130, 'wall_seconds_hex': (time.monotonic()-start).hex()}))
+            raise
+    publish(attempt/'status.json', json_bytes({'schema': 'trinite.batch-composition-status.v2',
+        'outcome': outcome, 'exit_code': code, 'wall_seconds_hex': (time.monotonic()-start).hex()}))
+    print('worker_outcome=' + outcome, flush=True)
+    if code in (0, 2):
+        computed = read(attempt/'computed-report.json', MAX_REPORT)
+        print(identity(computed), flush=True)
+    return code
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action', choices=('freeze', 'run', 'verify', '_worker'))
+    parser.add_argument('--request', type=Path, required=True)
+    parser.add_argument('--request-identity')
+    parser.add_argument('--output', type=Path)
+    parser.add_argument('--expected-identity')
+    parser.add_argument('--worker-action', choices=('run', 'verify'), help=argparse.SUPPRESS)
+    parser.add_argument('--attempt', type=Path, help=argparse.SUPPRESS)
+    args = parser.parse_args(argv)
+    try:
+        if args.action == 'freeze':
+            if any((args.output, args.request_identity, args.expected_identity, args.worker_action, args.attempt)):
+                raise ContractError('freeze takes only a new request path')
+            prepare()
+            from .spec import request
+            raw = json_bytes(request())
+            if len(raw) > MAX_REQUEST:
+                raise ContractError('request exceeds byte bound')
+            publish(args.request, raw)
+            print(identity(raw))
+            return 0
+        if args.action == '_worker':
+            if not args.worker_action or not args.attempt or not args.output:
+                raise ContractError('internal worker requires fixed launch arguments')
+            return worker(args)
+        if args.worker_action or args.attempt:
+            raise ContractError('internal arguments are not public run options')
+        return launch(args)
+    except (ContractError, OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+        print(type(error).__name__ + ': ' + str(error), file=sys.stderr, flush=True)
+        return 1
+
+if __name__ == '__main__':
+    raise SystemExit(main())
+"""Explicit frozen inputs, layouts and source closure; no model execution."""
+import gzip
+import io
+import os
+import stat
+from pathlib import Path
+from trinite.contracts import ContractError, identity, json_bytes, parse_json
+from scale_refit_training_v1.spec import inputs
+
+ROOT = Path(__file__).resolve().parents[2]
+BASE = 'eb7adcf9b545d8b3e78908f8b091981797f2c80b'
+REFERENCE_ID = 'sha256:7f5b8c6819ab5162546f881a8105148e409b17c37689bd72e52e9799fc06a688'
+MAX_REPORT = 64 * 1024 * 1024
+MAX_REQUEST = 1024 * 1024
+MAX_SECONDS = 300
+LAYOUTS = ('singleton_min', 'singleton_32', 'batch8_32', 'partition4_32',
+           'reverse8_32', 'recompose8_32', 'batch8_min', 'payload8_32')
+CELLS = ((0, 'absmean'), (0, 'refit'), (1, 'absmean'), (1, 'refit'))
+
+
+def read(path, limit):
+    path = Path(path)
+    if path.is_symlink() or not path.is_file():
+        raise ContractError('input must be a regular non-symlink file')
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, 'rb') as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise ContractError('opened input is not a regular file')
+        raw = stream.read(limit + 1)
+    if len(raw) > limit:
+        raise ContractError('input exceeds byte bound')
+    return raw
+
+
+def protocol():
+    return parse_json(read(ROOT/'scripts/batch_composition_v1/protocol.json', MAX_REQUEST), canonical=True)
+
+
+def workload():
+    dataset, _ = inputs()
+    rows = parse_json(dataset, canonical=True)['examples']
+    result = []
+    for split, expected in (('train', 36), ('validation', 6)):
+        selected = [r for r in rows if r['split'] == split]
+        if len(selected) != expected:
+            raise ContractError('frozen workload split inventory mismatch')
+        for row in selected:
+            # Labels, text-with-answer, encodings and family metadata never cross this boundary.
+            result.append({'item_id': row['example_identity'], 'split': split,
+                           'prompt': row['prompt'], 'prompt_identity': identity(row['prompt'].encode())})
+    validate_rows(result)
+    return result
+
+
+def validate_rows(rows):
+    if type(rows) is not list or not rows:
+        raise ContractError('nonempty workload list required')
+    ids = []
+    for row in rows:
+        if type(row) is not dict or set(row) != {'item_id', 'split', 'prompt', 'prompt_identity'}:
+            raise ContractError('workload requires label-free exact fields')
+        if (type(row['item_id']) is not str or type(row['prompt']) is not str
+                or row['split'] not in ('train', 'validation')
+                or row['prompt_identity'] != identity(row['prompt'].encode())
+                or not 1 <= len(row['prompt'].encode()) + 1 <= 32):
+            raise ContractError('invalid workload prompt/identity/split/context')
+        ids.append(row['item_id'])
+    if len(set(ids)) != len(ids):
+        raise ContractError('workload item identities must be unique')
+
+
+def schedule(rows, layout):
+    validate_rows(rows)
+    if layout not in LAYOUTS:
+        raise ContractError('unknown layout')
+    order = list(range(len(rows)))
+    if layout == 'recompose8_32':
+        order = order[::2] + order[1::2]
+    size = 1 if layout.startswith('singleton') else 4 if layout == 'partition4_32' else 8
+    groups = [order[i:i+size] for i in range(0, len(order), size)]
+    if layout == 'reverse8_32':
+        groups = [list(reversed(g)) for g in groups]
+    validate_schedule(rows, groups)
+    return groups
+
+
+def validate_schedule(rows, groups):
+    if type(groups) is not list or any(type(g) is not list or not 1 <= len(g) <= 8 for g in groups):
+        raise ContractError('invalid batch groups')
+    flat = [i for g in groups for i in g]
+    if any(type(i) is not int for i in flat) or sorted(flat) != list(range(len(rows))):
+        raise ContractError('schedule must cover every row exactly once')
+
+
+def reference_report():
+    compressed = read(ROOT/'fixtures/frozen-decoding-v1/report.json.gz', 16 * 1024 * 1024)
+    with gzip.GzipFile(fileobj=io.BytesIO(compressed)) as stream:
+        raw = stream.read(16 * 1024 * 1024 + 1)
+    if len(raw) > 16 * 1024 * 1024 or identity(raw) != REFERENCE_ID:
+        raise ContractError('reference trajectory report identity/size mismatch')
+    old = parse_json(raw, canonical=True)
+    if [(c['seed'], c['arm']) for c in old['cells']] != list(CELLS):
+        raise ContractError('reference endpoint inventory mismatch')
+    return old
+
+
+def references(rows):
+    old = reference_report()
+    result = {}
+    for cell in old['cells']:
+        predictions = cell['modes']['syntax']['predictions']
+        expected_ids = [r['item_id'] for r in rows]
+        if [r['example_identity'] for r in predictions] != expected_ids:
+            raise ContractError('reference trajectory item order mismatch')
+        tokens = []
+        for row, prediction in zip(rows, predictions):
+            value = prediction['generated_tokens']
+            if (prediction['prompt_identity'] != row['prompt_identity']
+                    or type(value) is not list or len(value) != 2
+                    or type(value[0]) is not int or not 48 <= value[0] <= 57 or value[1] != 257):
+                raise ContractError('reference syntax trajectory malformed')
+            tokens.append(value)
+        result[(cell['seed'], cell['arm'])] = tokens
+    return result
+
+
+def sources():
+    from frozen_decoding_v1.experiment import sources as historical_sources
+    paths = []
+    for folder in ('scripts/batch_composition_v1', 'tests/batch_composition_v1', 'tests/batch_composition_review'):
+        paths.extend((ROOT/folder).glob('*.py'))
+    paths.extend(ROOT/p for p in (
+        'scripts/batch_composition_v1/protocol.json', 'scripts/run_batch_composition.py',
+        'scripts/check_batch_composition_cpu.py', '.github/workflows/batch-composition.yml',
+        'scripts/frozen_decoding_transport_v2/__init__.py',
+        'scripts/frozen_decoding_transport_v2/artifacts.py'))
+    return {**historical_sources(), **{p.relative_to(ROOT).as_posix(): identity(read(p, MAX_REPORT)) for p in sorted(paths)}}
+
+
+def request():
+    from frozen_decoding_v1.experiment import original, REPORT_ID
+    from trinite.training import require_environment
+    old = original()
+    rows = workload()
+    refs = references(rows)
+    return {'schema': 'trinite.batch-composition-request.v2', 'protocol': protocol(),
+            'source': sources(), 'environment': require_environment(),
+            'original_report_identity': REPORT_ID, 'reference_report_identity': REFERENCE_ID,
+            'checkpoint_identities': [identity(json_bytes(c['final_checkpoint'])) for c in old['cells']],
+            'workload': rows, 'reference_trajectory_identities': [identity(json_bytes(refs[k])) for k in CELLS],
+            'schedules': {layout: schedule(rows, layout) for layout in LAYOUTS}}

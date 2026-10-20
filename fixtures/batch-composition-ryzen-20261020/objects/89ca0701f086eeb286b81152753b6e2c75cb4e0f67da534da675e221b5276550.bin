@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "cat",
+    "docs/GETTING_STARTED.md",
+    "scripts/batch_composition_v1/runner.py",
+    "scripts/batch_composition_v1/spec.py"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:49:53.961379+00:00",
+  "exit_code": 0,
+  "pid": 3,
+  "started_utc": "2026-10-20T19:49:53.958835+00:00"
+}

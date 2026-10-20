@@ -1,0 +1,338 @@
+#!/usr/bin/env python3
+"""One fresh pinned CPU retest. This helper lives outside the checkout."""
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import traceback
+import zipfile
+
+ROOT = Path(__file__).resolve().parent
+REPO = ROOT / "repo"
+EV = ROOT / "evidence"
+REPORTS = ROOT / "reports"
+PY = ROOT / "venv/bin/python"
+COMMIT = "f4e393456f0d708af0221a8de4767438c700710a"
+TREE = "7b346f04b5cbb6f2b84f90af0e6215bcd68b8caa"
+REVIEW_ID = "sha256:314897977f2ec20ef94e416e6304d8ee51547d6c2987da4ba963c974edd1b820"
+STAGES = ["checkout", "guidance", "venv", "install", "pip_check", "tests", "source_verification", "freeze", "request_verification", "execution", "conformance", "exact_replay"]
+
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+def digest(path):
+    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+def write_json(path, value, exclusive=True):
+    with path.open("x" if exclusive else "w", encoding="utf-8") as f:
+        json.dump(value, f, indent=2, sort_keys=True)
+        f.write("\n")
+
+def state(**updates):
+    path = EV / "state.json"
+    data = json.loads(path.read_text()) if path.exists() else {s: "not attempted" for s in STAGES}
+    data.update(updates)
+    write_json(path, data, exclusive=False)
+    return data
+
+def runtime_env():
+    env = os.environ.copy()
+    env.pop("PYTHONOPTIMIZE", None)
+    env.update(PYTHONPATH=str(REPO / "src") + os.pathsep + str(REPO / "scripts"),
+               PYTHONDONTWRITEBYTECODE="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
+    return env
+
+def record(name, argv, cwd=REPO, env=None):
+    path = EV / "logs" / name
+    metadata = {"argv": list(map(str, argv)), "cwd": str(cwd), "started_utc": now(), "exit_code": None}
+    if env is not None:
+        metadata["selected_environment"] = {k: env.get(k) for k in ["PYTHONPATH", "PYTHONDONTWRITEBYTECODE", "PYTHONOPTIMIZE", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "PIP_NO_CACHE_DIR", "PIP_DISABLE_PIP_VERSION_CHECK"]}
+    write_json(path.with_suffix(".json"), metadata)
+    print(f"START {name}: {metadata['argv']}", flush=True)
+    with path.with_suffix(".log").open("xb") as output:
+        try:
+            p = subprocess.Popen(metadata["argv"], cwd=cwd, env=env, stdout=output, stderr=subprocess.STDOUT)
+            metadata["pid"] = p.pid
+            write_json(path.with_suffix(".json"), metadata, exclusive=False)
+            metadata["exit_code"] = p.wait()
+        except BaseException:
+            metadata["orchestration_exception"] = traceback.format_exc()
+            output.write(metadata["orchestration_exception"].encode())
+            raise
+        finally:
+            metadata["ended_utc"] = now()
+            write_json(path.with_suffix(".json"), metadata, exclusive=False)
+    print(f"END {name}: exit {metadata['exit_code']}; {path.with_suffix('.log')}", flush=True)
+    return metadata["exit_code"]
+
+def require(code, message):
+    if code != 0:
+        raise RuntimeError(f"{message}: exit {code}")
+
+def prepare():
+    for p in [REPO, ROOT / "venv", EV, REPORTS]:
+        p.mkdir()
+    (EV / "logs").mkdir()
+    state(root=str(ROOT), requested_commit=COMMIT, expected_tree=TREE, created_utc=now(),
+          earlier_attempt={"root": "<EARLIER_SETUP_ROOT>", "classification": "sandbox-blocked setup; not numerical failure", "unchanged_zip_sha256": "feb6dba47d64aefee4f2acab8367f22ab75374a1a2c745def6099f1a70b11b4c", "preserved_unchanged": True})
+    for name, cmd in [
+        ("hardware-kernel", ["uname", "-a"]), ("hardware-cpu", ["lscpu"]),
+        ("disk-before", ["df", "-h", str(ROOT)]), ("bootstrap-python", [sys.executable, "-VV"]),
+        ("git-version", ["git", "--version"]),
+        ("earlier-artifacts-before", ["sha256sum", "<EARLIER_SETUP_ROOT>/reports/trinite-batch-retest-evidence.zip", "<EARLIER_SETUP_ROOT>/reports/trinite-batch-retest-evidence.zip.sha256"]),
+    ]:
+        require(record(name, cmd, cwd=ROOT), name)
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    require(record("clone", ["git", "clone", "--no-checkout", "https://github.com/QSOLKCB/Trinite.git", str(REPO)], cwd=ROOT, env=env), "clone")
+    require(record("checkout", ["git", "checkout", "--detach", COMMIT]), "checkout")
+    for name, cmd in [
+        ("commit", ["git", "rev-parse", "HEAD"]),
+        ("tree", ["git", "rev-parse", "HEAD^{tree}"]),
+        ("status-before", ["git", "status", "--porcelain=v1", "--untracked-files=all"]),
+    ]:
+        require(record(name, cmd), name)
+    branch = record("detached-head", ["git", "symbolic-ref", "-q", "HEAD"])
+    assert branch == 1, "HEAD is not detached"
+    assert (EV / "logs/commit.log").read_text().strip() == COMMIT, "commit mismatch"
+    assert (EV / "logs/tree.log").read_text().strip() == TREE, "tree mismatch"
+    assert (EV / "logs/status-before.log").read_bytes() == b"", "unclean initial checkout"
+    state(checkout="PASS: exact commit/tree, detached and clean", lockfile_identity=digest(REPO / "requirements.lock"))
+    record("guidance-inventory", ["rg", "--files", "--hidden", "-g", "AGENTS.md", "-g", "!.git"])
+    require(record("guidance-initial", ["cat", "AGENTS.md", "docs/BATCH-COMPOSITION.md"]), "read initial guidance")
+
+def install():
+    assert platform.python_implementation() == "CPython"
+    assert sys.version_info[:2] == (3, 12)
+    state(guidance="PASS: AGENTS, batch contract, required operating documents, relevant topic contracts and actual CLI read")
+    provenance = EV / "provenance"
+    provenance.mkdir()
+    for relative in ["requirements.lock", "AGENTS.md", "docs/BATCH-COMPOSITION.md", "scripts/batch_composition_v1/protocol.json", "fixtures/batch-composition-v2/prepublication-review.json"]:
+        destination = provenance / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("xb") as f:
+            f.write((REPO / relative).read_bytes())
+    code = record("create-venv", [sys.executable, "-B", "-m", "venv", str(ROOT / "venv")], cwd=ROOT)
+    state(venv=f"{'PASS' if code == 0 else 'FAILED'}: exit {code}; Python {PY}")
+    require(code, "fresh venv creation")
+    env = runtime_env()
+    env.update(PIP_NO_CACHE_DIR="1", PIP_DISABLE_PIP_VERSION_CHECK="1")
+    require(record("venv-python", [PY, "-VV"], env=env), "venv Python version")
+    code = record("pip-install", [PY, "-m", "pip", "install", "--require-hashes", "--no-deps", "-r", "requirements.lock"], env=env)
+    state(install=f"{'PASS' if code == 0 else 'FAILED'}: exit {code}; unchanged CPU lock, no cache reused")
+    record("packages-installed", [PY, "-m", "pip", "list", "--format=json"], env=env)
+    require(code, "locked dependency installation")
+    code = record("pip-check", [PY, "-m", "pip", "check"], env=env)
+    state(pip_check=f"{'PASS' if code == 0 else 'FAILED'}: exit {code}")
+    require(code, "pip check")
+    version_code = "import json,platform,sys,torch,numpy; print(json.dumps({'python':sys.version,'executable':sys.executable,'implementation':platform.python_implementation(),'architecture':platform.machine(),'torch':torch.__version__,'numpy':numpy.__version__,'torch_cuda_build':torch.version.cuda,'torch_cpu_capability':torch.backends.cpu.get_cpu_capability(),'torch_threads':torch.get_num_threads()},indent=2)); print(torch.__config__.show()); assert torch.__version__ == '2.8.0+cpu'; assert numpy.__version__ == '2.3.5'; assert torch.version.cuda is None"
+    require(record("runtime-versions", [PY, "-B", "-c", version_code], env=env), "pinned CPU runtime verification")
+
+def check_sources():
+    review_path = REPO / "fixtures/batch-composition-v2/prepublication-review.json"
+    actual_review = digest(review_path)
+    if actual_review != REVIEW_ID:
+        write_json(EV / "source-verification.json", {"expected_review_identity": REVIEW_ID, "actual_review_identity": actual_review, "passed": False, "error": "review identity mismatch"})
+        raise RuntimeError("Approved review identity mismatch; stopping")
+    approved = json.loads(review_path.read_bytes())["source"]
+    if len(approved) != 149:
+        raise RuntimeError(f"Expected 149 approved source files, found {len(approved)}")
+    write_json(EV / "producer-source-map.json", approved)
+    results = []
+    for relative, expected in sorted(approved.items()):
+        path = REPO / relative
+        if Path(relative).is_absolute() or ".." in Path(relative).parts or path.is_symlink() or not path.is_file():
+            actual = None
+        else:
+            actual = digest(path)
+        results.append({"path": relative, "expected": expected, "actual": actual, "matches": actual == expected})
+    passed = all(r["matches"] for r in results)
+    write_json(EV / "source-verification.json", {"expected_review_identity": REVIEW_ID, "actual_review_identity": actual_review, "file_count": len(results), "passed": passed, "files": results})
+    print(f"Approved review: {actual_review}\nSource identities matched: {sum(r['matches'] for r in results)}/149", flush=True)
+    for result in results:
+        print(f"{'PASS' if result['matches'] else 'MISMATCH'} {result['path']} {result['actual']}", flush=True)
+    if not passed:
+        raise RuntimeError("Approved source identities mismatch; stopping without repair")
+
+def preflight_tests():
+    env = runtime_env()
+    suites = [
+        ("tests-batch-composition-v1", ["-s", "tests/batch_composition_v1", "-v"]),
+        ("tests-batch-composition-review", ["-s", "tests/batch_composition_review", "-v"]),
+        ("tests-audit-v5", ["-s", "tests", "-p", "test_batch_composition_audit_v5.py", "-v"]),
+        ("tests-evidence", ["-s", "tests", "-p", "test_batch_composition_evidence.py", "-v"]),
+    ]
+    results = []
+    for name, args in suites:
+        code = record(name, [PY, "-B", "-m", "unittest", "discover", *args], env=env)
+        log = (EV / "logs" / (name + ".log")).read_text()
+        counts = re.findall(r"^Ran (\d+) tests? in ([\d.]+)s$", log, flags=re.MULTILINE)
+        result = {"suite": name, "exit_code": code, "test_count": int(counts[-1][0]) if counts else None, "duration_seconds": float(counts[-1][1]) if counts else None}
+        results.append(result)
+        state(test_results=results)
+    passed = all(r["exit_code"] == 0 for r in results)
+    state(tests=f"{'PASS' if passed else 'FAILED'}: four focused suites; " + ", ".join(f"{r['suite']}={r['exit_code']} ({r['test_count']} tests)" for r in results))
+    code = record("verify-approved-source-identities", [PY, "-B", ROOT / "orchestrate.py", "check-sources"], env=env)
+    state(source_verification=f"{'PASS: approved review and all 149 sources match' if code == 0 else 'FAILED: source identity verification'}; exit {code}")
+    require(code, "approved source verification")
+    if not passed:
+        raise RuntimeError("Focused regression prerequisite failed; freeze/run/replay skipped without retry")
+    local = EV / "local"
+    local.mkdir()
+    request = local / "batch-composition-request.json"
+    code = record("freeze", [PY, "-B", "scripts/run_batch_composition.py", "freeze", "--request", request], env=env)
+    state(freeze=f"{'PASS' if code == 0 else 'FAILED'}: exit {code}; one invocation")
+    if request.is_file():
+        request_id = digest(request)
+        with (EV / "request-identity.txt").open("x", encoding="ascii") as f:
+            f.write(request_id + "\n")
+        state(request_identity=request_id)
+        print(f"REQUEST_ID={request_id}", flush=True)
+    require(code, "freeze")
+    raw = json.loads(request.read_bytes())
+    approved = json.loads((EV / "producer-source-map.json").read_bytes())
+    source_matches = raw["source"] == approved
+    write_json(EV / "request-source-verification.json", {"request_identity": request_id, "approved_review_identity": REVIEW_ID, "approved_file_count": len(approved), "request_file_count": len(raw["source"]), "exact_source_map_match": source_matches})
+    state(request_verification="PASS: request source map exactly matches all 149 approved identities" if source_matches else "FAILED: request source map differs")
+    if not source_matches:
+        raise RuntimeError("Frozen request source map does not match approved map")
+    print("Request source map: 149/149 exact matches. Freeze complete; inference has not started.", flush=True)
+
+def infer_and_replay():
+    env = runtime_env()
+    local = EV / "local"
+    request = local / "batch-composition-request.json"
+    report = local / "batch-composition-report.json"
+    request_id = (EV / "request-identity.txt").read_text().strip()
+    assert digest(request) == request_id
+    assert json.loads((EV / "request-source-verification.json").read_text())["exact_source_map_match"] is True
+    print(f"Retained REQUEST_ID before inference: {request_id}", flush=True)
+    code = record("run", [PY, "-B", "scripts/run_batch_composition.py", "run", "--request", request, "--request-identity", request_id, "--output", report], env=env)
+    state(execution=f"{'COMPLETED' if code in (0, 2) and report.is_file() else 'FAILED'}: actual exit {code}; one run invocation", run_exit_code=code)
+    if code not in (0, 2) or not report.is_file():
+        state(conformance="NOT EVALUATED: no completed local report", exact_replay="SKIPPED: run did not exit 0/2 with a final report")
+        return
+    report_id = digest(report)
+    with (EV / "report-identity.txt").open("x", encoding="ascii") as f:
+        f.write(report_id + "\n")
+    state(report_identity=report_id)
+    print(f"REPORT_ID={report_id}", flush=True)
+    # Use this new local report identity for the one fresh-process replay.
+    replay_code = record("verify", [PY, "-B", "scripts/run_batch_composition.py", "verify", "--request", request, "--request-identity", request_id, "--output", report, "--expected-identity", report_id], env=env)
+    state(replay_exit_code=replay_code)
+    result = json.loads(report.read_bytes())
+    receipts = [json.loads(p.read_bytes()) for p in sorted(local.glob("*.attempt-*/replay-receipt.json"))]
+    replay_ok = replay_code in (0, 2) and len(receipts) == 1 and receipts[0]["exact_match"] is True and receipts[0]["actual_identity"] == report_id and receipts[0]["expected_identity"] == report_id and receipts[0]["request_identity"] == request_id
+    state(conformance="PASS: report conforms=true" if result["conforms"] else "NONCONFORMANT: report conforms=false; exact replay cannot change this result", exact_replay=f"{'PASS: exact local report match' if replay_ok else 'FAILED: replay did not establish exact local equality'}; actual exit {replay_code}")
+    vectors = []
+    for cell in result["cells"]:
+        for comparison in cell["comparisons"]:
+            vectors.extend(comparison["forced"])
+            vectors.extend(step for rows in comparison["independent_generation"].values() for row in rows for step in row["same_prefix_steps"])
+    write_json(EV / "numerical-summary.json", {
+        "request_identity": request_id, "report_identity": report_id,
+        "conforms": result["conforms"], "run_exit_code": code, "replay_exit_code": replay_code,
+        "exact_local_replay": replay_ok, "replay_receipts": receipts,
+        "budget": result["budget"], "training_updates": result["training_updates"], "test_evaluated": result["test_evaluated"],
+        "workload_count": len(result["request"]["workload"]), "layout_count": len(result["request"]["schedules"]),
+        "cells": [{k: cell[k] for k in ("seed", "arm", "numeric_pass", "decision_pass", "conforms", "historical_singleton_parity", "budget", "model_and_rng_unchanged")} for cell in result["cells"]],
+        "same_prefix_vector_comparisons": len(vectors),
+        "violating_coordinates": sum(len(v["violating_token_ids"]) for v in vectors),
+        "max_absolute_logit_difference": max(float.fromhex(v["max_absolute_hex"]) for v in vectors),
+        "max_normalized_error": max(float.fromhex(v["max_normalized_error_hex"]) for v in vectors),
+        "request_unchanged": digest(request) == request_id, "report_unchanged": digest(report) == report_id,
+    })
+    assert digest(request) == request_id and digest(report) == report_id, "Replay changed retained request/report"
+
+def finalize():
+    if (REPORTS / "trinite-batch-retest-evidence.zip").exists():
+        raise RuntimeError("Refusing to replace existing evidence ZIP")
+    if (REPO / ".git").exists():
+        record("status-after", ["git", "status", "--porcelain=v1", "--untracked-files=all"])
+        record("commit-after", ["git", "rev-parse", "HEAD"])
+        record("tree-after", ["git", "rev-parse", "HEAD^{tree}"])
+        state(clean_after=(EV / "logs/status-after.log").read_bytes() == b"", lockfile_identity_after=digest(REPO / "requirements.lock"))
+    record("disk-after", ["df", "-h", str(ROOT)], cwd=ROOT)
+    record("earlier-artifacts-after", ["sha256sum", "<EARLIER_SETUP_ROOT>/reports/trinite-batch-retest-evidence.zip", "<EARLIER_SETUP_ROOT>/reports/trinite-batch-retest-evidence.zip.sha256"], cwd=ROOT)
+    assert (EV / "logs/earlier-artifacts-before.log").read_bytes() == (EV / "logs/earlier-artifacts-after.log").read_bytes(), "Earlier archive changed"
+    result = state(finalized_utc=now(), scope_note="Four focused regression suites only; not the complete repository aggregate. No independent adversarial review performed; that gap is not closed. Local exact replay is separate from conformance. No hosted-evidence auditor applied to local results.")
+    for s in STAGES:
+        if result[s] == "not attempted":
+            result[s] = "SKIPPED: prerequisites were not completed"
+    write_json(EV / "summary.json", result)
+    with (EV / "summary.txt").open("x", encoding="utf-8") as f:
+        f.write(f"Trinite PR #54 fresh bounded CPU reproduction\nRoot: {ROOT}\nCommit: {COMMIT}\nTree: {TREE}\n")
+        f.write("Earlier attempt: sandbox-blocked setup, not numerical failure; preserved unchanged.\n")
+        for s in STAGES:
+            f.write(f"{s}: {result[s]}\n")
+        if "error" in result:
+            f.write(f"error: {result['error']}\n")
+        f.write(result["scope_note"] + "\n")
+        f.write("All logs and actual subprocess exit codes: evidence/logs/*.log and *.json.\n")
+    inputs = sorted(p for p in EV.rglob("*") if p.is_file()) + [ROOT / "orchestrate.py"]
+    assert not any(p.is_symlink() for p in inputs)
+    write_json(EV / "file-identities.json", {str(p.relative_to(ROOT)): digest(p) for p in inputs})
+    inputs = sorted(p for p in EV.rglob("*") if p.is_file()) + [ROOT / "orchestrate.py"]
+    archive = REPORTS / "trinite-batch-retest-evidence.zip"
+    checksum = REPORTS / "trinite-batch-retest-evidence.zip.sha256"
+    with archive.open("xb") as archive_file, checksum.open("x", encoding="ascii") as checksum_file:
+        with zipfile.ZipFile(archive_file, "w", compression=zipfile.ZIP_DEFLATED) as z:
+            for p in inputs:
+                assert not any(part in {".git", "__pycache__", ".cache"} for part in p.relative_to(ROOT).parts)
+                z.write(p, str(p.relative_to(ROOT)))
+        archive_file.flush()
+        os.fsync(archive_file.fileno())
+        with zipfile.ZipFile(archive) as z:
+            assert z.testzip() is None, "ZIP CRC error"
+            for name, value in json.loads(z.read("evidence/file-identities.json")).items():
+                assert "sha256:" + hashlib.sha256(z.read(name)).hexdigest() == value, name
+        sha = digest(archive).removeprefix("sha256:")
+        checksum_file.write(f"{sha}  {archive.name}\n")
+        checksum_file.flush()
+        os.fsync(checksum_file.fileno())
+    actual, filename = checksum.read_text().strip().split("  ", 1)
+    assert filename == archive.name and actual == digest(archive).removeprefix("sha256:")
+    print(f"REPORTS={REPORTS}\nZIP={archive}\nCHECKSUM={checksum}\nZIP_SHA256={sha}\nZIP readability/CRC, archived file identities, and written checksum: VERIFIED", flush=True)
+    for s in STAGES:
+        print(f"{s}: {result[s]}", flush=True)
+
+def main():
+    action = sys.argv[1]
+    try:
+        if action == "prepare":
+            prepare()
+        elif action == "read":
+            require(record(sys.argv[2], ["cat", *sys.argv[3:]]), "read guidance/source")
+        elif action == "install":
+            install()
+        elif action == "preflight-tests":
+            preflight_tests()
+        elif action == "infer":
+            try:
+                infer_and_replay()
+            except BaseException:
+                state(error=traceback.format_exc())
+                raise
+            finally:
+                finalize()
+        elif action == "finalize":
+            finalize()
+        else:
+            raise ValueError("Unknown action: " + action)
+    except BaseException:
+        if EV.exists() and not (EV / "summary.json").exists():
+            state(error=traceback.format_exc())
+            finalize()
+        raise
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["check-sources"]:
+        check_sources()
+    else:
+        main()

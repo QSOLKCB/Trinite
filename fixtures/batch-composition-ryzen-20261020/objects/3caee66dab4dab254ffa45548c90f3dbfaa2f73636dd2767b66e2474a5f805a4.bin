@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "sha256sum",
+    "<EARLIER_SETUP_ROOT>/reports/trinite-batch-retest-evidence.zip",
+    "<EARLIER_SETUP_ROOT>/reports/trinite-batch-retest-evidence.zip.sha256"
+  ],
+  "cwd": "<RUN_ROOT>",
+  "ended_utc": "2026-10-20T19:54:15.779733+00:00",
+  "exit_code": 0,
+  "pid": 13,
+  "started_utc": "2026-10-20T19:54:15.777132+00:00"
+}

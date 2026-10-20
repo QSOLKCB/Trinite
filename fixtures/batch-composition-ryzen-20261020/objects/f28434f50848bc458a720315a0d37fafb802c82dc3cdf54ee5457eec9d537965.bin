@@ -1,0 +1,19 @@
+Trinite PR #54 fresh bounded CPU reproduction
+Root: <RUN_ROOT>
+Commit: f4e393456f0d708af0221a8de4767438c700710a
+Tree: 7b346f04b5cbb6f2b84f90af0e6215bcd68b8caa
+Earlier attempt: sandbox-blocked setup, not numerical failure; preserved unchanged.
+checkout: PASS: exact commit/tree, detached and clean
+guidance: PASS: AGENTS, batch contract, required operating documents, relevant topic contracts and actual CLI read
+venv: PASS: exit 0; Python <RUN_ROOT>/venv/bin/python
+install: PASS: exit 0; unchanged CPU lock, no cache reused
+pip_check: PASS: exit 0
+tests: PASS: four focused suites; tests-batch-composition-v1=0 (13 tests), tests-batch-composition-review=0 (31 tests), tests-audit-v5=0 (4 tests), tests-evidence=0 (2 tests)
+source_verification: PASS: approved review and all 149 sources match; exit 0
+freeze: PASS: exit 0; one invocation
+request_verification: PASS: request source map exactly matches all 149 approved identities
+execution: COMPLETED: actual exit 0; one run invocation
+conformance: PASS: report conforms=true
+exact_replay: PASS: exact local report match; actual exit 0
+Four focused regression suites only; not the complete repository aggregate. No independent adversarial review performed; that gap is not closed. Local exact replay is separate from conformance. No hosted-evidence auditor applied to local results.
+All logs and actual subprocess exit codes: evidence/logs/*.log and *.json.

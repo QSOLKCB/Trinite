@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "git",
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=all"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:49:03.910575+00:00",
+  "exit_code": 0,
+  "pid": 63920,
+  "started_utc": "2026-10-20T19:49:03.340237+00:00"
+}

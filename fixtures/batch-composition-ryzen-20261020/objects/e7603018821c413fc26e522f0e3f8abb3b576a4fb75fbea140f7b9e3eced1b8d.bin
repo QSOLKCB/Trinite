@@ -1,0 +1,13 @@
+{
+  "creation_command": "mktemp -d <NEW_RUN_ROOT_TEMPLATE>",
+  "creation_exit_code": 0,
+  "creation_stdout": "<RUN_ROOT>\n",
+  "path_printed_immediately": true,
+  "repository_access_verified_before_setup": true,
+  "network_authorization": "Normal require_escalated approval flow used for GitHub access checks, official package-source checks, clone, and pinned dependency installation.",
+  "system_or_network_settings_changed": false,
+  "earlier_attempt_classification": "sandbox-blocked setup; not numerical failure",
+  "earlier_attempt_policy": "Leave original directory, ZIP and checksum unchanged. This attempt uses separate checkout, venv, evidence and reports.",
+  "reproduction_limit": "One new attempt; exactly one freeze, run and local numerical replay if prerequisites pass. No retries or protocol changes.",
+  "scope": "Only the four requested focused suites. No repository installation, extra training, GPU, NCM, teacher inputs, test-split model evaluation, source repairs, hosted local-packet audit, new adversarial experiments, publication or commits."
+}

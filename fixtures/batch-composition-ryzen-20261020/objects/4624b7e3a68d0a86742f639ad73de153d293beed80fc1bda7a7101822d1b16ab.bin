@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "<HOME>/.local/bin/python3.12",
+    "-B",
+    "-m",
+    "venv",
+    "<RUN_ROOT>/venv"
+  ],
+  "cwd": "<RUN_ROOT>",
+  "ended_utc": "2026-10-20T19:50:22.117810+00:00",
+  "exit_code": 0,
+  "pid": 64096,
+  "started_utc": "2026-10-20T19:50:20.837633+00:00"
+}
