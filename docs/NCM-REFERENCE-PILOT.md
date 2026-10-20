@@ -1,8 +1,9 @@
 # External NCM reference feasibility pilot v1
 
-Status: corrective loader contract for review. The first authorized local attempt
-failed during generator state validation, before inference. **No model inference,
-solve-rate or latency result has been obtained.** CPU tests use
+Status: the first authorized local attempt failed before inference; the separately
+authorized retest after PR #52 completed four exposed clue-only smoke boards and
+exact recorded-result replay. See the [dated result and public archive](NCM-RTX-SMOKE-RESULTS.md).
+This establishes local feasibility, not general Sudoku ability. CPU contracts use
 explicit software doubles, never fabricated GPU evidence. This separate external
 pretrained lane does not replace Trinite, train anything, change geometry loss,
 select a quantizer, or clear any native learning/release gate.
@@ -60,9 +61,11 @@ objects fail; there is no unsafe fallback or custom global allowlist. Safe loadi
 still does not make arbitrary checkpoints trustworthy: only pinned files are allowed.
 The original finite-only validator rejected a nonfinite generator tensor after
 restricted deserialization. That log did not name the tensor, so the exact rejected
-key is not established. No compatibility or successful model load is claimed.
+key is not established for that original attempt. The separately archived
+[corrective retest](NCM-RTX-SMOKE-RESULTS.md) subsequently completed model loading
+and inference; its named diagnostics do not rewrite the original log.
 
-### Corrective loader contract v2
+### Corrective loader contract v2 (merged in PR #52)
 
 The pinned generator registers `attn_mask_for_masking` as a persistent, fixed
 attention buffer, not a learned parameter. Its intended forbidden-attention entries
@@ -94,8 +97,8 @@ historical fixtures, the experiment protocol, upstream code/config/weight pins,
 budgets, scorer or numerical generation settings. Its changed source closure and
 versioned loader contract require a **new frozen request** after review, merge and
 green CI, plus separate local-run authorization. Verify old evidence only with its
-original source-bound producer; never reseal it using the new loader. New CPU tests
-use explicit tensor doubles and do not establish actual-checkpoint compatibility.
+original source-bound producer; never reseal it using the new loader. CPU tensor-double tests alone do not establish actual-checkpoint compatibility;
+the separately authorized [retest evidence](NCM-RTX-SMOKE-RESULTS.md) is now retained.
 
 All executable upstream imports are hash-bound; foreign `models`/`utils` namespace
 collisions and upstream bytecode caches reject. The launcher uses a private empty
