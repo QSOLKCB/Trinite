@@ -68,12 +68,117 @@ with tempfile.TemporaryDirectory() as d:
         if len(attempts)!=1 or output.exists():
             raise RuntimeError('failed output published or attempt missing')
         status=json.loads((attempts[0]/'status.json').read_text())
+        if status['controller_exit_code']!=1 or status['publication']!='not_attempted':
+            raise RuntimeError('worker failure marked as publication success')
+        if status['worker_resource_usage']['after']['units']!='KiB':
+            raise RuntimeError('failure peak memory missing')
         if status['timed_out']!=(error is not None):
             raise RuntimeError('incorrect timeout receipt')
         if (attempts[0]/'request.json').read_bytes()!=raw:
             raise RuntimeError('request not retained')
         if not all((attempts[0]/f).exists() for f in ('stdout.log','stderr.log')):
             raise RuntimeError('failure logs missing')
+''' % str(LAUNCHER)
+        p=subprocess.run([sys.executable,'-I','-c',code],capture_output=True,text=True)
+        self.assertEqual(p.returncode,0,p.stderr)
+
+
+class FinalPublication(unittest.TestCase):
+    def test_success_collision_io_failure_and_wrong_request_receipts(self):
+        code=r'''
+import json,runpy,tempfile,subprocess,sys
+from pathlib import Path
+from unittest.mock import patch
+ns=runpy.run_path(%r)
+g=ns['main'].__globals__
+g['numerical']=lambda: {'prospective':'controller test only'}
+with tempfile.TemporaryDirectory() as d:
+    folder=Path(d)
+    request=folder/'request.json'
+    raw=g['json_bytes'](g['numerical']())
+    request.write_bytes(raw)
+    request_id=g['identity'](raw)
+    for mode in ('success','collision','io_error','wrong_binding'):
+        output=folder/(mode+'.json')
+        payload=g['json_bytes']({'schema':'trinite.integral-geometry-report.v1',
+                   'request_identity':request_id if mode!='wrong_binding' else 'sha256:'+'0'*64})
+        def worker(command,**kwargs):
+            Path(command[command.index('--output')+1]).write_bytes(payload)
+            return subprocess.CompletedProcess(command,0)
+        publish=g['publish']
+        def publication(path,raw):
+            if path==output:
+                if mode=='collision':
+                    output.write_bytes(b'other process output')
+                if mode=='io_error':
+                    raise OSError('simulated final-link failure')
+            return publish(path,raw)
+        argv=['launcher','run','--request',str(request),'--request-identity',request_id,'--output',str(output)]
+        with patch.object(sys,'argv',argv),patch('subprocess.run',side_effect=worker),patch.dict(g,{'publish':publication}):
+            rc=ns['main']()
+        attempt=next(folder.glob(mode+'.json.attempt-*'))
+        status=json.loads((attempt/'status.json').read_text())
+        if status['exit_code']!=0 or status['controller_exit_code']!=rc:
+            raise RuntimeError('worker/controller results conflated')
+        if (attempt/'report.json').read_bytes()!=payload:
+            raise RuntimeError('completed worker report not retained')
+        usage=status['worker_resource_usage']
+        if any(v['units']!='KiB' or v['platform']!='linux' or v['peak_rss_kib']<0 for v in usage.values()):
+            raise RuntimeError('missing scoped Linux peak memory measurement')
+        if mode=='success':
+            if rc!=0 or status['publication']!='published' or output.read_bytes()!=payload:
+                raise RuntimeError('success not correctly recorded')
+        else:
+            if rc!=1 or 'controller_error' not in status:
+                raise RuntimeError('controller failure was lost')
+            if status['publication']!=('not_attempted' if mode=='wrong_binding' else 'failed'):
+                raise RuntimeError('incorrect publication outcome')
+            if mode=='collision' and output.read_bytes()!=b'other process output':
+                raise RuntimeError('colliding destination was modified')
+            if mode!='collision' and output.exists():
+                raise RuntimeError('failed result was published')
+''' % str(LAUNCHER)
+        p=subprocess.run([sys.executable,'-I','-c',code],capture_output=True,text=True)
+        self.assertEqual(p.returncode,0,p.stderr)
+
+    def test_worker_checks_completed_request_binding(self):
+        code=r'''
+import runpy,tempfile,sys
+from pathlib import Path
+from unittest.mock import patch
+ns=runpy.run_path(%r)
+g=ns['main'].__globals__
+g['numerical']=lambda: {'prospective':'worker controller test only'}
+with tempfile.TemporaryDirectory() as d:
+    request=Path(d)/'request.json'
+    output=Path(d)/'report.json'
+    raw=g['json_bytes'](g['numerical']())
+    request.write_bytes(raw)
+    def report(*,expected_request,on_cell):
+        if expected_request!=g['numerical']():
+            raise RuntimeError('validated request was not passed into report')
+        return {'schema':'trinite.integral-geometry-report.v1','request_identity':'sha256:'+'0'*64}
+    argv=['launcher','_worker','--request',str(request),'--request-identity',g['identity'](raw),'--output',str(output)]
+    with patch.object(sys,'argv',argv),patch('integral_geometry_v1.experiment.report',side_effect=report):
+        if ns['main']()!=1 or output.exists():
+            raise RuntimeError('worker accepted a different request binding')
+        if not output.with_name(output.name+'.rejected.json').exists():
+            raise RuntimeError('rejected worker report not retained')
+''' % str(LAUNCHER)
+        p=subprocess.run([sys.executable,'-I','-c',code],capture_output=True,text=True)
+        self.assertEqual(p.returncode,0,p.stderr)
+
+    def test_actual_child_peak_memory_has_explicit_scope(self):
+        code=r'''
+import runpy,subprocess,sys
+ns=runpy.run_path(%r)
+before=ns['child_usage']()
+subprocess.run([sys.executable,'-I','-c','data=bytearray(1048576)'],check=True)
+after=ns['child_usage']()
+if after['peak_rss_kib']<=0 or after['peak_rss_kib']<before['peak_rss_kib']:
+    raise RuntimeError('missing child resource measurement')
+if after['units']!='KiB' or 'cumulative reaped-child' not in after['scope']:
+    raise RuntimeError('memory measurement lacks units or scope')
 ''' % str(LAUNCHER)
         p=subprocess.run([sys.executable,'-I','-c',code],capture_output=True,text=True)
         self.assertEqual(p.returncode,0,p.stderr)

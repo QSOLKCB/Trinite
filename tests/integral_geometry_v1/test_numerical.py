@@ -2,6 +2,7 @@
 import unittest
 from unittest.mock import patch
 import torch
+from trinite.contracts import ContractError
 from trinite.training import run_steps, model_identity, require_environment
 from trinite.tokenizer import EOS
 from integral_geometry_v1.data import examples
@@ -55,5 +56,14 @@ class MatchedCPU(unittest.TestCase):
         self.assertEqual(len(calls),3*len(examples()))
         self.assertTrue(all(calls[i]=='eval['+wrong+']=' for i in range(2,len(calls),3)))
         self.assertTrue(all(not r['setup_semantic'] for r in result['records']))
+
+    def test_request_drift_rejected_before_model_work(self):
+        from integral_geometry_v1.experiment import report
+        with patch('integral_geometry_v1.experiment.request',return_value={'source':'changed'}), \
+             patch('integral_geometry_v1.experiment.require_environment',return_value={}), \
+             patch('integral_geometry_v1.experiment.create') as create_model:
+            with self.assertRaisesRegex(ContractError,'validated supplied request'):
+                report(expected_request={'source':'validated'})
+            create_model.assert_not_called()
 
 if __name__=='__main__':unittest.main()

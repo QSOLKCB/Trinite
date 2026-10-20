@@ -35,7 +35,11 @@ That calculator correctness is **not model learning**.
 Only first-party generated rational facts and minimal symbolic carriers enter.
 No textbook/paper prose, teacher answers, pretrained weights, remote code or corpus
 is downloaded. Admission records commissioned authorship, rights basis, scope,
-procedure, complete dataset identity and exposure. Regeneration rejects edits to
+procedure, complete dataset identity and exposure. Every item binds exact generator
+and oracle source revisions, explicit null generation/split seeds (exhaustive,
+nonrandom enumeration), the fixed split procedure and independent verifier
+outcomes. Its separate semantic ordering identity preserves the originally
+declared curriculum order; the full item identity includes all provenance. Regeneration rejects edits to
 rows, labels, lineage and splits. This source-specific admission does not relax
 [DATA](DATA.md); software licensing is not itself a data rights basis.
 
@@ -123,7 +127,22 @@ python -I scripts/run_integral_geometry.py replay --request "$request" \
 Final artifacts publish complete same-directory temporaries atomically without
 clobbering. Each full output filename gets a unique attempt directory. Retain all
 requests, statuses, logs and completed cells, including failures, before any fresh
-attempt. Replay restarts at native initialization and reruns the whole protocol,
+attempt. Status distinguishes the worker exit code from the controller exit code
+and records final publication as not attempted, failed or published. A successful
+worker is not evidence that the requested destination was published. Collisions
+and final-link I/O errors retain a failed controller receipt and the worker report.
+Both worker and controller reject completed reports bound to a different supplied
+request; the experiment also checks that binding before any model work and keeps
+its end-of-run source/environment comparison.
+
+Resource status records Linux RUSAGE_CHILDREN ru_maxrss in KiB before and after
+the worker is reaped, including failure/timeout. This is the controller's cumulative
+reaped-child high-water mark, not a subtractable counter or whole-machine memory.
+A fresh CLI normally launches one worker; prior children, if present, can dominate
+this value. Parent-process RSS, GPU memory and a hard memory limit are not measured
+or implied. Resource observations stay outside deterministic comparison bytes.
+
+Replay restarts at native initialization and reruns the whole protocol,
 requiring identical deterministic report bytes in the bound environment. It is
 not a cross-host guarantee or resumable checkpoint. Source/environment changes
 require a new request; never patch old requests or discard negative records.

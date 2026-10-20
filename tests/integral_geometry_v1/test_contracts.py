@@ -1,7 +1,7 @@
 import copy
 from fractions import Fraction as Q
 import unittest
-from trinite.contracts import ContractError
+from trinite.contracts import ContractError, identity, json_bytes
 from integral_geometry_v1.data import examples, validate, admission, independent_value, polynomial
 from integral_geometry_v1.math import (integral, parse_setup, setup_correct, answer_correct,
                                       evaluate_setup, render)
@@ -20,10 +20,27 @@ class ExactGeometry(unittest.TestCase):
             families.setdefault(r['family'],set()).add(r['split'])
             self.assertFalse(r['split']=='train' and r['novel_transform'])
         self.assertTrue(all(len(v)==1 for v in families.values()))
-        for field in ('answer','setup','split','family','control_prompt','identity'):
+        for field in ('answer','setup','split','family','control_prompt','identity',
+                      'generator_revision','generation_seed','split_procedure','verifier_outcome'):
             changed=copy.deepcopy(rows)
             changed[0][field]='forged'
             with self.assertRaises(ContractError):validate(changed)
+
+    def test_each_item_binds_provenance_and_preserves_semantic_order(self):
+        from pathlib import Path
+        from integral_geometry_v1 import data
+        added={'ordering_identity','generator_revision','generation_seed','generation_procedure',
+               'split_seed','split_procedure','verifier_outcome','identity'}
+        for row in examples():
+            self.assertEqual(row['ordering_identity'],identity(json_bytes({k:v for k,v in row.items() if k not in added})))
+            self.assertEqual(row['identity'],identity(json_bytes({k:v for k,v in row.items() if k!='identity'})))
+            self.assertIsNone(row['generation_seed'])
+            self.assertIsNone(row['split_seed'])
+            self.assertIn('no RNG',row['generation_procedure'])
+            self.assertEqual(set(row['verifier_outcome'].values()),{'pass'})
+            for name,digest in row['generator_revision'].items():
+                self.assertEqual(digest,identity(Path(data.__file__).with_name(name).read_bytes()))
+        self.assertEqual([targets(seed) for seed in PROTOCOL['seeds']],[1320,1333])
 
     def test_independent_reference_cases(self):
         # Uniform density on [-1/2,1] has mass3/4 and centroid1/4.

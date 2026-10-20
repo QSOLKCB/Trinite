@@ -66,6 +66,20 @@ def examples():
                            'transform':{'shift':str(h),'length':str(length),'scale':str(scale)},
                            'prompt':prompt,'control_prompt':control,'setup':setup,'answer':str(value),
                            'novel_transform': length == Q(3,2)}
+                    row['ordering_identity'] = identity(json_bytes(row))
+                    row['generator_revision'] = {name:identity(Path(__file__).with_name(name).read_bytes())
+                                                 for name in ('data.py','math.py')}
+                    row['generation_seed'] = None
+                    row['generation_procedure'] = 'exhaustive coefficient and transform enumeration; no RNG'
+                    row['split_seed'] = None
+                    row['split_procedure'] = {
+                        'id':'trinite.integral-geometry-coefficient-split.v1',
+                        'family_key':'normalized (b,c) before all transforms and task projections',
+                        'validation':[[1,2]],'test':[[2,1],[2,2]],
+                        'train':'all other enumerated coefficient pairs; no random assignment'}
+                    row['verifier_outcome'] = {
+                        'antiderivative_vs_normalized_simpson':'pass',
+                        'parsed_setup_vs_exact_answer':'pass'}
                     row['identity'] = identity(json_bytes(row))
                     rows.append(row)
     return rows

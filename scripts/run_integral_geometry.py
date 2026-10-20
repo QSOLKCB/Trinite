@@ -6,6 +6,7 @@ import argparse
 import os
 from pathlib import Path
 import subprocess
+import resource
 import tempfile
 import time
 import uuid
@@ -52,6 +53,22 @@ def numerical():
     return request(require_environment())
 
 
+def validate_report_binding(raw, expected_identity):
+    value=parse_json(raw,canonical=True)
+    if (type(value) is not dict or value.get('schema')!='trinite.integral-geometry-report.v1'
+            or value.get('request_identity')!=expected_identity):
+        raise ContractError('completed report differs from supplied request binding')
+    return value
+
+
+def child_usage():
+    if not sys.platform.startswith('linux'):
+        raise ContractError('worker resource measurement requires Linux ru_maxrss units')
+    return {'peak_rss_kib':int(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss),
+            'platform':sys.platform,'units':'KiB',
+            'scope':'controller cumulative reaped-child high-water mark; fresh CLI normally launches one worker; not a per-child delta or memory cap'}
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=('freeze','run','replay','_worker'))
@@ -84,9 +101,14 @@ def main():
                     partial.write(encoded)
                     partial.flush()
                     os.fsync(partial.fileno())
-                completed=json_bytes(report(on_cell=retain))
+                completed=json_bytes(report(expected_request=parse_json(raw,canonical=True),on_cell=retain))
             if len(completed)>LIMIT:
                 raise ContractError('report size bound exceeded')
+            try:
+                validate_report_binding(completed,args.request_identity)
+            except ContractError:
+                publish(args.output.with_name(args.output.name+'.rejected.json'),completed)
+                raise
             publish(args.output,completed)
             return 0
         expected=None
@@ -106,24 +128,39 @@ def main():
                  '--request',str((folder/'request.json').resolve()),'--request-identity',args.request_identity,
                  '--output',str((folder/'report.json').resolve())]
         started=time.monotonic()
+        before=child_usage()
+        outcome={'action':args.action,'exit_code':None,'timed_out':False,
+                 'controller_exit_code':1,'publication':'not_attempted'}
         with (folder/'stdout.log').open('xb') as out,(folder/'stderr.log').open('xb') as err:
             try:
                 result=subprocess.run(command,stdout=out,stderr=err,timeout=900,check=False)
-                outcome={'exit_code':result.returncode,'timed_out':False}
+                outcome['exit_code']=result.returncode
             except subprocess.TimeoutExpired:
-                outcome={'exit_code':None,'timed_out':True}
+                outcome['timed_out']=True
+            except OSError as error:
+                outcome['launch_error']=str(error)[:512]
         outcome['elapsed_seconds_hex']=(time.monotonic()-started).hex()
-        outcome['action']=args.action
-        if outcome['timed_out'] or outcome['exit_code']!=0:
-            publish(folder/'status.json',json_bytes(outcome))
-            raise ContractError('worker failed; retained attempt: '+str(folder))
-        completed=read(folder/'report.json')
-        outcome['report_identity']=identity(completed)
-        outcome['exact_replay']=None if expected is None else expected==completed
+        outcome['worker_resource_usage']={'before':before,'after':child_usage()}
+        try:
+            if outcome['timed_out'] or outcome['exit_code']!=0:
+                raise ContractError('worker failed')
+            completed=read(folder/'report.json')
+            outcome['report_identity']=identity(completed)
+            validate_report_binding(completed,args.request_identity)
+            outcome['exact_replay']=None if expected is None else expected==completed
+            if expected is not None and expected!=completed:
+                raise ContractError('exact replay mismatch')
+            outcome['publication']='attempted'
+            publish(args.output,completed)
+            outcome['publication']='published'
+            outcome['controller_exit_code']=0
+        except (ContractError,OSError,ValueError) as error:
+            if outcome['publication']=='attempted':
+                outcome['publication']='failed'
+            outcome['controller_error']=str(error)[:512]
         publish(folder/'status.json',json_bytes(outcome))
-        if expected is not None and expected!=completed:
-            raise ContractError('exact replay mismatch; all new bytes retained at '+str(folder))
-        publish(args.output,completed)
+        if outcome['controller_exit_code']!=0:
+            raise ContractError('controller failed; retained attempt: '+str(folder))
         print(identity(completed))
         print(folder)
         return 0

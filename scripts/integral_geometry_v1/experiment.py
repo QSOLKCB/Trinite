@@ -92,8 +92,10 @@ def score(model):
     return {'groups':groups,'records':records}
 
 
-def report(on_cell=None):
+def report(*, expected_request, on_cell=None):
     frozen=request(require_environment())
+    if frozen != expected_request:
+        raise ContractError('experiment differs from validated supplied request')
     cells=[]
     for seed in PROTOCOL['seeds']:
         initial=None

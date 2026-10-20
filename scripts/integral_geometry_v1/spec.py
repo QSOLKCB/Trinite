@@ -39,7 +39,7 @@ def sources():
 
 def schedule(seed):
     rows = [r for r in examples() if r['split']=='train']
-    rows.sort(key=lambda r:identity(json_bytes({'seed':seed,'row':r['identity']})))
+    rows.sort(key=lambda r:identity(json_bytes({'seed':seed,'row':r['ordering_identity']})))
     return [(r,kind) for r in rows for kind in ('setup','evaluation')]
 
 
