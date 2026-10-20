@@ -1,16 +1,16 @@
 # Frozen native batch-composition conformance v2
 
-Status: v2 serialization correction under review; no v2 target outcomes measured.
+Status: all three pinned CPU matrix runs and exact hosted inference replays passed
+on the published v2 producer, followed by independent offline evidence review.
 
 The original published v1 producer completed its first numerical run, but strict
-replay rejected the canonical JSON before inference: dictionary key sorting
-changed the order of recomputed comparison edges. The correction explicitly uses
-the frozen layout order. It does not change model operations, numerical tolerances,
-workload, budgets or the exact replay gate. New request/report/protocol schemas
-are v2; existing module and launcher paths remain for a single implementation.
-The complete original 149-file source snapshot, original result and failed replay
-are retained separately, never rewritten or resealed. Fresh v2 outcomes require
-a separately published producer and new source-bound request.
+replay rejected canonical JSON before inference: dictionary key sorting changed
+the order of recomputed comparison edges. v2 explicitly uses the frozen layout
+order. Model operations, tolerances, workload, budgets and the exact replay gate
+are unchanged. New request/report/protocol schemas are v2; existing module and
+launcher paths remain for one implementation. Original results and the failed
+replay remain separate. Original source recovery uses the public commit/tree and
+all 149 exact content/Git-blob identities, not a published self-contained ZIP.
 
 This separate inference-only lane tests the four actual final-step-60 endpoints
 from [the fixed-code-refit training pilot](SCALE-REFIT-TRAINING.md), not an untrained
@@ -125,6 +125,62 @@ source/input/environment. Batch-comparison tolerance does not relax exact replay
 Observed timing, RSS, random attempt names and parent status are excluded from
 scientific report equality. This is inference replay, not optimizer replay or
 PROVENANCE closed custody/hardware attestation.
+
+## Retained outcomes and limits
+
+The [v2 commitment](../fixtures/batch-composition-v2/commitment.json) retains all
+three matrix requests, complete raw-vector reports, all original run/replay
+members through a lossless storage map, and independent offline audit receipts.
+Python 3.12 was designated the primary retained environment before matrix outcomes;
+all other matrix outcomes are also retained rather than selected for performance.
+
+| Python | Actual hosted CPU/kernel | Maximum paired absolute logit difference | Outcome |
+| --- | --- | --- | --- |
+| 3.11.17 | AMD EPYC 7763 / AVX2 | 1.1920928955078125e-6 | Both gates and exact replay pass |
+| 3.12.15 (primary) | AMD EPYC 7763 / AVX2 | 1.1920928955078125e-6 | Both gates and exact replay pass |
+| 3.13.16 | Intel Xeon Platinum 8573C / AVX512 | 1.430511474609375e-6 | Both gates and exact replay pass |
+
+Every report covers four endpoints and 10,920 same-prefix full-vector comparisons,
+with zero violating coordinates and no exact token/stop differences. Observed
+compute was 2,500 physical forwards and 6,720 computed rows per report, inside the
+unchanged bounds. Maximum normalized error across the matrix was about 0.0424 of
+the declared coordinate-wise allowance. Floating-point values were **not bitwise
+invariant across batch layouts**. The environments also differ in CPU/kernel and
+Python, so this is not an attribution to Python or a cross-environment bitwise
+claim. Exact replay is asserted only within each bound environment.
+
+Producer publication preceded these runs:
+[`f05f8396`](https://github.com/QSOLKCB/Trinite/commit/f05f8396a98fb77134e26486fa9482fcca0913b0).
+The [hosted run](https://github.com/QSOLKCB/Trinite/actions/runs/39463163844) completed
+all three CPU jobs; each fresh run and fresh replay process stayed within 300
+seconds. The reviewer independently checked source, raw vectors, call accounting,
+all partial streams and exact report/receipt bindings without executing a model.
+This is hosted inference replay plus independent offline review, **not** a claim
+of a second local inference replay or optimizer replay. The temporary local CPU
+environment disappeared during the task; its unfinished historical aggregate is
+not claimed passed, and it was not replaced by another GPU or dependency variant.
+
+The primary uncompressed report is
+`sha256:4723415336b3a6d398b17fba9c18345f951b0723cd61a0b51f635ad1bf4d3d00`.
+All reports/large partial streams use lossless XZ with externally pinned compressed
+and uncompressed identities and a 64 MiB expanded-file bound. Each matrix's
+`members` map reconstructs all 19 original hosted artifact members; identical
+bytes are stored once. The [independent audit script](../fixtures/batch-composition-v2/audit_ci_artifact.py)
+operates on that original extracted member layout, never on a model. Use it only
+on the hash-checked retained packet, with the repository as `--source-root` and
+its [prepublication review](../fixtures/batch-composition-v2/prepublication-review.json)
+as `--approved-review`. Root evidence tests perform actual data admission and
+strict recorded-report validation without Torch; they do not substitute for the
+retained hosted inference replay.
+
+The [original v1 commitment](../fixtures/batch-composition-v1/commitment.json)
+retains the first local result, failed replay, partial streams and failure audit.
+Its source-recovery manifest names
+[`7be8c442`](https://github.com/QSOLKCB/Trinite/commit/7be8c44288ea645ed8ac04e00abebbe452e2e567),
+tree `07c93f7ad42f5d1dc13cd2c4f433cc748bf50fff`, and every original source identity.
+The optional source ZIP is not published; no check silently skips a declared
+archive. The public Git commit is the explicit original-source recovery basis.
+The original replay failure is not converted into a successful replay receipt.
 
 ## Attribution and compatibility
 
