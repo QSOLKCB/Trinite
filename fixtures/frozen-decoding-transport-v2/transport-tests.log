@@ -1,0 +1,25 @@
+test_complete_atomic_publish (test_transport.ArtifactTests.test_complete_atomic_publish) ... ok
+test_concurrent_destination_wins (test_transport.ArtifactTests.test_concurrent_destination_wins) ... ok
+test_existing_file_and_symlinks_never_replaced (test_transport.ArtifactTests.test_existing_file_and_symlinks_never_replaced) ... ok
+test_failure_and_interrupt_clean_unpublished_temp (test_transport.ArtifactTests.test_failure_and_interrupt_clean_unpublished_temp) ... ok
+test_json_bytes_is_already_jsonl (test_transport.ArtifactTests.test_json_bytes_is_already_jsonl) ... ok
+test_short_writes_and_zero_progress (test_transport.ArtifactTests.test_short_writes_and_zero_progress) ... ok
+test_existing_report_rejects_before_generation (test_transport.RunnerTests.test_existing_report_rejects_before_generation) ... ok
+test_final_report_failure_and_race_preserve_destinations (test_transport.RunnerTests.test_final_report_failure_and_race_preserve_destinations) ... {"attempt_cells_path":"/tmp/tmp8l547wh7/report.json.attempt-f77b7585e4014f618066040d8f6ed32a.cells.jsonl","attempt_timings_path":"/tmp/tmp8l547wh7/report.json.attempt-f77b7585e4014f618066040d8f6ed32a.timings.json"}
+{"attempt_cells_path":"/tmp/tmp8l547wh7/report.json.attempt-04ab8a17d7574c5ca2693e63318e63d2.cells.jsonl","attempt_timings_path":"/tmp/tmp8l547wh7/report.json.attempt-04ab8a17d7574c5ca2693e63318e63d2.timings.json"}
+{"attempt_cells_path":"/tmp/tmp3a_85s80/report.json.attempt-646dc06ab9ce4cf2a503c10a9e3341a3.cells.jsonl","attempt_timings_path":"/tmp/tmp3a_85s80/report.json.attempt-646dc06ab9ce4cf2a503c10a9e3341a3.timings.json"}
+ok
+test_freeze_write_failure_and_interrupt_never_publish (test_transport.RunnerTests.test_freeze_write_failure_and_interrupt_never_publish) ... ok
+test_producer_failure_keeps_completed_cells_without_report (test_transport.RunnerTests.test_producer_failure_keeps_completed_cells_without_report) ... {"attempt_cells_path":"/tmp/tmpz0_6v2wg/report.json.attempt-0ff4054922c04cc5bcef45d279aa695e.cells.jsonl","attempt_timings_path":"/tmp/tmpz0_6v2wg/report.json.attempt-0ff4054922c04cc5bcef45d279aa695e.timings.json"}
+ok
+test_retry_same_output_after_producer_failure (test_transport.RunnerTests.test_retry_same_output_after_producer_failure) ... {"attempt_cells_path":"/tmp/tmpwkd19yrn/report.json.attempt-402e92a9849d4cbea5cc3615b5511a4d.cells.jsonl","attempt_timings_path":"/tmp/tmpwkd19yrn/report.json.attempt-402e92a9849d4cbea5cc3615b5511a4d.timings.json"}
+{"attempt_cells_path":"/tmp/tmpwkd19yrn/report.json.attempt-ecee01e0ecd64f1eb5b25993abf9e516.cells.jsonl","attempt_timings_path":"/tmp/tmpwkd19yrn/report.json.attempt-ecee01e0ecd64f1eb5b25993abf9e516.timings.json"}
+ok
+test_same_stem_outputs_have_distinct_sidecars_and_valid_jsonl (test_transport.RunnerTests.test_same_stem_outputs_have_distinct_sidecars_and_valid_jsonl) ... {"attempt_cells_path":"/tmp/tmpi3tpbxcn/report.json.attempt-c196d282ea1b456b9e4465f9dd1d5776.cells.jsonl","attempt_timings_path":"/tmp/tmpi3tpbxcn/report.json.attempt-c196d282ea1b456b9e4465f9dd1d5776.timings.json"}
+{"attempt_cells_path":"/tmp/tmpi3tpbxcn/report.txt.attempt-2678a112b3c0445790c83fb6c2c0736b.cells.jsonl","attempt_timings_path":"/tmp/tmpi3tpbxcn/report.txt.attempt-2678a112b3c0445790c83fb6c2c0736b.timings.json"}
+ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.065s
+
+OK

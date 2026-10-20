@@ -70,7 +70,8 @@ creation with no-clobber semantics. Existing destinations, including symlinks an
 racing files, are never replaced. Catchable exceptions and KeyboardInterrupt clean
 the temporary file; abrupt SIGKILL may leave a hidden temporary file, but cannot
 expose an incomplete final. This is atomic visibility, not a promise of directory
-crash durability. Filesystems must support same-directory hard links; unsupported
+crash durability. If cleanup fails after successful linking, an error may accompany
+a complete final artifact; inspect the destination before retrying. Filesystems must support same-directory hard links; unsupported
 operations fail closed without falling back to overwriting rename/replace.
 
 Each attempt retains sidecars named from the **entire output filename** plus a
@@ -152,3 +153,18 @@ was approximately 287 MiB. These are observations of this host, not model guaran
 The format prior improves the harness's exact-answer score by preventing empty
 answers. It does not establish improved learned reasoning, new learning, fresh
 held-out generalization or a quantizer advantage. All prior gates remain blocked.
+
+
+## Transport v2 verification
+
+The [v2 producer](https://github.com/QSOLKCB/Trinite/commit/c42bba23ba54832be2d703f15a87d5a8eb885864)
+was published before its actual transport smoke. All twelve fault-injection,
+no-clobber, race, retry and JSONL tests passed, as did the nine original decoding
+tests and original evidence audit. The new [v2 commitment](../fixtures/frozen-decoding-transport-v2/commitment.json)
+retains the source-bound request, complete report, unique-attempt sidecars and
+run/replay logs. Exact v2 replay matched
+`sha256:24d6a2f1574cd64d05b5354222dea18c62909c76035f18c5c1bdffa7a3efa3de`.
+Its embedded v1 inference bytes exactly reproduce the original report identity
+`sha256:7f5b8c6819ab5162546f881a8105148e409b17c37689bd72e52e9799fc06a688`.
+This is artifact-transport conformance, not a new scientific outcome or a reseal
+of old evidence. The constant-answer finding and all original limitations remain.
