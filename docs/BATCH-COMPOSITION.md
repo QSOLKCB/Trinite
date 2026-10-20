@@ -165,13 +165,52 @@ The primary uncompressed report is
 All reports/large partial streams use lossless XZ with externally pinned compressed
 and uncompressed identities and a 64 MiB expanded-file bound. Each matrix's
 `members` map reconstructs all 19 original hosted artifact members; identical
-bytes are stored once. The [independent audit script](../fixtures/batch-composition-v2/audit_ci_artifact.py)
+bytes are stored once. The corrected [offline auditor v3](../scripts/audit_batch_composition_v3.py)
 operates on that original extracted member layout, never on a model. Use it only
 on the hash-checked retained packet, with the repository as `--source-root` and
 its [prepublication review](../fixtures/batch-composition-v2/prepublication-review.json)
-as `--approved-review`. Root evidence tests perform actual data admission and
-strict recorded-report validation without Torch; they do not substitute for the
-retained hosted inference replay.
+as `--approved-review`. Its output must be a new path outside the artifact tree,
+including after symlink resolution. Root evidence tests perform actual data
+admission and strict recorded-report validation without Torch; they do not
+substitute for the retained hosted inference replay.
+
+```sh
+python -B scripts/audit_batch_composition_v3.py \
+  --artifact-dir /path/to/extracted-original-hosted-packet \
+  --source-root . \
+  --approved-review fixtures/batch-composition-v2/prepublication-review.json \
+  --output /separate/new-offline-audit.json
+```
+
+### Offline auditor correction
+
+The [historical v2 audit script](../fixtures/batch-composition-v2/audit_ci_artifact.py)
+and its original receipts remain byte-preserved for provenance, **not as the
+current verification entry point**. Review reproduced three transport defects:
+Python optimization removed its assertion checks, an output inside the artifact
+tree could be created after its unchanged-input check, and a contradictory
+`timeout` outcome with exit code zero could be certified as an exact replay.
+Do not use that historical script to issue a new verification receipt.
+
+The additive v3 auditor uses explicit validation exceptions under normal Python,
+`-O`, and `PYTHONOPTIMIZE`; rejects resolved output aliases inside the audited
+tree before reading it; and validates exact integer status codes against the
+runner's outcome pairings. Only `completed/0` or `completed_nonconformant/2`,
+consistent with the report, can support a completed attempt. A failure or timeout
+is never certified as replay. The v3 receipt binds the exact auditor bytes,
+approved-review bytes, original producer/source map and all input artifact bytes.
+The auditor, source, approved review and artifact inventory are checked unchanged
+before exclusive output publication. This fixes offline evidence semantics only;
+it does not change or reseal any numerical protocol, request, report or old
+receipt, and does not rerun inference.
+
+The [v3 audit commitment](../fixtures/batch-composition-audit-v3/commitment.json)
+retains corrected offline receipts for all three unchanged hosted packets. The
+3.11 packet was checked normally, primary 3.12 with `-O`, and 3.13 with
+`PYTHONOPTIMIZE=1`, all using the local standard-library Python 3.12.14 auditor.
+These are optimization-mode checks of the auditor, not new runs of those model
+Python environments. All three strict full-vector audits passed, and independent
+review confirmed unchanged scientific values and complete artifact inventories.
 
 The [original v1 commitment](../fixtures/batch-composition-v1/commitment.json)
 retains the first local result, failed replay, partial streams and failure audit.
