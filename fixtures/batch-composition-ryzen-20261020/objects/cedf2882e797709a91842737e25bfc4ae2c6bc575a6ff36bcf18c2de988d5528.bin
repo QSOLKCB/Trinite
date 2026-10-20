@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "cat",
+    "README.md",
+    "docs/INSTRUCTIONS.md",
+    "docs/INVARIANTS.md",
+    "docs/ARCHITECTURE.md",
+    "docs/MODULES.md",
+    "docs/ROADMAP.md",
+    "docs/SCALE-REFIT-TRAINING.md",
+    "docs/FROZEN-DECODING.md",
+    "scripts/run_batch_composition.py",
+    "scripts/batch_composition_v1/protocol.json"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:49:28.558295+00:00",
+  "exit_code": 0,
+  "pid": 3,
+  "started_utc": "2026-10-20T19:49:28.555260+00:00"
+}

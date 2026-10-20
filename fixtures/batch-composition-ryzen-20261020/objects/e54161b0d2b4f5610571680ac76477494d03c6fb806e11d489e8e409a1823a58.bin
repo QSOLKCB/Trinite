@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "cat",
+    "AGENTS.md",
+    "docs/BATCH-COMPOSITION.md"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:49:03.922207+00:00",
+  "exit_code": 0,
+  "pid": 63937,
+  "started_utc": "2026-10-20T19:49:03.919713+00:00"
+}

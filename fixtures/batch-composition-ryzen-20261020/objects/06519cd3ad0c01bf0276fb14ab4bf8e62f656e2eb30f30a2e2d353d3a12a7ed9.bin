@@ -1,0 +1,104 @@
+{
+  "budget": {
+    "active_decisions": 6720,
+    "physical_forward_calls": 2500,
+    "row_evaluations": 6720
+  },
+  "cells": [
+    {
+      "arm": "absmean",
+      "budget": {
+        "active_decisions": 1680,
+        "physical_forward_calls": 625,
+        "row_evaluations": 1680
+      },
+      "conforms": true,
+      "decision_pass": true,
+      "historical_singleton_parity": {
+        "greedy": true,
+        "syntax": true
+      },
+      "model_and_rng_unchanged": true,
+      "numeric_pass": true,
+      "seed": 0
+    },
+    {
+      "arm": "refit",
+      "budget": {
+        "active_decisions": 1680,
+        "physical_forward_calls": 625,
+        "row_evaluations": 1680
+      },
+      "conforms": true,
+      "decision_pass": true,
+      "historical_singleton_parity": {
+        "greedy": true,
+        "syntax": true
+      },
+      "model_and_rng_unchanged": true,
+      "numeric_pass": true,
+      "seed": 0
+    },
+    {
+      "arm": "absmean",
+      "budget": {
+        "active_decisions": 1680,
+        "physical_forward_calls": 625,
+        "row_evaluations": 1680
+      },
+      "conforms": true,
+      "decision_pass": true,
+      "historical_singleton_parity": {
+        "greedy": true,
+        "syntax": true
+      },
+      "model_and_rng_unchanged": true,
+      "numeric_pass": true,
+      "seed": 1
+    },
+    {
+      "arm": "refit",
+      "budget": {
+        "active_decisions": 1680,
+        "physical_forward_calls": 625,
+        "row_evaluations": 1680
+      },
+      "conforms": true,
+      "decision_pass": true,
+      "historical_singleton_parity": {
+        "greedy": true,
+        "syntax": true
+      },
+      "model_and_rng_unchanged": true,
+      "numeric_pass": true,
+      "seed": 1
+    }
+  ],
+  "conforms": true,
+  "exact_local_replay": true,
+  "layout_count": 8,
+  "max_absolute_logit_difference": 1.1920928955078125e-06,
+  "max_normalized_error": 0.041507317308365356,
+  "replay_exit_code": 0,
+  "replay_receipts": [
+    {
+      "actual_identity": "sha256:92b7ad27e9e10f980ab28899028f02d0f21167b92df854102cd554e78f2e2f1a",
+      "conforms": true,
+      "exact_match": true,
+      "expected_identity": "sha256:92b7ad27e9e10f980ab28899028f02d0f21167b92df854102cd554e78f2e2f1a",
+      "request_identity": "sha256:aa4313375461b6cebfe2b73b4f20d71ccca1b9a38e0bc15ab676fe1238a2b335",
+      "schema": "trinite.batch-composition-replay-receipt.v2",
+      "scope": "same-environment complete inference replay, not optimizer replay"
+    }
+  ],
+  "report_identity": "sha256:92b7ad27e9e10f980ab28899028f02d0f21167b92df854102cd554e78f2e2f1a",
+  "report_unchanged": true,
+  "request_identity": "sha256:aa4313375461b6cebfe2b73b4f20d71ccca1b9a38e0bc15ab676fe1238a2b335",
+  "request_unchanged": true,
+  "run_exit_code": 0,
+  "same_prefix_vector_comparisons": 10920,
+  "test_evaluated": false,
+  "training_updates": 0,
+  "violating_coordinates": 0,
+  "workload_count": 42
+}

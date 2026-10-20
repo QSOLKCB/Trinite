@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "git",
+    "symbolic-ref",
+    "-q",
+    "HEAD"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:49:03.913456+00:00",
+  "exit_code": 1,
+  "pid": 63922,
+  "started_utc": "2026-10-20T19:49:03.910811+00:00"
+}

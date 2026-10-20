@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "<RUN_ROOT>/venv/bin/python",
+    "-m",
+    "pip",
+    "list",
+    "--format=json"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:50:39.164178+00:00",
+  "exit_code": 0,
+  "pid": 64167,
+  "selected_environment": {
+    "MKL_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "PIP_NO_CACHE_DIR": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONOPTIMIZE": null,
+    "PYTHONPATH": "<RUN_ROOT>/repo/src:<RUN_ROOT>/repo/scripts"
+  },
+  "started_utc": "2026-10-20T19:50:39.041162+00:00"
+}

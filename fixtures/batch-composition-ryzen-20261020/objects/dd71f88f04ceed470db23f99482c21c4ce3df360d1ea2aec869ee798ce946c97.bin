@@ -1,0 +1,7 @@
+test_new_source_bound_matrix_reports_replay_and_actual_data_admission (test_batch_composition_evidence.BatchCompositionEvidenceTests.test_new_source_bound_matrix_reports_replay_and_actual_data_admission) ... ok
+test_original_failure_and_explicit_public_source_recovery_remain_exact (test_batch_composition_evidence.BatchCompositionEvidenceTests.test_original_failure_and_explicit_public_source_recovery_remain_exact) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 32.672s
+
+OK

@@ -1,0 +1,31 @@
+{
+  "argv": [
+    "<RUN_ROOT>/venv/bin/python",
+    "-B",
+    "scripts/run_batch_composition.py",
+    "verify",
+    "--request",
+    "<RUN_ROOT>/evidence/local/batch-composition-request.json",
+    "--request-identity",
+    "sha256:aa4313375461b6cebfe2b73b4f20d71ccca1b9a38e0bc15ab676fe1238a2b335",
+    "--output",
+    "<RUN_ROOT>/evidence/local/batch-composition-report.json",
+    "--expected-identity",
+    "sha256:92b7ad27e9e10f980ab28899028f02d0f21167b92df854102cd554e78f2e2f1a"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:54:14.878346+00:00",
+  "exit_code": 0,
+  "pid": 6,
+  "selected_environment": {
+    "MKL_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": null,
+    "PIP_NO_CACHE_DIR": null,
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONOPTIMIZE": null,
+    "PYTHONPATH": "<RUN_ROOT>/repo/src:<RUN_ROOT>/repo/scripts"
+  },
+  "started_utc": "2026-10-20T19:53:33.158612+00:00"
+}

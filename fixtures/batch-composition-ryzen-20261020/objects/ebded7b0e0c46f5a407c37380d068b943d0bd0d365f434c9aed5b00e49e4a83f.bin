@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "<RUN_ROOT>/venv/bin/python",
+    "-B",
+    "-c",
+    "import json,platform,sys,torch,numpy; print(json.dumps({'python':sys.version,'executable':sys.executable,'implementation':platform.python_implementation(),'architecture':platform.machine(),'torch':torch.__version__,'numpy':numpy.__version__,'torch_cuda_build':torch.version.cuda,'torch_cpu_capability':torch.backends.cpu.get_cpu_capability(),'torch_threads':torch.get_num_threads()},indent=2)); print(torch.__config__.show()); assert torch.__version__ == '2.8.0+cpu'; assert numpy.__version__ == '2.3.5'; assert torch.version.cuda is None"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:50:40.197924+00:00",
+  "exit_code": 0,
+  "pid": 64169,
+  "selected_environment": {
+    "MKL_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "PIP_NO_CACHE_DIR": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONOPTIMIZE": null,
+    "PYTHONPATH": "<RUN_ROOT>/repo/src:<RUN_ROOT>/repo/scripts"
+  },
+  "started_utc": "2026-10-20T19:50:39.328734+00:00"
+}

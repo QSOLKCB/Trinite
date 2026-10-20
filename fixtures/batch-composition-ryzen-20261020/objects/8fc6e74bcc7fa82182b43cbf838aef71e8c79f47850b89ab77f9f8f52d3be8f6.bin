@@ -1,0 +1,9 @@
+test_isolated_clean_positive_and_nonconformant_packets (test_batch_composition_audit_v5.IsolatedAuditTests.test_isolated_clean_positive_and_nonconformant_packets) ... ok
+test_missing_required_startup_flags_fail_before_auditing (test_batch_composition_audit_v5.IsolatedAuditTests.test_missing_required_startup_flags_fail_before_auditing) ... ok
+test_retained_isolated_receipts_bind_unchanged_historical_facts (test_batch_composition_audit_v5.IsolatedAuditTests.test_retained_isolated_receipts_bind_unchanged_historical_facts) ... ok
+test_sys_only_bootstrap_guards_every_filesystem_loadable_import (test_batch_composition_audit_v5.IsolatedAuditTests.test_sys_only_bootstrap_guards_every_filesystem_loadable_import) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.720s
+
+OK

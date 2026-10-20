@@ -1,0 +1,59 @@
+{
+  "checkout": "PASS: exact commit/tree, detached and clean",
+  "clean_after": true,
+  "conformance": "PASS: report conforms=true",
+  "created_utc": "2026-10-20T19:48:44.298707+00:00",
+  "earlier_attempt": {
+    "classification": "sandbox-blocked setup; not numerical failure",
+    "preserved_unchanged": true,
+    "root": "<EARLIER_SETUP_ROOT>",
+    "unchanged_zip_sha256": "feb6dba47d64aefee4f2acab8367f22ab75374a1a2c745def6099f1a70b11b4c"
+  },
+  "exact_replay": "PASS: exact local report match; actual exit 0",
+  "execution": "COMPLETED: actual exit 0; one run invocation",
+  "expected_tree": "7b346f04b5cbb6f2b84f90af0e6215bcd68b8caa",
+  "finalized_utc": "2026-10-20T19:54:15.779933+00:00",
+  "freeze": "PASS: exit 0; one invocation",
+  "guidance": "PASS: AGENTS, batch contract, required operating documents, relevant topic contracts and actual CLI read",
+  "install": "PASS: exit 0; unchanged CPU lock, no cache reused",
+  "lockfile_identity": "sha256:79d4e23cb96308a23f0855deb8e38a22744d1a4efe5a2fba5c2c9a91a246d5af",
+  "lockfile_identity_after": "sha256:79d4e23cb96308a23f0855deb8e38a22744d1a4efe5a2fba5c2c9a91a246d5af",
+  "pip_check": "PASS: exit 0",
+  "replay_exit_code": 0,
+  "report_identity": "sha256:92b7ad27e9e10f980ab28899028f02d0f21167b92df854102cd554e78f2e2f1a",
+  "request_identity": "sha256:aa4313375461b6cebfe2b73b4f20d71ccca1b9a38e0bc15ab676fe1238a2b335",
+  "request_verification": "PASS: request source map exactly matches all 149 approved identities",
+  "requested_commit": "f4e393456f0d708af0221a8de4767438c700710a",
+  "root": "<RUN_ROOT>",
+  "run_exit_code": 0,
+  "scope_note": "Four focused regression suites only; not the complete repository aggregate. No independent adversarial review performed; that gap is not closed. Local exact replay is separate from conformance. No hosted-evidence auditor applied to local results.",
+  "source_verification": "PASS: approved review and all 149 sources match; exit 0",
+  "test_results": [
+    {
+      "duration_seconds": 0.89,
+      "exit_code": 0,
+      "suite": "tests-batch-composition-v1",
+      "test_count": 13
+    },
+    {
+      "duration_seconds": 6.607,
+      "exit_code": 0,
+      "suite": "tests-batch-composition-review",
+      "test_count": 31
+    },
+    {
+      "duration_seconds": 0.72,
+      "exit_code": 0,
+      "suite": "tests-audit-v5",
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 32.672,
+      "exit_code": 0,
+      "suite": "tests-evidence",
+      "test_count": 2
+    }
+  ],
+  "tests": "PASS: four focused suites; tests-batch-composition-v1=0 (13 tests), tests-batch-composition-review=0 (31 tests), tests-audit-v5=0 (4 tests), tests-evidence=0 (2 tests)",
+  "venv": "PASS: exit 0; Python <RUN_ROOT>/venv/bin/python"
+}

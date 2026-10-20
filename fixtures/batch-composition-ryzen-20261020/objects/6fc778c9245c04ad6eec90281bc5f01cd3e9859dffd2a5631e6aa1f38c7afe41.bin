@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "git",
+    "rev-parse",
+    "HEAD^{tree}"
+  ],
+  "cwd": "<RUN_ROOT>/repo",
+  "ended_utc": "2026-10-20T19:49:03.340135+00:00",
+  "exit_code": 0,
+  "pid": 63919,
+  "started_utc": "2026-10-20T19:49:03.338664+00:00"
+}
