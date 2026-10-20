@@ -110,3 +110,5 @@ research evidence. No trained model changes or Phase 5 claim.
   projection and same-snapshot toy optimizer replay; scientific execution gated.
 
 - [Learned ternary scale engineering](LEARNED-TERNARY-SCALES.md): isolated learned/frozen controls and exact tiny replay; no learning claim.
+
+- [Fixed-code refit training pilot](SCALE-REFIT-TRAINING.md): paired versioned model integration, exploratory formal-fixture quality and complete bounded replay.

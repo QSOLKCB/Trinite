@@ -334,3 +334,12 @@ AdamW constructor/validation and environment checks; native numerical sources,
 PCGrad and historical closures stay unchanged. New canonical JSON checkpoints
 use full-prefix replay-to-resume, not another tensor loader. Scientific execution
 is hard-closed. [Contract and evidence limits](LEARNED-TERNARY-SCALES.md).
+
+## Checkout-only fixed-code refit training pilot
+
+`scripts/scale_refit_training_v1/` wraps unchanged native decoder operations with
+existing guarded fixed-code refitting and a matched native-absmean control.
+It reuses the authoritative native admission, updater, loss and greedy decoder;
+new canonical snapshots resume by exact bounded prefix replay, not another
+safe tensor reader. Only the expressly frozen visible-fixture pilot is enabled;
+historical research gates remain unchanged. [Contract](SCALE-REFIT-TRAINING.md).
