@@ -1,0 +1,2 @@
+# Content-addressed retained objects must never undergo checkout conversion.
+batch-composition-ryzen-20261020/objects/* binary

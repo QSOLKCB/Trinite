@@ -66,7 +66,8 @@ The independently inspected numerical identities are:
 From the repository root:
 
 ```sh
-PYTHONPATH=src:scripts python -B -m unittest discover -s tests -p test_batch_composition_ryzen_evidence.py -v
+python -I -S -B scripts/check_ryzen_evidence.py -v
+python -I -S -B tests/test_batch_composition_ryzen_evidence.py -v
 ```
 
 This checks bounded object decoding, exact inventory and hashes, the distinction
@@ -75,3 +76,21 @@ actual formal-data admission, existing report validation, and exact retained
 replay streams. It needs only the standard library and never runs inference.
 The new archive-only workflow runs it on Python 3.11, 3.12, and 3.13. The original
 [batch-composition contract](BATCH-COMPOSITION.md) remains authoritative.
+
+## Verification boundary and checkout portability
+
+The documented checker requires a fresh isolated/no-site interpreter before
+path-loadable imports. It verifies the captured v5 loader bytes and pinned
+prepublication review with standard-library SHA-256, then reuses v5's verified
+source loader to check all 149 sources and compile captured project bytes.
+Neither project bytecode caches nor installed project packages supply validators.
+The interpreter, standard library, and this reviewed entry script remain trusted.
+Ordinary test discovery launches a separate isolated/no-site checker; it is not
+itself the evidence-certification boundary. `-B` alone is insufficient.
+
+A scoped `fixtures/.gitattributes` rule marks only this archive's object files
+binary, preserving their existing bytes even when Git enables automatic CRLF
+conversion. Regression coverage exercises a clean isolated run, rejected missing
+flags, and real Git index checkout with `core.autocrlf=true`. It does not include
+new cache/startup-hook poisoning experiments; the historical independent
+adversarial-review limitation remains unchanged.

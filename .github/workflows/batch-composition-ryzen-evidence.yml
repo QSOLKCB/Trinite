@@ -21,6 +21,6 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Inspect retained bytes without executing models
-        env:
-          PYTHONPATH: src:scripts
-        run: python -B -m unittest discover -s tests -p test_batch_composition_ryzen_evidence.py -v
+        run: |
+          python -I -S -B scripts/check_ryzen_evidence.py -v
+          python -I -S -B tests/test_batch_composition_ryzen_evidence.py -v
