@@ -1,7 +1,8 @@
 # External NCM reference feasibility pilot v1
 
-Status: implementation for review. **No upstream model inference, GPU measurement,
-checkpoint deserialization or solve-rate result has been obtained.** CPU tests use
+Status: corrective loader contract for review. The first authorized local attempt
+failed during generator state validation, before inference. **No model inference,
+solve-rate or latency result has been obtained.** CPU tests use
 explicit software doubles, never fabricated GPU evidence. This separate external
 pretrained lane does not replace Trinite, train anything, change geometry loss,
 select a quantizer, or clear any native learning/release gate.
@@ -54,10 +55,47 @@ clue-only generation and is not a solve-rate result.
 Upstream's unrestricted `weights_only=False` helper is not included or invoked.
 Both local checkpoints are rehashed from the exact bytes passed to
 `torch.load(..., weights_only=True, map_location='cpu')`, followed by bounded
-finite tensor/state-dict and strict model key/shape checks. Unsupported checkpoint
+tensor/state-dict and strict model key/shape/dtype checks. Unsupported checkpoint
 objects fail; there is no unsafe fallback or custom global allowlist. Safe loading
 still does not make arbitrary checkpoints trustworthy: only pinned files are allowed.
-This compatibility has not yet been exercised with actual released weights.
+The original finite-only validator rejected a nonfinite generator tensor after
+restricted deserialization. That log did not name the tensor, so the exact rejected
+key is not established. No compatibility or successful model load is claimed.
+
+### Corrective loader contract v2
+
+The pinned generator registers `attn_mask_for_masking` as a persistent, fixed
+attention buffer, not a learned parameter. Its intended forbidden-attention entries
+are negative infinity. Rejecting every nonfinite floating state tensor therefore
+conflicts with the pinned model format even if all learned weights are valid.
+
+The [versioned loader contract](../scripts/ncm_reference_v1/loader-contract-v2.json)
+requires an explicit generator/tokenizer role, model schema and fixed-buffer
+mapping before reading or deserializing checkpoint bytes. Generator calls require
+the complete fixed pair; tokenizer calls forbid that pair and all exemptions.
+It then requires exact checkpoint keys, CPU plain strided tensors, bounded sizes
+and exact fresh-model shapes/dtypes before loading. Only the complete generator fixed pair
+`attn_mask_for_masking` and `lvl_1L` receives fixed-value validation. Both must equal
+values independently generated from the pinned configuration, and those values
+must also equal the freshly constructed model buffers. The mask has shape
+`[1,1,413,413]`, 55,169 zeros and 115,400 negative infinities; **every position**
+must match, not merely counts. Level IDs have shape `[1,322]` and dtype int64: the pinned upstream
+`torch.full((l,), i)` receives an integer enumerate index, not a floating fill
+value. A separate real-PyTorch CPU test checks the exact expression, independently
+of the standard-library tensor-double suite. No buffer is
+silently removed, replaced or repaired. All remaining floating tensors must be
+finite; complex tensors are rejected. NaNs, positive infinities and misplaced
+negative infinities fail. Named shape/dtype/nonfinite-count diagnostics are emitted
+before value rejection during existing CPU state loading, not a separate GPU run.
+
+The first failed archive remains negative evidence, not zero solves. Preserve its
+original producer/request and external ZIP digest. This correction does not edit
+historical fixtures, the experiment protocol, upstream code/config/weight pins,
+budgets, scorer or numerical generation settings. Its changed source closure and
+versioned loader contract require a **new frozen request** after review, merge and
+green CI, plus separate local-run authorization. Verify old evidence only with its
+original source-bound producer; never reseal it using the new loader. New CPU tests
+use explicit tensor doubles and do not establish actual-checkpoint compatibility.
 
 All executable upstream imports are hash-bound; foreign `models`/`utils` namespace
 collisions and upstream bytecode caches reject. The launcher uses a private empty
@@ -148,3 +186,14 @@ TRI-I10/I13/I14 (bounded claims/failures/versioning). Native CPU baselines,
 installed-wheel API, historical protocols/fixtures and all earlier negative
 results are unchanged. Future native NCM training or broader evaluations require
 separate reviewed protocols and authorization.
+
+
+The optional CPU-only upstream dtype regression requires an existing PyTorch 2.8
+CPU environment (no model imports, checkpoints or CUDA execution):
+
+```sh
+python -B -m unittest discover -s tests/ncm_reference_cpu -v
+```
+
+This check is separate from standard-library CI contracts; neither test lane proves
+released-checkpoint loading or GPU inference compatibility.
