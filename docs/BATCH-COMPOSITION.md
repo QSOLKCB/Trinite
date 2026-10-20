@@ -165,7 +165,7 @@ The primary uncompressed report is
 All reports/large partial streams use lossless XZ with externally pinned compressed
 and uncompressed identities and a 64 MiB expanded-file bound. Each matrix's
 `members` map reconstructs all 19 original hosted artifact members; identical
-bytes are stored once. The current [offline auditor v4](../scripts/audit_batch_composition_v4.py)
+bytes are stored once. The current [offline auditor v5](../scripts/audit_batch_composition_v5.py)
 operates on that original extracted member layout, never on a model. Use it only
 on the hash-checked retained packet, with the repository as `--source-root` and
 its [prepublication review](../fixtures/batch-composition-v2/prepublication-review.json)
@@ -175,7 +175,7 @@ admission and strict recorded-report validation without Torch; they do not
 substitute for the retained hosted inference replay.
 
 ```sh
-python -B scripts/audit_batch_composition_v4.py \
+python -I -S -B scripts/audit_batch_composition_v5.py \
   --artifact-dir /path/to/extracted-original-hosted-packet \
   --source-root . \
   --approved-review fixtures/batch-composition-v2/prepublication-review.json \
@@ -227,7 +227,8 @@ A further review demonstrated that `-B` and `sys.dont_write_bytecode` prevent
 cache writes, **not cache reads**: the preserved
 [v3 auditor](../scripts/audit_batch_composition_v3.py) could execute an unchecked
 `.pyc` despite matching approved `.py` hashes. Its source and receipts remain
-unchanged for history, but neither v2 nor v3 is a current audit entry point.
+unchanged for history. The v2, v3 and v4 auditors are historical, not current
+verification entry points.
 
 The v4 auditor verifies and captures the complete approved source map before any
 project import. A narrow import boundary compiles those exact source bytes,
@@ -252,6 +253,44 @@ identifies the eight project modules actually compiled from approved source.
 Ordinary positive-path tests, source-binding tests and static checks passed.
 Independent adversarial review of this v4 revision is **not complete**; no final
 independent approval is claimed, and these ordinary checks do not replace it.
+
+### Isolated interpreter startup in auditor v5
+
+The preserved [v4 auditor](../scripts/audit_batch_composition_v4.py) protected
+project imports only after its initial standard-library imports. Review identified
+that a module beside the script could shadow a standard-library name at that
+initial step. The verified-project loader cannot protect code imported before it
+is installed. v4 and its receipts remain byte-preserved; use v5 for new audits.
+
+The current CLI requires a **fresh trusted Python interpreter with `-I -S`**.
+Before importing `argparse`, `importlib`, `json`, `math`, or any other path-loadable
+module, it imports only built-in `sys` and checks isolated, no-site,
+ignore-environment, no-user-site and safe-path flags. An unsupported invocation
+exits without reading the audit packet or issuing a receipt. It never silently
+re-executes itself under different flags. `-I` excludes the script directory,
+current directory and `PYTHONPATH` from the default import search and ignores
+Python environment configuration; `-S` prevents automatic `site`, `.pth` and
+site customization startup. The existing verified-byte project loader is
+unchanged and still binds every executed project module to approved source bytes.
+
+The trusted baseline is the chosen interpreter executable, its built-in/frozen
+modules and installed standard library. This is not interpreter, operating-system
+or hardware attestation, nor a sandbox for arbitrary embedding or prior execution
+in the same process. An unsupported invocation may already have executed startup
+hooks **before the script begins**; the guard cannot retroactively undo them.
+Always start the documented isolated/no-site CLI directly. `-B` suppresses cache
+writes but is not relied upon for import isolation. Because `-I` ignores
+`PYTHONOPTIMIZE`, use explicit `-O` or `-OO` when testing optimization modes.
+
+The [v5 audit commitment](../fixtures/batch-composition-audit-v5/commitment.json)
+retains new offline receipts for the same three original packets, checked under
+`-I -S -B` with optimization levels 0, 1 and 2 respectively. These are local
+Python 3.12.14 auditor checks, not new model-environment runs. Receipts now record
+the actual startup flags; all prior scientific values, source bindings and
+artifact inventories are unchanged. No model inference or historical resealing
+is involved. Ordinary missing-flag, clean positive/nonconformant, static
+first-import and retained-byte checks passed. Independent adversarial review
+remains **incomplete and not approved**; these checks do not replace that review.
 
 ## Attribution and compatibility
 
