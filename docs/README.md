@@ -114,4 +114,5 @@ research evidence. No trained model changes or Phase 5 claim.
 - [Fixed-code refit training pilot](SCALE-REFIT-TRAINING.md): paired versioned model integration, exploratory formal-fixture quality and complete bounded replay.
 
 - [External NCM reference feasibility pilot](NCM-REFERENCE-PILOT.md): isolated
-  pretrained Sudoku adapter and CPU contracts; local RTX execution still pending.
+  pretrained Sudoku adapter and CPU contracts; [RTX smoke result and archive](NCM-RTX-SMOKE-RESULTS.md)
+  retain the initial failure and successful four-board replay, not generalization evidence.
