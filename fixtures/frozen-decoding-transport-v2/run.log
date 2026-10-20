@@ -1,0 +1,4 @@
+{"attempt_cells_path":"/tmp/trinite-transport-v2/report.json.attempt-9b0844ecdf0a43e392bd9e78d9fb0574.cells.jsonl","attempt_timings_path":"/tmp/trinite-transport-v2/report.json.attempt-9b0844ecdf0a43e392bd9e78d9fb0574.timings.json"}
+sha256:24d6a2f1574cd64d05b5354222dea18c62909c76035f18c5c1bdffa7a3efa3de
+{"cells_path":"/tmp/trinite-transport-v2/report.json.attempt-9b0844ecdf0a43e392bd9e78d9fb0574.cells.jsonl","timings_path":"/tmp/trinite-transport-v2/report.json.attempt-9b0844ecdf0a43e392bd9e78d9fb0574.timings.json"}
+{"peak_rss_kib":293232,"scope":"whole process; inference only, not matched compute","wall_seconds_hex":"0x1.8dc64df168000p+2"}
