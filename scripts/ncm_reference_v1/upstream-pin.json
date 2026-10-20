@@ -1,0 +1,34 @@
+{
+  "checkpoint_card_sha256": "64cc64e4565e45560798f8c967e9830855ce8631b098005359124714c0e32183",
+  "checkpoint_repository": "hazyresearch/ncm-checkpoints",
+  "checkpoint_revision": "d342ce8aaea58830eef3b8ad473664673e41f692",
+  "commit": "c70274273f489abc73832b2b98584a8483b6b203",
+  "config_sha256": "68d74fe310e909ca1892338258a2d7143293e685ec1c4747265d9134013d1605",
+  "files": {
+    "LICENSE": "2b379bec6e8f7f362eef851d10a2afc4171b0e96a3525d50350e2cf783f2c441",
+    "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "models/common.py": "41b7c2c653d7ba312d583caca878ea3708d83da1a770b0b39651dbfd19754b73",
+    "models/next_concept.py": "4a1c483ca3b3522adb5ee754db4917c96ce08a82e992679ad7ed79e8f8c8da9b",
+    "models/quant.py": "5fd16053a826a5a0af580715a79bb03dc3eea49669514969c1086c445e9c9e2b",
+    "models/vae.py": "7d393b56813342278def3b053e83ec4ff4e56a492e4ddf2a2441e1c9f78d4317",
+    "models/vqvae.py": "9873af280da08ca39360388f652f993f17ace761a751ffa812caa706f66f592b",
+    "utils/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "utils/misc.py": "7e766c7ee036648f4959323ab671e6a7c5d3e873adb9ed60fbec83497728b452",
+    "utils/registry.py": "28ecdf5be072c55e18348e519b5bd079c58dee085561abfb3f4587e5eac7938a"
+  },
+  "license": "MIT (code LICENSE and checkpoint model-card declaration)",
+  "repository": "https://github.com/HazyResearch/ncm",
+  "schema": "ncm-upstream-pin-v1",
+  "weights": {
+    "generator.pt": {
+      "path": "sudoku/easy/generator.pt",
+      "sha256": "1cefebcd1eae0e210b7e991fdce0e86964d0e897e94a3b432d1008ab92d9926e",
+      "size": 102560203
+    },
+    "tokenizer.pt": {
+      "path": "sudoku/easy/tokenizer.pt",
+      "sha256": "3f9c87e99fd49900929cd650181f55bf00530280416992b11ddc4ea869b39d68",
+      "size": 59816209
+    }
+  }
+}

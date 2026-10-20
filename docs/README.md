@@ -112,3 +112,6 @@ research evidence. No trained model changes or Phase 5 claim.
 - [Learned ternary scale engineering](LEARNED-TERNARY-SCALES.md): isolated learned/frozen controls and exact tiny replay; no learning claim.
 
 - [Fixed-code refit training pilot](SCALE-REFIT-TRAINING.md): paired versioned model integration, exploratory formal-fixture quality and complete bounded replay.
+
+- [External NCM reference feasibility pilot](NCM-REFERENCE-PILOT.md): isolated
+  pretrained Sudoku adapter and CPU contracts; local RTX execution still pending.
