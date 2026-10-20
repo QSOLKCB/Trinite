@@ -165,7 +165,7 @@ The primary uncompressed report is
 All reports/large partial streams use lossless XZ with externally pinned compressed
 and uncompressed identities and a 64 MiB expanded-file bound. Each matrix's
 `members` map reconstructs all 19 original hosted artifact members; identical
-bytes are stored once. The corrected [offline auditor v3](../scripts/audit_batch_composition_v3.py)
+bytes are stored once. The current [offline auditor v4](../scripts/audit_batch_composition_v4.py)
 operates on that original extracted member layout, never on a model. Use it only
 on the hash-checked retained packet, with the repository as `--source-root` and
 its [prepublication review](../fixtures/batch-composition-v2/prepublication-review.json)
@@ -175,7 +175,7 @@ admission and strict recorded-report validation without Torch; they do not
 substitute for the retained hosted inference replay.
 
 ```sh
-python -B scripts/audit_batch_composition_v3.py \
+python -B scripts/audit_batch_composition_v4.py \
   --artifact-dir /path/to/extracted-original-hosted-packet \
   --source-root . \
   --approved-review fixtures/batch-composition-v2/prepublication-review.json \
@@ -192,14 +192,14 @@ tree could be created after its unchanged-input check, and a contradictory
 `timeout` outcome with exit code zero could be certified as an exact replay.
 Do not use that historical script to issue a new verification receipt.
 
-The additive v3 auditor uses explicit validation exceptions under normal Python,
+The retained v3 correction uses explicit validation exceptions under normal Python,
 `-O`, and `PYTHONOPTIMIZE`; rejects resolved output aliases inside the audited
 tree before reading it; and validates exact integer status codes against the
 runner's outcome pairings. Only `completed/0` or `completed_nonconformant/2`,
 consistent with the report, can support a completed attempt. A failure or timeout
 is never certified as replay. The v3 receipt binds the exact auditor bytes,
 approved-review bytes, original producer/source map and all input artifact bytes.
-The auditor, source, approved review and artifact inventory are checked unchanged
+The auditor, source, approved review and artifact inventory were checked unchanged
 before exclusive output publication. This fixes offline evidence semantics only;
 it does not change or reseal any numerical protocol, request, report or old
 receipt, and does not rerun inference.
@@ -220,6 +220,38 @@ tree `07c93f7ad42f5d1dc13cd2c4f433cc748bf50fff`, and every original source ident
 The optional source ZIP is not published; no check silently skips a declared
 archive. The public Git commit is the explicit original-source recovery basis.
 The original replay failure is not converted into a successful replay receipt.
+
+### Source-only project imports in auditor v4
+
+A further review demonstrated that `-B` and `sys.dont_write_bytecode` prevent
+cache writes, **not cache reads**: the preserved
+[v3 auditor](../scripts/audit_batch_composition_v3.py) could execute an unchecked
+`.pyc` despite matching approved `.py` hashes. Its source and receipts remain
+unchanged for history, but neither v2 nor v3 is a current audit entry point.
+
+The v4 auditor verifies and captures the complete approved source map before any
+project import. A narrow import boundary compiles those exact source bytes,
+including package initializers and transitive project dependencies, without
+consulting bytecode caches. It rejects preloaded project namespaces, missing
+approved package initializers and project imports outside that map. Project-tree
+fallback paths are removed while the boundary is active; imported project state
+and search paths are cleaned up on exit. Use the public CLI in a fresh process.
+
+Its receipt records the exact executed-project-module/source identities as well
+as the auditor, approved review and original artifact identities. This binds
+project source execution, not the Python interpreter/standard library or hardware
+as a new attestation. Untrusted arbitrary Python startup hooks are outside this
+ordinary local interpreter trust boundary. No model execution, original producer
+revision, tolerance change or resealing of old receipts is involved.
+
+The [v4 audit commitment](../fixtures/batch-composition-audit-v4/commitment.json)
+retains known-valid offline audits of all three original packets, using the same
+normal/`-O`/`PYTHONOPTIMIZE=1` auditor modes as v3. Their scientific values, run and
+replay facts, and all original artifact hashes are unchanged. Each receipt now
+identifies the eight project modules actually compiled from approved source.
+Ordinary positive-path tests, source-binding tests and static checks passed.
+Independent adversarial review of this v4 revision is **not complete**; no final
+independent approval is claimed, and these ordinary checks do not replace it.
 
 ## Attribution and compatibility
 
