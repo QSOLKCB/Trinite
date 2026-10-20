@@ -54,15 +54,50 @@ RNG draws. The grammar starts at an empty prefix for each item and exposes no
 prefix-resume/dead-end repair interface. Foreign inference environments have their own bound requests; original
 training environment metadata stays intact, and no cross-host equality is claimed.
 
+## Current execution: transport v2
+
+Use `scripts/run_frozen_decoding_v2.py` for all new requests and runs. The original
+`run_frozen_decoding.py` remains byte-frozen solely for historical v1 reproduction;
+it retains its original non-atomic publication and same-stem sidecar limitations.
+Do not use that legacy launcher for new artifacts. Its original workflow remains
+historical conformance. The separate v2 workflow exercises the current transport.
+Changing the historical launcher would invalidate its retained source-bound request
+and evidence, so the fix adds a transport wrapper, not another numerical producer.
+
+V2 atomically publishes complete request, timing and final report bytes with a
+same-directory temporary file, complete-write loop, flush/fsync, then hard-link
+creation with no-clobber semantics. Existing destinations, including symlinks and
+racing files, are never replaced. Catchable exceptions and KeyboardInterrupt clean
+the temporary file; abrupt SIGKILL may leave a hidden temporary file, but cannot
+expose an incomplete final. This is atomic visibility, not a promise of directory
+crash durability. Filesystems must support same-directory hard links; unsupported
+operations fail closed without falling back to overwriting rename/replace.
+
+Each attempt retains sidecars named from the **entire output filename** plus a
+fresh attempt nonce: `report.json.attempt-<nonce>.cells.jsonl` and
+`report.json.attempt-<nonce>.timings.json`. `report.txt` has a different prefix.
+Paths are logged before generation. A failed producer or final publication can
+leave completed-cell/timing sidecars, deliberately preserved as failure evidence;
+a retry at the same final output path gets new sidecars and does not erase them.
+No nonce or observed timing enters deterministic scientific replay.
+
+Canonical `json_bytes` already appends one LF; original retained JSONL was valid.
+V2 explicitly tests multi-record line parsing rather than adding a second newline.
+The v2 request binds transport source plus the unchanged v1 inference request;
+the v2 report wraps a freshly computed unchanged v1 inference report. This does
+not rewrite or reseal original v1 artifacts. Use the legacy launcher only to
+verify the original retained v1 report, and v2 to verify new v2 transport reports.
+
 ## Execution and assurance
 
 ```sh
 export PYTHONPATH=src:scripts
 python -m unittest discover -s tests/frozen_decoding_v1 -v
-request_id=$(python scripts/run_frozen_decoding.py freeze --request /new/request.json)
-python scripts/run_frozen_decoding.py run --request /new/request.json \
+python -m unittest discover -s tests/frozen_decoding_transport_v2 -v
+request_id=$(python scripts/run_frozen_decoding_v2.py freeze --request /new/request.json)
+python scripts/run_frozen_decoding_v2.py run --request /new/request.json \
   --request-identity "$request_id" --output /new/report.json
-python scripts/run_frozen_decoding.py verify --request /new/request.json \
+python scripts/run_frozen_decoding_v2.py verify --request /new/request.json \
   --request-identity "$request_id" --output /new/report.json \
   --expected-identity sha256:YOUR_RETAINED_DIGEST
 ```
