@@ -7,6 +7,7 @@ import unittest
 
 from trinite.contracts import ContractError, identity, parse_json
 from trinite.retention_v2.task_balance.schedule import MATHS_TASKS, schedule_rows, task_visits
+from retention_source_history import assert_preserved_sources
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -66,7 +67,9 @@ class TaskBalanceBoundaries(unittest.TestCase):
         self.assertIn(repr(identity(raw)), source)
         prior=parse_json((ROOT/'fixtures/retention-task-balance-v1/prior-budget-source.json').read_bytes(),canonical=True)
         self.assertIn('src/trinite/retention_v2/budget/spec.py',prior)
-        for name,key in prior.items(): self.assertEqual(identity((ROOT/name).read_bytes()),key,name)
+        # This is historical documentation preservation, not a claim that an
+        # old request matches current AGENTS bytes. Runtime binding stays strict.
+        assert_preserved_sources(self, ROOT, prior)
 
     def test_dependency_boundary_reuses_existing_numerical_and_evidence_owners(self):
         allowed={

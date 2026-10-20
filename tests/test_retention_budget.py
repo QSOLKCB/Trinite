@@ -6,6 +6,7 @@ import unittest
 from trinite.contracts import ContractError
 from trinite.maths_plan import MathsPlan
 from trinite.retention_v2.budget.plan import BudgetRetentionPlan
+from retention_source_history import assert_preserved_sources
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -42,8 +43,10 @@ class BudgetBoundaries(unittest.TestCase):
                         self.assertNotIn(name,{'socket','urllib','http','ssl','subprocess'})
 
     def test_original_assurance_source_bytes_remain_intact(self):
-        from trinite.contracts import parse_json,identity
+        from trinite.contracts import parse_json
         expected=parse_json((ROOT/'fixtures/retention-budget-v2/prior-assurance-source.json').read_bytes(),canonical=True)
         self.assertTrue(expected)
-        for name,key in expected.items():self.assertEqual(identity((ROOT/name).read_bytes()),key,name)
+        # The original instructions remain in the independently pinned producer
+        # snapshot. Every numerical/runtime source must still match this checkout.
+        assert_preserved_sources(self, ROOT, expected)
         self.assertTrue(any('retention_v2/spec.py' in name for name in expected))

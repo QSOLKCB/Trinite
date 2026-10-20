@@ -136,6 +136,29 @@ class V2AssuranceTests(unittest.TestCase):
         request=parent/'foreign-request.json';r=parse_json(self.request.read_bytes());r['environment']['machine']='foreign';request.write_bytes(json_bytes(r))
         with self.assertRaises(ContractError):experiment.read_request(request,identity(request.read_bytes()))
         with self.assertRaises(ContractError):spec.cell_name(True,'pooled')
+        # Historical instruction preservation must never become a runtime
+        # fallback: all three live closures still bind the current root bytes.
+        from trinite.retention_v2.budget import spec as budget_spec
+        from trinite.retention_v2.task_balance import spec as task_spec
+        agents=ROOT/'AGENTS.md';live=agents.read_bytes();reader=spec.read_bytes
+        def changed_instructions(path, limit):
+            return live+b'\nchanged instructions\n' if Path(path)==agents else reader(path,limit)
+        for owner in (spec,budget_spec,task_spec):
+            with self.subTest(source_owner=owner.__name__):
+                current=owner.sources()
+                self.assertEqual(current['AGENTS.md'],identity(live))
+                with patch.object(spec,'read_bytes',side_effect=changed_instructions):
+                    changed=owner.sources()
+                self.assertEqual(changed['AGENTS.md'],identity(live+b'\nchanged instructions\n'))
+                self.assertEqual({k:v for k,v in changed.items() if k!='AGENTS.md'},
+                                 {k:v for k,v in current.items() if k!='AGENTS.md'})
+        # Exercise the real frozen-request guard, retaining all original request
+        # fields except the genuinely current source map. No request is rewritten.
+        historical=ROOT/'fixtures/retention-budget-v2/request.json'
+        raw=historical.read_bytes();core=parse_json(raw,canonical=True)
+        core.pop('created_at');core['source']=budget_spec.sources()
+        with self.assertRaisesRegex(ContractError,'request/source/data/environment/profile mismatch'):
+            evidence.read_frozen(historical,identity(raw),core)
 
     def test_real_observer_filesystem_failure_retains_completed_outputs_and_failure_receipt(self):
         parent,_=self.copy_run();root=parent/'failed-cell';seal=evidence.seal

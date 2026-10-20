@@ -101,6 +101,14 @@ coverage. Never silently skip missing numerical dependencies. Check changed-doc
 links/assets, conflicting status claims and diff whitespace. Never cache verifier,
 admission or test success instead of running the current check.
 
+Retention v2, budget and task-balance source maps also bind `AGENTS.md`.
+The [retained budget producer snapshot](fixtures/retention-budget-v2/README.md)
+preserves the original instructions. Historical replay requires the exact
+producer sources and matching environment for that run, not an evolved checkout.
+Preservation tests check archived instructions but still pin every runtime file.
+Those live run/verify source maps continue to bind current instructions; changed
+guidance requires a fresh request, never a substituted historical hash.
+
 Verification receipts must distinguish closed custody, source/input binding,
 safe structure, scheduled visits/targets, final predictions/loss and complete
 optimizer replay. Full replay starts from the declared native seed and compares
