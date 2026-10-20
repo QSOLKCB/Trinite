@@ -105,6 +105,29 @@ class EvidenceReview(unittest.TestCase):
         self.assertFalse(verdict['inference_verified'])
         self.assertIn('not hardware attestation', verdict['limitation'])
 
+    def test_preparation_clock_starts_before_python_prefix_encoding(self):
+        events = []
+        class Cuda:
+            def synchronize(self):
+                events.append('synchronize')
+        class Torch:
+            cuda = Cuda()
+            long = 'CPU TEST DOUBLE'
+            def tensor(self, *args, **kwargs):
+                events.append('tensor')
+                raise RuntimeError('stop before any model execution')
+        def clock():
+            events.append('clock')
+            return 0.0
+        def encode(clues):
+            events.append('encode')
+            return core.encode_board(clues)
+        with patch.object(runtime.time, 'perf_counter', side_effect=clock):
+            with patch.object(runtime, 'encode_board', side_effect=encode):
+                with self.assertRaisesRegex(RuntimeError, 'stop before any model execution'):
+                    runtime.infer(Torch(), None, None, self.req['inputs'][0]['clues'])
+        self.assertEqual(events, ['synchronize', 'clock', 'encode', 'tensor'])
+
     def test_metrics_and_complete_order_are_independently_checked(self):
         for mutation in ('metric', 'duplicate', 'omission', 'reorder'):
             with self.subTest(mutation=mutation):

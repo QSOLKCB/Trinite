@@ -103,9 +103,9 @@ def load_models(torch, paths):
 
 def infer(torch, net, codec, clues):
     """Only clues cross this boundary. No target, solver, repair or retries."""
-    prefix = [11] + encode_board(clues) + [11]
     torch.cuda.synchronize()
     start = time.perf_counter()
+    prefix = [11] + encode_board(clues) + [11]
     x = torch.tensor([prefix], dtype=torch.long, device='cuda:0')
     torch.cuda.synchronize()
     prepared = time.perf_counter()
