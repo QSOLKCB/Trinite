@@ -70,13 +70,19 @@ are negative infinity. Rejecting every nonfinite floating state tensor therefore
 conflicts with the pinned model format even if all learned weights are valid.
 
 The [versioned loader contract](../scripts/ncm_reference_v1/loader-contract-v2.json)
-requires exact checkpoint keys, CPU plain strided tensors, bounded sizes and exact
-fresh-model shapes/dtypes before loading. Only the complete generator fixed pair
+requires an explicit generator/tokenizer role, model schema and fixed-buffer
+mapping before reading or deserializing checkpoint bytes. Generator calls require
+the complete fixed pair; tokenizer calls forbid that pair and all exemptions.
+It then requires exact checkpoint keys, CPU plain strided tensors, bounded sizes
+and exact fresh-model shapes/dtypes before loading. Only the complete generator fixed pair
 `attn_mask_for_masking` and `lvl_1L` receives fixed-value validation. Both must equal
 values independently generated from the pinned configuration, and those values
 must also equal the freshly constructed model buffers. The mask has shape
 `[1,1,413,413]`, 55,169 zeros and 115,400 negative infinities; **every position**
-must match, not merely counts. Level IDs have shape `[1,322]`. No buffer is
+must match, not merely counts. Level IDs have shape `[1,322]` and dtype int64: the pinned upstream
+`torch.full((l,), i)` receives an integer enumerate index, not a floating fill
+value. A separate real-PyTorch CPU test checks the exact expression, independently
+of the standard-library tensor-double suite. No buffer is
 silently removed, replaced or repaired. All remaining floating tensors must be
 finite; complex tensors are rejected. NaNs, positive infinities and misplaced
 negative infinities fail. Named shape/dtype/nonfinite-count diagnostics are emitted
@@ -180,3 +186,14 @@ TRI-I10/I13/I14 (bounded claims/failures/versioning). Native CPU baselines,
 installed-wheel API, historical protocols/fixtures and all earlier negative
 results are unchanged. Future native NCM training or broader evaluations require
 separate reviewed protocols and authorization.
+
+
+The optional CPU-only upstream dtype regression requires an existing PyTorch 2.8
+CPU environment (no model imports, checkpoints or CUDA execution):
+
+```sh
+python -B -m unittest discover -s tests/ncm_reference_cpu -v
+```
+
+This check is separate from standard-library CI contracts; neither test lane proves
+released-checkpoint loading or GPU inference compatibility.

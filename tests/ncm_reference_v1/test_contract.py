@@ -120,8 +120,9 @@ class AdapterDoubles(unittest.TestCase):
         torch=Mock();torch.load.side_effect=RuntimeError('unsupported global')
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'weight';p.write_bytes(payload)
-            with self.assertRaisesRegex(RuntimeError,'unsupported global'):
-                runtime.safe_state(torch,p,dict(size=len(payload),sha256=core.digest(payload)))
+            with patch.object(runtime, 'validate_loader_metadata'), self.assertRaisesRegex(RuntimeError,'unsupported global'):
+                runtime.safe_state(torch,p,dict(size=len(payload),sha256=core.digest(payload),path='sudoku/easy/tokenizer.pt'),
+                                   role='tokenizer', expected_state={'weight': object()}, fixed_buffers={})
         torch.load.assert_called_once()
         self.assertEqual(torch.load.call_args.kwargs,dict(weights_only=True,map_location='cpu'))
 

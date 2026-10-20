@@ -79,17 +79,41 @@ def generator_fixed_buffers(torch, cfg):
                                else torch.int64, device='cpu') for name, value in values.items()}
 
 
-def validate_state(torch, state, expected_state, fixed_buffers):
-    """Exact model schema; only independently derived fixed tensors may be nonfinite."""
-    if not isinstance(expected_state, dict) or not expected_state:
+def validate_loader_metadata(torch, role, expected_state, fixed_buffers):
+    """Reject an incomplete or wrong-role contract before reading checkpoint bytes."""
+    if role not in ('generator', 'tokenizer'):
+        raise ValueError('explicit generator or tokenizer role required')
+    if (not isinstance(expected_state, dict) or not expected_state or len(expected_state) > 5000
+            or any(type(k) is not str for k in expected_state)):
         raise ValueError('expected model state schema required')
+    if type(fixed_buffers) is not dict:
+        raise ValueError('explicit fixed-buffer mapping required')
+    pair = {'attn_mask_for_masking', 'lvl_1L'}
+    if role == 'generator':
+        if set(fixed_buffers) != pair or not pair <= set(expected_state):
+            raise ValueError('generator requires complete fixed-buffer pair and schema')
+    elif fixed_buffers or pair & set(expected_state):
+        raise ValueError('tokenizer must not contain generator buffers or exemptions')
+    for name, expected in expected_state.items():
+        if (type(expected) is not torch.Tensor or expected.layout != torch.strided
+                or expected.device.type != 'cpu' or expected.numel() > 50_000_000
+                or expected.is_complex()):
+            raise ValueError('invalid expected schema tensor ' + repr(name))
+    for name, fixed in fixed_buffers.items():
+        expected = expected_state[name]
+        if (type(fixed) is not torch.Tensor or fixed.layout != torch.strided
+                or fixed.device.type != 'cpu' or tuple(fixed.shape) != tuple(expected.shape)
+                or fixed.dtype != expected.dtype or not torch.equal(expected, fixed)):
+            raise ValueError('checkpoint tensor ' + repr(name) +
+                             ': constructed model disagrees with independent fixed buffer')
+
+
+def validate_state(torch, state, expected_state, fixed_buffers, *, role):
+    """Exact model schema; only independently derived fixed tensors may be nonfinite."""
+    validate_loader_metadata(torch, role, expected_state, fixed_buffers)
     if set(state) != set(expected_state):
         raise ValueError('checkpoint keys mismatch: missing=' + repr(sorted(set(expected_state)-set(state)))
                          + ' extra=' + repr(sorted(set(state)-set(expected_state))))
-    if set(fixed_buffers) not in (set(), {'attn_mask_for_masking', 'lvl_1L'}):
-        raise ValueError('only the complete generator fixed-buffer pair is supported')
-    if not set(fixed_buffers) <= set(expected_state):
-        raise ValueError('fixed buffer absent from expected schema')
     for name, tensor in state.items():
         expected = expected_state[name]
         context = 'checkpoint tensor ' + repr(name)
@@ -111,11 +135,6 @@ def validate_state(torch, state, expected_state, fixed_buffers):
                                   fixed_buffer=name in fixed_buffers)), flush=True)
         if name in fixed_buffers:
             fixed = fixed_buffers[name]
-            if (type(fixed) is not torch.Tensor or fixed.layout != torch.strided
-                    or fixed.device.type != 'cpu' or tuple(fixed.shape) != tuple(expected.shape)
-                    or fixed.dtype != expected.dtype
-                    or not torch.equal(expected, fixed)):
-                raise ValueError(context + ': constructed model disagrees with independent fixed buffer')
             if not torch.equal(tensor, fixed):
                 raise ValueError(context + ': fixed-buffer value mismatch (including nonfinite positions)')
         elif tensor.is_floating_point() and not bool(torch.isfinite(tensor).all()):
@@ -123,7 +142,10 @@ def validate_state(torch, state, expected_state, fixed_buffers):
 
 
 
-def safe_state(torch, path, pin, expected_state=None, fixed_buffers=None):
+def safe_state(torch, path, pin, *, role, expected_state, fixed_buffers):
+    validate_loader_metadata(torch, role, expected_state, fixed_buffers)
+    if pin.get('path') != 'sudoku/easy/' + role + '.pt':
+        raise ValueError('checkpoint pin does not match explicit loader role')
     data = read_bytes(path, pin['size'])
     if len(data) != pin['size'] or digest(data) != pin['sha256']:
         raise ValueError('checkpoint changed before load')
@@ -134,7 +156,7 @@ def safe_state(torch, path, pin, expected_state=None, fixed_buffers=None):
     state = obj['model']
     if not state or len(state) > 5000 or any(type(name) is not str for name in state):
         raise ValueError('invalid state cardinality or key type')
-    validate_state(torch, state, expected_state, fixed_buffers or {})
+    validate_state(torch, state, expected_state, fixed_buffers, role=role)
     return state
 
 
@@ -152,10 +174,12 @@ def load_models(torch, paths):
     from models.next_concept import NextConceptTransformer
     cfg = OmegaConf.load(ROOT/'config.yaml')
     codec = VQVAE(**cfg.tokenizer.vqvae)
-    codec.load_state_dict(safe_state(torch, paths['tokenizer.pt'], pin['weights']['tokenizer.pt'], codec.state_dict()), strict=True)
+    codec.load_state_dict(safe_state(torch, paths['tokenizer.pt'], pin['weights']['tokenizer.pt'],
+                                     role='tokenizer', expected_state=codec.state_dict(), fixed_buffers={}), strict=True)
     net = NextConceptTransformer(vqvae_local=codec, config=cfg.model)
-    net.load_state_dict(safe_state(torch, paths['generator.pt'], pin['weights']['generator.pt'], net.state_dict(),
-                                   generator_fixed_buffers(torch, cfg)), strict=True)
+    net.load_state_dict(safe_state(torch, paths['generator.pt'], pin['weights']['generator.pt'],
+                                   role='generator', expected_state=net.state_dict(),
+                                   fixed_buffers=generator_fixed_buffers(torch, cfg)), strict=True)
     for name, module in list(sys.modules.items()):
         if name == 'models' or name.startswith('models.') or name == 'utils' or name.startswith('utils.'):
             file = Path(module.__file__).resolve()

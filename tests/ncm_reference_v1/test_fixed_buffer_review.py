@@ -129,9 +129,9 @@ class FixedBufferReview(unittest.TestCase):
     def validate(self, state=None, expected=None, fixed=None):
         with redirect_stdout(io.StringIO()):
             return runtime.validate_state(
-                TorchDouble, self.state if state is None else state,
-                self.expected if expected is None else expected,
-                self.fixed if fixed is None else fixed,
+                TorchDouble, self.state if state is None else state, role='generator',
+                expected_state=self.expected if expected is None else expected,
+                fixed_buffers=self.fixed if fixed is None else fixed,
             )
 
     def test_independent_block_fill_matches_every_derived_cell(self):
@@ -247,7 +247,8 @@ class FixedBufferReview(unittest.TestCase):
                                                [float('-inf'), 0.0]]
         log = io.StringIO()
         with redirect_stdout(log), self.assertRaises(ValueError) as error:
-            runtime.validate_state(TorchDouble, self.state, self.expected, self.fixed)
+            runtime.validate_state(TorchDouble, self.state, role='generator',
+                                   expected_state=self.expected, fixed_buffers=self.fixed)
         self.assertIn('learned.weight', str(error.exception))
         records = [json.loads(line) for line in log.getvalue().splitlines() if line.startswith('{')]
         record = next(record for record in records if record.get('tensor') == 'learned.weight')
@@ -265,8 +266,9 @@ class FixedBufferReview(unittest.TestCase):
             path.write_bytes(payload)
             with patch.object(TorchDouble, 'load', loader, create=True), redirect_stdout(io.StringIO()):
                 returned = runtime.safe_state(
-                    TorchDouble, path, {'size': len(payload), 'sha256': core.digest(payload)},
-                    self.expected, self.fixed,
+                    TorchDouble, path, {'path': 'sudoku/easy/generator.pt',
+                                        'size': len(payload), 'sha256': core.digest(payload)},
+                    role='generator', expected_state=self.expected, fixed_buffers=self.fixed,
                 )
             self.assertIs(returned, self.state)
             self.assertEqual(path.read_bytes(), payload)
@@ -284,8 +286,9 @@ class FixedBufferReview(unittest.TestCase):
             with patch.object(TorchDouble, 'load', create=True) as loader:
                 with self.assertRaisesRegex(ValueError, 'checkpoint changed before load'):
                     runtime.safe_state(
-                        TorchDouble, path, {'size': len(payload), 'sha256': '0' * 64},
-                        self.expected, self.fixed,
+                        TorchDouble, path, {'path': 'sudoku/easy/generator.pt',
+                                            'size': len(payload), 'sha256': '0' * 64},
+                        role='generator', expected_state=self.expected, fixed_buffers=self.fixed,
                     )
                 loader.assert_not_called()
 
