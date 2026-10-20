@@ -1,0 +1,54 @@
+name: Exact NEXUS donor conformance
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nexus-donor-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-donor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Contract tests
+        run: PYTHONPATH=scripts python -B -m unittest discover -s tests/nexus_conformance_v1 -v
+      - name: Official pinned CPU toolchains
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          curl --fail --location --retry 2 https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-linux.tar.zst -o "$RUNNER_TEMP/lean.tar.zst"
+          echo "6fe3ce97a58f44e2b3567d455b994eacec5bfe9ae7774f2a573444480ba813fe  $RUNNER_TEMP/lean.tar.zst" | sha256sum -c -
+          tar --zstd -xf "$RUNNER_TEMP/lean.tar.zst" -C "$RUNNER_TEMP"
+      - name: Freeze before live donor execution and replay
+        run: |
+          mkdir "$RUNNER_TEMP/nexus-evidence"
+          python -I -S scripts/check_nexus_conformance.py freeze --request "$RUNNER_TEMP/nexus-evidence/request.json" > "$RUNNER_TEMP/nexus-evidence/request.sha256"
+          for attempt in run replay; do
+            python -I -S scripts/check_nexus_conformance.py check --request "$RUNNER_TEMP/nexus-evidence/request.json" --request-identity "$(cat "$RUNNER_TEMP/nexus-evidence/request.sha256")" --output-dir "$RUNNER_TEMP/nexus-evidence/$attempt" --rustc "$(rustup which --toolchain 1.90.0 rustc)" --lean "$RUNNER_TEMP/lean-4.19.0-linux/bin/lean"
+          done
+          for file in request.json input.txt rust-output.stdout lean-output.stdout python-output.txt items.jsonl; do
+            cmp "$RUNNER_TEMP/nexus-evidence/run/$file" "$RUNNER_TEMP/nexus-evidence/replay/$file"
+          done
+      - name: Preserve complete outcome records including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nexus-conformance-${{ matrix.python }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/nexus-evidence/**
+            !${{ runner.temp }}/nexus-evidence/**/build/**
+          if-no-files-found: warn
+          retention-days: 14
