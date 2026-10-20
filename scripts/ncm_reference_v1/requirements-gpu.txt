@@ -1,0 +1,8 @@
+# Separate opt-in environment; never install into Trinite's canonical CPU venv.
+# Install torch separately from https://download.pytorch.org/whl/cu128.
+numpy==2.3.5
+omegaconf==2.3.0
+hydra-core==1.3.2
+antlr4-python3-runtime==4.9.3
+PyYAML==6.0.3
+packaging==25.0

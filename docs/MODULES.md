@@ -343,3 +343,12 @@ It reuses the authoritative native admission, updater, loss and greedy decoder;
 new canonical snapshots resume by exact bounded prefix replay, not another
 safe tensor reader. Only the expressly frozen visible-fixture pilot is enabled;
 historical research gates remain unchanged. [Contract](SCALE-REFIT-TRAINING.md).
+
+## External NCM reference feasibility
+
+Checkout-only `scripts/ncm_reference_v1/` owns an explicitly optional, pinned
+upstream Sudoku adapter, formal smoke inputs, strict scoring and source-bound
+transport/replay. Its stdlib contracts and tests never run an external model.
+The separately authorized CUDA boundary is not imported by native Trinite or
+its installed package. No training or historical source changes.
+See [the external pilot contract](NCM-REFERENCE-PILOT.md).

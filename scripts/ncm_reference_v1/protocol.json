@@ -1,0 +1,57 @@
+{
+  "schema": "ncm-reference-protocol-v1",
+  "scope": "external pretrained easy-Sudoku engineering smoke only; not native training or a benchmark",
+  "seed": 0,
+  "samples": 4,
+  "batch_size": 1,
+  "warmup_calls": 1,
+  "worker_timeout_seconds": 180,
+  "max_allocator_bytes": 4294967296,
+  "minimum_free_bytes": 6442450944,
+  "minimum_total_bytes": 16106127360,
+  "target_device_name_contains": "RTX 5060 Ti",
+  "precision": "float32",
+  "generation": {
+    "temperature": 0.0,
+    "top_k": 0,
+    "top_p": 1.0,
+    "cfg_scale": 0.0,
+    "use_kv_cache": false
+  },
+  "prefix": "[11] + 89 row-major board tokens (0 blank, 10 separator) + [11]",
+  "output": "89 tokens; 81 digits 1..9 and eight separators 10",
+  "levels": [
+    1,
+    2,
+    4,
+    6,
+    9,
+    13,
+    18,
+    26,
+    37,
+    50,
+    67,
+    89
+  ],
+  "input_rights": "Commissioned deterministic numeric formal facts; no source puzzles, text, teacher outputs or upstream data copied. Generator code MPL-2.0; all four variants share one exposed family, no held-out claim.",
+  "format_evidence": {
+    "repository": "hazyresearch/ncm-datasets",
+    "revision": "6580ba41a4b0a976dde876fbe84d25327617b0e6",
+    "file": "sudoku/easy/puzzles.pickle",
+    "sha256": "403353dd5d11e49d42627aee84c7b1ceb399fda03d01f6210ce78d0e61f2b29d",
+    "method": "Static pickle opcode inspection only, never unpickled; no dataset examples retained or used as pilot inputs",
+    "rights": "MIT dataset card is not no-copyright data admission; upstream dataset excluded"
+  },
+  "admission": {
+    "source_id": "commissioned-formal-sudoku-v1",
+    "origin": "Deterministic numeric generator commissioned by Trent Slade / QSOLKCB; no external puzzle copied",
+    "generator": "scripts/ncm_reference_v1/core.py:inputs",
+    "procedure": "Cyclic 3x3 Latin construction; four digit shifts; one empty cell per row; independent missing-digit recovery and row/column/box verification",
+    "rights_basis": "Minimal numeric formal facts only; copyrighted generator software remains MPL-2.0; no prose or upstream dataset intake",
+    "reviewer": "Codex implementation and independent automated conformance review",
+    "review_date": "2026-10-20",
+    "outcome": "admitted only for exposed external engineering smoke",
+    "exposure": "Four correlated variants of one completely visible family; no train/test split or generalization claim"
+  }
+}
