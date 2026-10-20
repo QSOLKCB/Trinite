@@ -72,7 +72,7 @@ def comparisons(layouts, item_ids):
                 raise ContractError('result item inventory/order mismatch')
             if set(r['item_id'] for r in rows) != expected:
                 raise ContractError('result rows duplicate or missing')
-    edges = [('singleton_min', n) for n in layouts if n != 'singleton_min']
+    edges = [('singleton_min', n) for n in LAYOUTS if n != 'singleton_min']
     edges += [('singleton_32', 'batch8_32')]
     edges += [('batch8_32', n) for n in ('partition4_32', 'reverse8_32', 'recompose8_32', 'batch8_min', 'payload8_32')]
     results = []

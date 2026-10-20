@@ -143,7 +143,7 @@ def request():
     old = original()
     rows = workload()
     refs = references(rows)
-    return {'schema': 'trinite.batch-composition-request.v1', 'protocol': protocol(),
+    return {'schema': 'trinite.batch-composition-request.v2', 'protocol': protocol(),
             'source': sources(), 'environment': require_environment(),
             'original_report_identity': REPORT_ID, 'reference_report_identity': REFERENCE_ID,
             'checkpoint_identities': [identity(json_bytes(c['final_checkpoint'])) for c in old['cells']],

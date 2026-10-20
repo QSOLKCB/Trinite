@@ -198,7 +198,7 @@ def report(on_cell=None, on_layout=None):
         assert_immutable(model, before, rng)
     if request() != binding:
         raise ContractError('source/input/environment bindings changed')
-    return {'schema': 'trinite.batch-composition-report.v1', 'request': binding, 'cells': cells,
+    return {'schema': 'trinite.batch-composition-report.v2', 'request': binding, 'cells': cells,
             'conforms': all(c['conforms'] for c in cells), 'budget': budget.snapshot(),
             'training_updates': 0, 'test_evaluated': False, 'sampling_claim': False, 'speed_claim': False,
             'scope': 'frozen native CPU engineering conformance on exposed development fixtures; no learning or release gate'}

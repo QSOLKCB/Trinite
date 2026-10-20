@@ -113,7 +113,7 @@ class RunnerTests(unittest.TestCase):
 
     def test_replay_mismatch_keeps_expected_unchanged_and_false_receipt(self):
         args = self.worker_args('verify')
-        old = json_bytes({'schema': 'trinite.batch-composition-report.v1', 'request': {'fixed': True}, 'conforms': True})
+        old = json_bytes({'schema': 'trinite.batch-composition-report.v2', 'request': {'fixed': True}, 'conforms': True})
         self.output.write_bytes(old)
         args.expected_identity = identity(old)
         with patch.object(runner, 'prepare'), patch('batch_composition_v1.spec.request', return_value={'fixed': True}), \

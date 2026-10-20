@@ -1,4 +1,4 @@
-name: Frozen native batch composition v1
+name: Frozen native batch composition v2
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: batch-composition-v1-${{ github.ref }}
+  group: batch-composition-v2-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -65,7 +65,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: batch-composition-v1-${{ matrix.python }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: batch-composition-v2-${{ matrix.python }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/batch-composition-*
           if-no-files-found: warn
           retention-days: 14

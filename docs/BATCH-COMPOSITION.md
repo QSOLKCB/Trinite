@@ -1,6 +1,16 @@
-# Frozen native batch-composition conformance v1
+# Frozen native batch-composition conformance v2
 
-Status: producer/protocol under review; target outcomes not yet measured.
+Status: v2 serialization correction under review; no v2 target outcomes measured.
+
+The original published v1 producer completed its first numerical run, but strict
+replay rejected the canonical JSON before inference: dictionary key sorting
+changed the order of recomputed comparison edges. The correction explicitly uses
+the frozen layout order. It does not change model operations, numerical tolerances,
+workload, budgets or the exact replay gate. New request/report/protocol schemas
+are v2; existing module and launcher paths remain for a single implementation.
+The complete original 149-file source snapshot, original result and failed replay
+are retained separately, never rewritten or resealed. Fresh v2 outcomes require
+a separately published producer and new source-bound request.
 
 This separate inference-only lane tests the four actual final-step-60 endpoints
 from [the fixed-code-refit training pilot](SCALE-REFIT-TRAINING.md), not an untrained

@@ -35,7 +35,7 @@ def worker(args):
         if identity(expected) != require_identity(args.expected_identity):
             raise ContractError('externally bound expected report identity mismatch')
         old = parse_json(expected, canonical=True)
-        if old.get('schema') != 'trinite.batch-composition-report.v1' or old.get('request') != parse_json(raw, canonical=True):
+        if old.get('schema') != 'trinite.batch-composition-report.v2' or old.get('request') != parse_json(raw, canonical=True):
             raise ContractError('expected report schema/request mismatch')
         validate_report(old, parse_json(raw, canonical=True))
     elif args.output.exists() or args.output.is_symlink():
@@ -64,7 +64,7 @@ def worker(args):
     publish(attempt/'measurements.json', json_bytes(metrics))
     if args.worker_action == 'verify':
         matched = actual == expected
-        receipt = {'schema': 'trinite.batch-composition-replay-receipt.v1',
+        receipt = {'schema': 'trinite.batch-composition-replay-receipt.v2',
                    'request_identity': identity(raw), 'expected_identity': args.expected_identity,
                    'actual_identity': identity(actual), 'exact_match': matched,
                    'conforms': value['conforms'], 'scope': 'same-environment complete inference replay, not optimizer replay'}
@@ -96,7 +96,7 @@ def launch(args):
     attempt = args.output.with_name(args.output.name+'.attempt-'+uuid.uuid4().hex)
     attempt.mkdir()
     print('attempt_directory=' + str(attempt), flush=True)
-    publish(attempt/'invocation.json', json_bytes({'schema': 'trinite.batch-composition-invocation.v1',
+    publish(attempt/'invocation.json', json_bytes({'schema': 'trinite.batch-composition-invocation.v2',
         'action': args.action, 'request_identity': args.request_identity, 'expected_identity': args.expected_identity,
         'deadline_seconds': MAX_SECONDS, 'final_name': args.output.name}))
     command = [sys.executable, '-B', str(ROOT/'scripts/run_batch_composition.py'), '_worker',
@@ -132,10 +132,10 @@ def launch(args):
             if process is not None:
                 process.kill()
                 process.wait()
-            publish(attempt/'status.json', json_bytes({'schema': 'trinite.batch-composition-status.v1',
+            publish(attempt/'status.json', json_bytes({'schema': 'trinite.batch-composition-status.v2',
                 'outcome': 'interrupted', 'exit_code': 130, 'wall_seconds_hex': (time.monotonic()-start).hex()}))
             raise
-    publish(attempt/'status.json', json_bytes({'schema': 'trinite.batch-composition-status.v1',
+    publish(attempt/'status.json', json_bytes({'schema': 'trinite.batch-composition-status.v2',
         'outcome': outcome, 'exit_code': code, 'wall_seconds_hex': (time.monotonic()-start).hex()}))
     print('worker_outcome=' + outcome, flush=True)
     if code in (0, 2):

@@ -96,7 +96,7 @@ def validate_layout(layout, name, rows, refs):
 def validate_report(value, binding):
     exact_keys(value, {'schema', 'request', 'cells', 'conforms', 'budget', 'training_updates',
         'test_evaluated', 'sampling_claim', 'speed_claim', 'scope'}, 'report')
-    same(value['schema'], 'trinite.batch-composition-report.v1', 'report schema')
+    same(value['schema'], 'trinite.batch-composition-report.v2', 'report schema')
     same(value['request'], binding, 'report request')
     rows = workload()
     same(binding['workload'], rows, 'bound workload')

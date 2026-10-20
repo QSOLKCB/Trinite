@@ -1,13 +1,16 @@
 """Independent strict-report tampering tests with synthetic models and bindings."""
 import copy
 from contextlib import contextmanager
+from pathlib import Path
+import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
 import torch
 
-from trinite.contracts import ContractError, identity, json_bytes
-from batch_composition_v1 import experiment as e, spec, validation as v
+from trinite.contracts import ContractError, identity, json_bytes, parse_json
+from batch_composition_v1 import experiment as e, runner, spec, validation as v
 
 
 class ReportModel(torch.nn.Module):
@@ -80,6 +83,50 @@ class ValidationReviewTests(unittest.TestCase):
                 self.assertEqual(json_bytes(value), before)
                 self.assertEqual(len(value["cells"]), 4)
                 self.assertTrue(all(cell["decision_pass"] for cell in value["cells"]))
+
+    def test_canonical_positive_negative_and_reversed_mapping_roundtrips(self):
+        def reverse_mappings(value):
+            if type(value) is dict:
+                return {key: reverse_mappings(value[key]) for key in reversed(value)}
+            if type(value) is list:
+                return [reverse_mappings(item) for item in value]
+            return value
+
+        for contaminated in (False, True):
+            with synthetic_context(contaminated) as (value, binding):
+                raw = json_bytes(value)
+                parsed = parse_json(raw, canonical=True)
+                for variant in (parsed, reverse_mappings(parsed)):
+                    self.assertEqual(json_bytes(variant), raw)
+                    result = v.validate_report(variant, binding)
+                    self.assertIs(result["conforms"], not contaminated)
+                    self.assertEqual(json_bytes(variant), raw)
+                    self.assertEqual(variant["cells"][0]["comparisons"][0]["candidate_layout"],
+                                     "singleton_32")
+
+    def test_real_worker_validator_replays_serialized_positive_and_negative_doubles(self):
+        # Controller/serialization coverage only, never native-model numerical evidence.
+        for contaminated in (False, True):
+            with synthetic_context(contaminated) as (value, binding), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                request = root / "request.json"
+                request.write_bytes(json_bytes(binding))
+                output = root / "report.json"
+                expected = json_bytes(value)
+                output.write_bytes(expected)
+                attempt = root / "attempt"
+                attempt.mkdir()
+                args = SimpleNamespace(request=request, request_identity=identity(request.read_bytes()),
+                                       output=output, expected_identity=identity(expected), attempt=attempt,
+                                       worker_action="verify")
+                with patch.object(runner, "prepare"), patch.object(spec, "request", return_value=binding), \
+                        patch.object(e, "report", return_value=value):
+                    self.assertEqual(runner.worker(args), 2 if contaminated else 0)
+                self.assertEqual(output.read_bytes(), expected)
+                self.assertEqual((attempt / "computed-report.json").read_bytes(), expected)
+                receipt = parse_json((attempt / "replay-receipt.json").read_bytes(), canonical=True)
+                self.assertTrue(receipt["exact_match"])
+                self.assertIs(receipt["conforms"], not contaminated)
 
     def test_strict_schema_decisions_prefixes_stops_and_accounting_are_not_trusted(self):
         def mutate(value, target):
