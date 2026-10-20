@@ -69,6 +69,17 @@ def child_usage():
             'scope':'controller cumulative reaped-child high-water mark; fresh CLI normally launches one worker; not a per-child delta or memory cap'}
 
 
+def journal_record(path, record, *, first=False):
+    """Durable bounded observations, separate from the final status publication."""
+    raw=json_bytes(record)
+    if len(raw)>8192:
+        raise ContractError('controller journal record exceeds bound')
+    with path.open('xb' if first else 'ab') as stream:
+        stream.write(raw)
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=('freeze','run','replay','_worker'))
@@ -124,6 +135,9 @@ def main():
         folder=args.output.with_name(args.output.name+'.attempt-'+uuid.uuid4().hex)
         folder.mkdir()
         publish(folder/'request.json',raw)
+        journal=folder/'controller.jsonl'
+        journal_record(journal,{'phase':'attempt_started','request_identity':args.request_identity,
+                                'action':args.action,'destination_sibling_name':args.output.name},first=True)
         command=[sys.executable,'-I',str(Path(__file__).resolve()),'_worker',
                  '--request',str((folder/'request.json').resolve()),'--request-identity',args.request_identity,
                  '--output',str((folder/'report.json').resolve())]
@@ -150,6 +164,8 @@ def main():
             outcome['exact_replay']=None if expected is None else expected==completed
             if expected is not None and expected!=completed:
                 raise ContractError('exact replay mismatch')
+            journal_record(journal,{'phase':'publication_intent','report_identity':identity(completed),
+                                    'destination_sibling_name':args.output.name})
             outcome['publication']='attempted'
             publish(args.output,completed)
             outcome['publication']='published'
@@ -158,7 +174,24 @@ def main():
             if outcome['publication']=='attempted':
                 outcome['publication']='failed'
             outcome['controller_error']=str(error)[:512]
-        publish(folder/'status.json',json_bytes(outcome))
+        try:
+            journal_record(journal,{'phase':'publication_outcome',
+                                    **{k:v for k,v in outcome.items() if k!='controller_exit_code'}})
+        except OSError as error:
+            outcome['journal_error']=str(error)[:512]
+            outcome['controller_exit_code']=1
+        try:
+            publish(folder/'status.json',json_bytes(outcome))
+        except OSError as error:
+            # The earlier publication observation explains any complete output.
+            # A full storage failure cannot guarantee another durable write.
+            try:
+                journal_record(journal,{'phase':'status_publication_failed','controller_exit_code':1,
+                                        'publication':outcome['publication'],'error':str(error)[:512]})
+            except OSError:
+                pass
+            raise ContractError('status publication failed; publication='+outcome['publication']+
+                                '; inspect retained journal/worker report at '+str(folder)) from error
         if outcome['controller_exit_code']!=0:
             raise ContractError('controller failed; retained attempt: '+str(folder))
         print(identity(completed))

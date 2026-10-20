@@ -131,6 +131,12 @@ attempt. Status distinguishes the worker exit code from the controller exit code
 and records final publication as not attempted, failed or published. A successful
 worker is not evidence that the requested destination was published. Collisions
 and final-link I/O errors retain a failed controller receipt and the worker report.
+A separately fsynced controller JSONL journal records publication intent and
+observed outcome before the final status write. If status publication fails, the
+journal explains any completed output and records the controller failure when
+storage permits. Intent alone is not a success claim. If storage stops accepting
+all writes, no tool can guarantee a final failure receipt: existing journal,
+worker report and stderr remain best-effort evidence, and the command fails.
 Both worker and controller reject completed reports bound to a different supplied
 request; the experiment also checks that binding before any model work and keeps
 its end-of-run source/environment comparison.

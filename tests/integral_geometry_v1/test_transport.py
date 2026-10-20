@@ -98,7 +98,7 @@ with tempfile.TemporaryDirectory() as d:
     raw=g['json_bytes'](g['numerical']())
     request.write_bytes(raw)
     request_id=g['identity'](raw)
-    for mode in ('success','collision','io_error','wrong_binding'):
+    for mode in ('success','collision','io_error','wrong_binding','status_error','journal_error','storage_failure','intent_error','status_and_journal_error'):
         output=folder/(mode+'.json')
         payload=g['json_bytes']({'schema':'trinite.integral-geometry-report.v1',
                    'request_identity':request_id if mode!='wrong_binding' else 'sha256:'+'0'*64})
@@ -107,16 +107,46 @@ with tempfile.TemporaryDirectory() as d:
             return subprocess.CompletedProcess(command,0)
         publish=g['publish']
         def publication(path,raw):
+            if mode in ('status_error','storage_failure','status_and_journal_error') and path.name=='status.json':
+                raise OSError('simulated status publication failure')
             if path==output:
                 if mode=='collision':
                     output.write_bytes(b'other process output')
                 if mode=='io_error':
                     raise OSError('simulated final-link failure')
             return publish(path,raw)
+        record=g['journal_record']
+        def journal_write(path,value,**kwargs):
+            if mode=='intent_error' and value['phase']=='publication_intent':
+                raise OSError('simulated intent write failure')
+            if mode=='status_and_journal_error' and value['phase']=='status_publication_failed':
+                raise OSError('simulated subsequent journal failure')
+            if mode in ('journal_error','storage_failure') and value['phase'] in ('publication_outcome','status_publication_failed'):
+                raise OSError('simulated journal storage failure')
+            return record(path,value,**kwargs)
         argv=['launcher','run','--request',str(request),'--request-identity',request_id,'--output',str(output)]
-        with patch.object(sys,'argv',argv),patch('subprocess.run',side_effect=worker),patch.dict(g,{'publish':publication}):
+        with patch.object(sys,'argv',argv),patch('subprocess.run',side_effect=worker),patch.dict(g,{'publish':publication,'journal_record':journal_write}):
             rc=ns['main']()
         attempt=next(folder.glob(mode+'.json.attempt-*'))
+        journal=[json.loads(line) for line in (attempt/'controller.jsonl').read_text().splitlines()]
+        if mode=='storage_failure':
+            if rc!=1 or (attempt/'status.json').exists() or output.read_bytes()!=payload:
+                raise RuntimeError('full storage failure handled dishonestly')
+            if [r['phase'] for r in journal]!=['attempt_started','publication_intent']:
+                raise RuntimeError('incomplete journal invented a durable success')
+            continue
+        if mode in ('status_error','status_and_journal_error'):
+            if rc!=1 or (attempt/'status.json').exists() or output.read_bytes()!=payload:
+                raise RuntimeError('status failure did not preserve the completed output')
+            observations=[r for r in journal if r['phase']=='publication_outcome']
+            if len(observations)!=1 or observations[0]['publication']!='published' or 'controller_exit_code' in observations[0]:
+                raise RuntimeError('durable journal does not explain actual publication')
+            if mode=='status_error':
+                if journal[-1]['phase']!='status_publication_failed' or journal[-1]['controller_exit_code']!=1:
+                    raise RuntimeError('status failure controller receipt missing')
+            elif journal[-1]['phase']!='publication_outcome':
+                raise RuntimeError('failed journal append invented a receipt')
+            continue
         status=json.loads((attempt/'status.json').read_text())
         if status['exit_code']!=0 or status['controller_exit_code']!=rc:
             raise RuntimeError('worker/controller results conflated')
@@ -125,13 +155,17 @@ with tempfile.TemporaryDirectory() as d:
         usage=status['worker_resource_usage']
         if any(v['units']!='KiB' or v['platform']!='linux' or v['peak_rss_kib']<0 for v in usage.values()):
             raise RuntimeError('missing scoped Linux peak memory measurement')
+        if mode=='journal_error':
+            if rc!=1 or status['publication']!='published' or 'journal_error' not in status or output.read_bytes()!=payload:
+                raise RuntimeError('journal failure missing from retained status')
+            continue
         if mode=='success':
             if rc!=0 or status['publication']!='published' or output.read_bytes()!=payload:
                 raise RuntimeError('success not correctly recorded')
         else:
             if rc!=1 or 'controller_error' not in status:
                 raise RuntimeError('controller failure was lost')
-            if status['publication']!=('not_attempted' if mode=='wrong_binding' else 'failed'):
+            if status['publication']!=('not_attempted' if mode in ('wrong_binding','intent_error') else 'failed'):
                 raise RuntimeError('incorrect publication outcome')
             if mode=='collision' and output.read_bytes()!=b'other process output':
                 raise RuntimeError('colliding destination was modified')
