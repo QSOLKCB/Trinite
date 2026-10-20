@@ -50,7 +50,80 @@ def preflight(torch, protocol):
                 total_memory=total, torch_build=torch.__config__.show())
 
 
-def safe_state(torch, path, pin):
+# Versioned independently of the unchanged experiment protocol. Source-bound
+# requests distinguish this contract from the original failed-run producer.
+LOADER_CONTRACT = 'ncm-exact-fixed-buffers-v2'
+
+
+def generator_fixed_values(cfg):
+    """Derive fixed buffer values without importing or trusting upstream state."""
+    model = cfg.model
+    levels = list(cfg.tokenizer.vqvae.vector_quantizer_config.levels.manual_levels)
+    if (levels != list(LEVELS) or model.prefix_len != 91
+            or model.attn_pattern != 'block_diagonal' or model.query_level0 is not True
+            or model.use_rope is not True or getattr(model, 'l0_autoregressive', False)):
+        raise ValueError('unsupported fixed-buffer configuration')
+    labels = [k for k, size in enumerate(levels) for _ in range(size)]
+    p = model.prefix_len
+    # Prefix queries may see only prefix keys. Target queries may see the
+    # complete prefix and their own level, never a different target level.
+    mask = [[0.0 if key < p or (query >= p and labels[query-p] == labels[key-p])
+             else float('-inf') for key in range(p+len(labels))]
+            for query in range(p+len(labels))]
+    return {'attn_mask_for_masking': [[mask]], 'lvl_1L': [labels]}
+
+
+def generator_fixed_buffers(torch, cfg):
+    values = generator_fixed_values(cfg)
+    return {name: torch.tensor(value, dtype=torch.float32 if name == 'attn_mask_for_masking'
+                               else torch.int64, device='cpu') for name, value in values.items()}
+
+
+def validate_state(torch, state, expected_state, fixed_buffers):
+    """Exact model schema; only independently derived fixed tensors may be nonfinite."""
+    if not isinstance(expected_state, dict) or not expected_state:
+        raise ValueError('expected model state schema required')
+    if set(state) != set(expected_state):
+        raise ValueError('checkpoint keys mismatch: missing=' + repr(sorted(set(expected_state)-set(state)))
+                         + ' extra=' + repr(sorted(set(state)-set(expected_state))))
+    if set(fixed_buffers) not in (set(), {'attn_mask_for_masking', 'lvl_1L'}):
+        raise ValueError('only the complete generator fixed-buffer pair is supported')
+    if not set(fixed_buffers) <= set(expected_state):
+        raise ValueError('fixed buffer absent from expected schema')
+    for name, tensor in state.items():
+        expected = expected_state[name]
+        context = 'checkpoint tensor ' + repr(name)
+        if type(tensor) is not torch.Tensor or type(expected) is not torch.Tensor:
+            raise ValueError(context + ': non-plain tensor state entry')
+        if tensor.numel() > 50_000_000 or tensor.layout != torch.strided:
+            raise ValueError(context + ': unbounded or nonstrided tensor')
+        if tensor.device.type != 'cpu' or tuple(tensor.shape) != tuple(expected.shape) or tensor.dtype != expected.dtype:
+            raise ValueError(context + ': device/shape/dtype mismatch; actual=' +
+                             repr((str(tensor.device), tuple(tensor.shape), str(tensor.dtype))))
+        if tensor.is_complex():
+            raise ValueError(context + ': complex tensor unsupported')
+        if tensor.is_floating_point():
+            print(json.dumps(dict(loader_contract=LOADER_CONTRACT, tensor=name,
+                                  shape=list(tensor.shape), dtype=str(tensor.dtype),
+                                  nan=int(torch.isnan(tensor).sum()),
+                                  positive_inf=int(torch.isposinf(tensor).sum()),
+                                  negative_inf=int(torch.isneginf(tensor).sum()),
+                                  fixed_buffer=name in fixed_buffers)), flush=True)
+        if name in fixed_buffers:
+            fixed = fixed_buffers[name]
+            if (type(fixed) is not torch.Tensor or fixed.layout != torch.strided
+                    or fixed.device.type != 'cpu' or tuple(fixed.shape) != tuple(expected.shape)
+                    or fixed.dtype != expected.dtype
+                    or not torch.equal(expected, fixed)):
+                raise ValueError(context + ': constructed model disagrees with independent fixed buffer')
+            if not torch.equal(tensor, fixed):
+                raise ValueError(context + ': fixed-buffer value mismatch (including nonfinite positions)')
+        elif tensor.is_floating_point() and not bool(torch.isfinite(tensor).all()):
+            raise ValueError(context + ': nonfinite learned parameter or non-exempt buffer')
+
+
+
+def safe_state(torch, path, pin, expected_state=None, fixed_buffers=None):
     data = read_bytes(path, pin['size'])
     if len(data) != pin['size'] or digest(data) != pin['sha256']:
         raise ValueError('checkpoint changed before load')
@@ -59,15 +132,9 @@ def safe_state(torch, path, pin):
     if type(obj) is not dict or 'model' not in obj or not isinstance(obj['model'], dict):
         raise ValueError('expected checkpoint model state dictionary')
     state = obj['model']
-    if not state or len(state) > 5000:
-        raise ValueError('invalid state cardinality')
-    for name, tensor in state.items():
-        if type(name) is not str or not isinstance(tensor, torch.Tensor):
-            raise ValueError('non-tensor state entry')
-        if tensor.numel() > 50_000_000 or tensor.layout != torch.strided:
-            raise ValueError('unbounded or nonstrided tensor')
-        if tensor.is_floating_point() and not bool(torch.isfinite(tensor).all()):
-            raise ValueError('nonfinite checkpoint tensor')
+    if not state or len(state) > 5000 or any(type(name) is not str for name in state):
+        raise ValueError('invalid state cardinality or key type')
+    validate_state(torch, state, expected_state, fixed_buffers or {})
     return state
 
 
@@ -85,9 +152,10 @@ def load_models(torch, paths):
     from models.next_concept import NextConceptTransformer
     cfg = OmegaConf.load(ROOT/'config.yaml')
     codec = VQVAE(**cfg.tokenizer.vqvae)
-    codec.load_state_dict(safe_state(torch, paths['tokenizer.pt'], pin['weights']['tokenizer.pt']), strict=True)
+    codec.load_state_dict(safe_state(torch, paths['tokenizer.pt'], pin['weights']['tokenizer.pt'], codec.state_dict()), strict=True)
     net = NextConceptTransformer(vqvae_local=codec, config=cfg.model)
-    net.load_state_dict(safe_state(torch, paths['generator.pt'], pin['weights']['generator.pt']), strict=True)
+    net.load_state_dict(safe_state(torch, paths['generator.pt'], pin['weights']['generator.pt'], net.state_dict(),
+                                   generator_fixed_buffers(torch, cfg)), strict=True)
     for name, module in list(sys.modules.items()):
         if name == 'models' or name.startswith('models.') or name == 'utils' or name.startswith('utils.'):
             file = Path(module.__file__).resolve()

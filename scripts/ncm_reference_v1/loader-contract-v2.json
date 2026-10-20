@@ -1,0 +1,8 @@
+{
+  "schema": "ncm-exact-fixed-buffers-v2",
+  "scope": "restricted checkpoint loading; unchanged inference protocol and upstream artifacts",
+  "fixed_generator_buffers": ["attn_mask_for_masking", "lvl_1L"],
+  "validation": "Exact keys, CPU strided plain tensors, model shapes and dtypes; fixed buffers exactly equal independently config-derived values and freshly constructed model buffers; all other floating tensors finite; no complex tensors",
+  "diagnostics": "Named floating tensor shape, dtype, NaN, positive infinity and negative infinity counts before value rejection; no inference attestation",
+  "historical_evidence": "Original failed run and producer remain immutable. This source-bound loader contract requires a new request. It cannot verify or reseal an old request under new source hashes."
+}
