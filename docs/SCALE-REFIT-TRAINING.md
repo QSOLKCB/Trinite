@@ -1,6 +1,6 @@
 # Fixed-code scale-refit training pilot v1
 
-Status: implementation and prospective protocol; target outcomes not yet measured.
+Status: implemented and measured exploratory pilot; no exact-answer accuracy gain.
 This is the separately requested integration of [fixed-code scale refitting](SCALE-REFIT.md)
 into a bounded model/training lane. It is not the learned-scale parameterization
 or four-update conformance fixture of [PR #48](LEARNED-TERNARY-SCALES.md).
@@ -122,3 +122,41 @@ source-custody and previous engineering CI remain enabled.
 Affected requirements: TRI-I01/I02/I03/I04/I05/I06/I07/I08/I10/I11/I12/I13/I14.
 TRI-I09 remains a closed geometry/causal-claim boundary. No merge, release, model
 format selection or broader research activation is part of this increment.
+
+## Retained pilot result
+
+The complete producer/protocol was published before target outcomes at
+[13e04b1](https://github.com/QSOLKCB/Trinite/commit/13e04b1abdfc8a615536dbe586a81009f243c43b).
+All four cells completed, with identical latent initialization and scheduled
+exposure within each seed. Full interrupted replay at 0/1/30/60 and a second,
+read-only complete report recomputation agreed exactly. The
+[commitment](../fixtures/scale-refit-training-v1/commitment.json),
+[request](../fixtures/scale-refit-training-v1/request.json) and
+[losslessly compressed report](../fixtures/scale-refit-training-v1/report.json.gz)
+retain the original source/environment, model/AdamW checkpoints, histories,
+individual predictions and separate same-weight diagnostics. Decompress the
+report to a new external path for the documented verify command; never replace
+historical artifacts or patch their environment fingerprint.
+
+| Seed | Absmean validation target CE | Refit validation target CE | Absmean / refit exact validation answers |
+| --- | ---: | ---: | --- |
+| 0 | 1.336578290 | 1.336232861 | 0/6 / 0/6 |
+| 1 | 1.405215462 | 1.401239514 | 0/6 / 0/6 |
+
+Both arms also scored **0/36 complete training answers** in both seeds. Refit
+slightly reduced validation cross entropy, but did not improve complete-answer
+accuracy or establish learning adequacy. These two visible-fixture loss changes
+are descriptive, not a general quality or reasoning advantage. No hyperparameter,
+seed, horizon or checkpoint was selected from these outcomes.
+
+The original run (including its internal replay checks) logged approximately
+31.33 seconds and 309.8 MiB process peak RSS; independent full report verification
+logged approximately 20.24 seconds and 310.7 MiB. These are whole-process
+observations on the recorded host, not per-arm timing, inference speed or a
+compute-matched comparison. Exact logs are retained alongside the report.
+
+The standard-library archive test checks exact transport, complete cell inventory,
+source/input bindings and the recorded negative outcomes; it does not execute
+AdamW or replace the dedicated pinned-CPU full numerical replay workflow.
+Cross-host CI generates and replays its own exact-environment report rather than
+claiming it reproduces this host fingerprint. Historical fixtures are untouched.
