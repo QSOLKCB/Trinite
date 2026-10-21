@@ -700,3 +700,50 @@ conformance is not a learning result. A separately reviewed scientific freeze
 and explicit host, total time, memory/storage and full-replay authorization are
 still required before any 4,096-round target cell. Existing learning thresholds,
 negative results and blocked milestones are unchanged.
+
+## Planned smaller-teacher comparison after the local gpt-oss test
+
+Requested by Trent on 2026-10-21. **Planned, not implemented or measured:**
+finish the separately reviewed local `gpt-oss-20b` teacher-origin intake test
+and retain its outcomes first. Then propose a new comparison PR; this roadmap
+entry does not expand the current teacher pilot, launch inference or training,
+or change historical producers, fixtures and negative results.
+
+- **Candidate teachers:** keep [gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b)
+  as the larger reference, with at least one smaller Qwen and one LFM.
+  [Qwen3.5-2B](https://huggingface.co/Qwen/Qwen3.5-2B) (Apache-2.0) and
+  [LFM2.5-1.2B-Instruct](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct)
+  are initial candidates; [Qwen3.5-0.8B](https://huggingface.co/Qwen/Qwen3.5-0.8B)
+  is an optional later size point. LFM uses its custom
+  [LFM Open License v1.0](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct/blob/main/LICENSE),
+  not Apache/MIT: review the applicable use, output, attribution and redistribution
+  terms before integration. Model names are candidates, not frozen artifact pins.
+- **Local placement:** load teachers sequentially, one at a time on the RTX
+  5060 Ti; keep the Trinite student on CPU. Measure actual fit with short,
+  bounded contexts and batch size one before selecting exact local artifacts,
+  runtimes and precision/quantization profiles. Do not assume simultaneous
+  residency or that parameter count alone determines VRAM needs. No Vast/H200
+  work is planned for this comparison.
+- **Matched proposal experiment:** freeze common semantic prompts and proposal
+  slots, model-specific chat templates, reasoning modes, sampling settings,
+  output/time/resource ceilings and rejection rules before target outcomes.
+  Bind model/tokenizer/runtime/source hashes and per-item teacher origin,
+  raw responses, transformations and independent exact-verifier outcomes.
+  Preserve rejected, duplicate, failed and timed-out attempts; no silent
+  repair, refill or post-outcome selection. Keep validation/test families
+  out of proposal generation and student updates.
+- **Report what is measured:** compare schema compliance, accepted unique
+  verified proposals, rejection reasons, coverage/diversity, load and generation
+  time, verified proposals per second, peak VRAM and host RAM. Record tokens
+  alongside bytes/characters because tokenizers differ; equal token caps do
+  not imply equal compute. Exact oracle-supplied answers do not establish
+  teacher reasoning accuracy, and model/runtime/precision differences limit
+  causal claims about size alone.
+- **Separate learning follow-up:** only a later, separately frozen matched
+  student study may test whether those admitted proposals improve learning.
+  Pair initialization, seeds, semantic exposure and training budgets with an
+  oracle-only control, retain complete replay and negative results, and report
+  any unavoidable coverage/exposure differences. Valid proposals alone do not
+  establish student benefit or clear existing learning, Phase 5, scaling or
+  release gates. Apply the explicitly reviewed teacher-origin admission policy,
+  not blanket admission of unverified teacher prose.
