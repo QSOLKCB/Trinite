@@ -135,16 +135,21 @@ def main():
         folder=args.output.with_name(args.output.name+'.attempt-'+uuid.uuid4().hex)
         folder.mkdir()
         publish(folder/'request.json',raw)
+        if expected is not None:
+            publish(folder/'expected-report.json',expected)
+        expected_id=None if expected is None else identity(expected)
         journal=folder/'controller.jsonl'
         journal_record(journal,{'phase':'attempt_started','request_identity':args.request_identity,
-                                'action':args.action,'destination_sibling_name':args.output.name},first=True)
+                                'action':args.action,'destination_sibling_name':args.output.name,
+                                'expected_report_identity':expected_id},first=True)
         command=[sys.executable,'-I',str(Path(__file__).resolve()),'_worker',
                  '--request',str((folder/'request.json').resolve()),'--request-identity',args.request_identity,
                  '--output',str((folder/'report.json').resolve())]
         started=time.monotonic()
         before=child_usage()
         outcome={'action':args.action,'exit_code':None,'timed_out':False,
-                 'controller_exit_code':1,'publication':'not_attempted'}
+                 'controller_exit_code':1,'publication':'not_attempted',
+                 'expected_report_identity':expected_id}
         with (folder/'stdout.log').open('xb') as out,(folder/'stderr.log').open('xb') as err:
             try:
                 result=subprocess.run(command,stdout=out,stderr=err,timeout=900,check=False)

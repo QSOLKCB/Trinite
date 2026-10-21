@@ -17,6 +17,7 @@ PROTOCOL={'schema':'trinite.cyclic-learning-protocol.v1','model_id':MODEL_ID,
  'split':'24 relation orbits under permutations and simultaneous negation: train16/validation4/test4',
  'exposure':'public same-task family holdout; not secret, unseen modulus/template or confirmatory evidence',
  'diagnostics':'unique training rows only; repeated scheduled visits reported separately',
+ 'baseline':'same-seed initial identity verified and raw scored per arm only after all training; descriptive final-minus-initial counts',
  'answer_cap':4,'decoding':'raw unconstrained greedy; exact3ASCII decimal digits and EOS required; no repair or solver',
  'bounds':'four CPU cells; controller deadline900s; no GPU',
  'claims':'no improved reasoning, base superiority, ternary advantage, speedup or roadmap gate from conformance'}

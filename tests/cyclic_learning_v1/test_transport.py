@@ -217,4 +217,56 @@ if after['units']!='KiB' or 'cumulative reaped-child' not in after['scope']:
         p=subprocess.run([sys.executable,'-I','-c',code],capture_output=True,text=True)
         self.assertEqual(p.returncode,0,p.stderr)
 
+
+class ReplayBaselineCustody(unittest.TestCase):
+    def test_verified_baseline_retained_before_worker_and_on_all_outcomes(self):
+        code=r'''
+import json,runpy,tempfile,subprocess,sys
+from pathlib import Path
+from unittest.mock import patch
+ns=runpy.run_path(%r)
+g=ns['main'].__globals__
+g['numerical']=lambda: {'prospective':'synthetic replay custody test only'}
+with tempfile.TemporaryDirectory() as d:
+    folder=Path(d)
+    request=folder/'request.json'
+    raw=g['json_bytes'](g['numerical']());request.write_bytes(raw)
+    request_id=g['identity'](raw)
+    expected_raw=g['json_bytes']({'schema':'trinite.cyclic-learning-report.v1',
+                                'request_identity':request_id,'synthetic':'expected'})
+    expected_id=g['identity'](expected_raw)
+    for mode in ('exact','mismatch','failure','timeout'):
+        expected=folder/(mode+'-external.json');expected.write_bytes(expected_raw)
+        output=folder/(mode+'.json')
+        payload=expected_raw if mode=='exact' else g['json_bytes']({
+            'schema':'trinite.cyclic-learning-report.v1','request_identity':request_id,'synthetic':'different'})
+        def worker(command,**kwargs):
+            report=Path(command[command.index('--output')+1]);attempt=report.parent
+            if (attempt/'expected-report.json').read_bytes()!=expected_raw:
+                raise RuntimeError('baseline was not retained before worker')
+            first=json.loads((attempt/'controller.jsonl').read_text().splitlines()[0])
+            if first['expected_report_identity']!=expected_id:
+                raise RuntimeError('initial journal does not bind baseline')
+            expected.unlink()  # Receipt must survive external baseline removal.
+            if mode=='timeout':raise subprocess.TimeoutExpired('worker',900)
+            if mode=='failure':return subprocess.CompletedProcess(command,9)
+            report.write_bytes(payload)
+            return subprocess.CompletedProcess(command,0)
+        argv=['launcher','replay','--request',str(request),'--request-identity',request_id,
+              '--output',str(output),'--expected-report',str(expected),'--expected-identity',expected_id]
+        with patch.object(sys,'argv',argv),patch('subprocess.run',side_effect=worker):
+            rc=ns['main']()
+        attempt=next(folder.glob(mode+'.json.attempt-*'))
+        status=json.loads((attempt/'status.json').read_text())
+        if status['expected_report_identity']!=expected_id or g['identity']((attempt/'expected-report.json').read_bytes())!=expected_id:
+            raise RuntimeError('retained baseline cannot be audited')
+        if rc!=(0 if mode=='exact' else 1):raise RuntimeError('incorrect replay outcome')
+        if mode in ('exact','mismatch'):
+            if status['report_identity']!=g['identity'](payload) or status['exact_replay']!=(mode=='exact'):
+                raise RuntimeError('comparison does not bind both identities')
+        if output.exists()!=(mode=='exact'):raise RuntimeError('failed replay published output')
+''' % str(LAUNCHER)
+        p=subprocess.run([sys.executable,'-I','-c',code],capture_output=True,text=True)
+        self.assertEqual(p.returncode,0,p.stderr)
+
 if __name__=='__main__':unittest.main()

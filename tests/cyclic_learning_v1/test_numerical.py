@@ -58,3 +58,52 @@ class Numerical(unittest.TestCase):
         self.assertEqual(len(records),1)
         self.assertEqual(records[0]['phase'],'training_completed')
         self.assertEqual(records[0]['steps'],32)
+
+    def test_untrained_baseline_preserves_trained_state_and_rng(self):
+        from cyclic_learning_v1.experiment import untrained_score
+        from trinite.inspection import tensor_identity
+        state=create(0,'decimal')
+        run_steps(state,stop_after=1)
+        before=model_identity(state.model)
+        history=list(state.history)
+        optimizer={name:{k:tensor_identity(v) for k,v in state.optimizer.state[p].items()}
+                   for name,p in state.model.named_parameters()}
+        rng=torch.get_rng_state().clone()
+        # Two training-pool rows only: bounded scorer conformance, not the target run.
+        rows=[r for r in examples() if r['split']=='train'][:2]
+        with patch('cyclic_learning_v1.experiment.examples',return_value=rows):
+            for arm in ('decimal','sexagesimal'):
+                baseline=untrained_score(state,arm)
+                self.assertEqual(baseline['model_identity'],state.initialization_identity)
+                self.assertEqual([r['identity'] for r in baseline['scores']['records']],
+                                 [r['identity'] for r in rows])
+        self.assertEqual(model_identity(state.model),before)
+        self.assertEqual(state.history,history)
+        self.assertTrue(torch.equal(torch.get_rng_state(),rng))
+        self.assertEqual(optimizer,{name:{k:tensor_identity(v) for k,v in state.optimizer.state[p].items()}
+                                   for name,p in state.model.named_parameters()})
+        state.initialization_identity='invalid'
+        with patch('cyclic_learning_v1.experiment.score') as scoring:
+            with self.assertRaisesRegex(ContractError,'recreated initial'):
+                untrained_score(state,'decimal')
+            scoring.assert_not_called()
+
+    def test_baselines_scored_per_arm_only_after_all_training(self):
+        completed=[];calls=[]
+        def synthetic_update(state):
+            # Sequencing fixture, not executed training/evidence.
+            completed.append(state)
+            state.step=32;state.target_tokens=512;state.cursor=128
+        def synthetic_score(model,arm):
+            self.assertEqual(len(completed),4)
+            calls.append(arm)
+            return {'records':[{'identity':'synthetic-row'}],
+                    'groups':{s:{'rows':1,'exact':0,'canonical':0}
+                              for s in ('train','validation','test')}}
+        with patch('cyclic_learning_v1.experiment.run_steps',side_effect=synthetic_update), \
+             patch('cyclic_learning_v1.experiment.score',side_effect=synthetic_score):
+            result=report(expected_request=request(require_environment()))
+        self.assertEqual(calls,['decimal','decimal','sexagesimal','sexagesimal']*2)
+        for cell in result['cells']:
+            self.assertEqual(cell['untrained']['model_identity'],cell['initial_model_identity'])
+            self.assertEqual(cell['final_minus_untrained_counts']['test'],{'exact':0,'canonical':0})

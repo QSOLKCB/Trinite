@@ -67,6 +67,10 @@ only after every fixed training cell finishes, never for updates or selection.
 Raw unconstrained greedy generation is capped at four tokens. Success requires
 three ASCII decimal digits matching the exact answer and EOS, without repair.
 Per-row generated tokens and split-level exact/canonical counts are retained.
+After all four cells finish training, each seed initial model is reconstructed and
+its identity checked against the recorded initialization. Raw untrained generation
+is scored separately for each encoding. Final-minus-untrained correct-count deltas
+are descriptive controls, not evidence of an encoding benefit by themselves.
 Full replay retrains all cells and compares deterministic report bytes, including
 model/optimizer tensor identities and update histories, not only inference.
 
@@ -75,7 +79,9 @@ checkout, freeze with `python -I scripts/run_cyclic_learning.py freeze --request
 /path/request.json`. Save the printed identity. After review run the same launcher
 with `run --request /path/request.json --request-identity sha256:... --output
 /path/report.json`. Replay adds `replay` instead of `run`, plus `--expected-report`
-and `--expected-identity`, using a fresh output path. Never overwrite old evidence.
+and `--expected-identity`, using a fresh output path. Never overwrite old evidence. Replay retains the verified bounded expected-report
+bytes and their identity inside the attempt before launching the worker; comparison
+receipts remain auditable if the external baseline is subsequently moved.
 
 The controller retains request, partial JSONL records, stdout/stderr, worker report,
 publication journal and status in a unique full-output-name attempt directory.
@@ -91,9 +97,12 @@ The isolated launcher assumes a trusted checkout, not hostile Python/source safe
 
 Affected requirements: TRI-I01 inspectability, TRI-I02 native initialization,
 TRI-I03 source-specific admission, TRI-I05 CPU resources, TRI-I07 immutable IDs,
-TRI-I08 exact replay scope, TRI-I09 no assumed geometry benefit, TRI-I10 no reasoning
-claim, TRI-I11 no hardware advantage claim, TRI-I12 heldout isolation,
-TRI-I13 explicit interface and TRI-I14 failure retention. No invariant is relaxed.
+TRI-I08 exact replay scope, TRI-I09 no assumed geometry benefit, TRI-I10 no
+small-model superiority or universal hardware claim, TRI-I11 heldout isolation,
+TRI-I12 explicit interfaces, TRI-I13 failure retention and TRI-I14 contract-change
+reporting. No invariant is relaxed. This prospective correction changes the new
+pilot report to include per-arm untrained baselines and replay baseline custody;
+its source-bound requests must be re-frozen. No historical lane or fixture changes.
 Each cell has a 180-second native deadline; the controller bounds the whole worker
 at 900 seconds. Request/report/partial records are bounded to 8 MiB; journal records
 are bounded to 8192 bytes. These are engineering limits, not measured performance.

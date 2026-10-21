@@ -56,6 +56,24 @@ def score(model,arm):
              for s in ('train','validation','test')}}
 
 
+
+def untrained_score(state,arm):
+    """Recreate native initialization with its private RNG, without an optimizer."""
+    model=Decoder(state.config.model,lane='dense',seed=state.config.seed)
+    initial=model_identity(model)
+    if initial!=state.initialization_identity:
+        raise ContractError('recreated initial model differs from recorded initialization')
+    return {'model_identity':initial,'scores':score(model,arm)}
+
+
+def score_changes(final,initial):
+    if ([r['identity'] for r in final['records']] !=
+            [r['identity'] for r in initial['records']]):
+        raise ContractError('baseline and trained scoring rows differ')
+    return {split:{key:final['groups'][split][key]-initial['groups'][split][key]
+                   for key in ('exact','canonical')}
+            for split in ('train','validation','test')}
+
 def report(*,expected_request,on_cell=None):
     frozen=request(require_environment())
     if frozen!=expected_request:
@@ -80,6 +98,8 @@ def report(*,expected_request,on_cell=None):
             states.append((seed,arm,state))
     cells=[]
     for seed,arm,state in states:
+        baseline=untrained_score(state,arm)
+        final_scores=score(state.model,arm)
         cell={'seed':seed,'arm':arm,'model_id':MODEL_ID,'config':state.config.to_dict(),
               'parameters':sum(p.numel() for p in state.model.parameters()),
               'initial_model_identity':state.initialization_identity,'final_model_identity':model_identity(state.model),
@@ -88,7 +108,8 @@ def report(*,expected_request,on_cell=None):
               'steps':state.step,'target_tokens':state.target_tokens,'history':state.history,
               'train_only_diagnostics':state.validation,'unique_train_rows':len(state.data['train']),
               'scheduled_visits':state.cursor,'initial_train_loss':state.initial_train_loss,
-              'scores':score(state.model,arm)}
+              'scores':final_scores,'untrained':baseline,
+              'final_minus_untrained_counts':score_changes(final_scores,baseline['scores'])}
         if on_cell:
             on_cell({'phase':'scoring_completed','cell':cell})
         cells.append(cell)
