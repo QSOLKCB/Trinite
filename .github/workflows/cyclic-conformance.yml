@@ -1,0 +1,47 @@
+name: Exact cyclic conformance
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cyclic-conformance-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-cyclic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Reference and contracts, including optimization mode
+        run: |
+          PYTHONPATH=scripts python -B -m unittest discover -s tests/cyclic_conformance_v1 -v
+          PYTHONPATH=scripts python -O -B -m unittest discover -s tests/cyclic_conformance_v1 -v
+      - name: Freeze, check and exact replay
+        run: |
+          mkdir "$RUNNER_TEMP/cyclic-evidence"
+          python -I -S scripts/check_cyclic_conformance.py freeze --request "$RUNNER_TEMP/cyclic-evidence/request.json" > "$RUNNER_TEMP/cyclic-evidence/request.sha256"
+          for attempt in run replay; do
+            python -I -S scripts/check_cyclic_conformance.py check --request "$RUNNER_TEMP/cyclic-evidence/request.json" --request-identity "$(cat "$RUNNER_TEMP/cyclic-evidence/request.sha256")" --output-dir "$RUNNER_TEMP/cyclic-evidence/$attempt"
+          done
+          cmp "$RUNNER_TEMP/cyclic-evidence/run/request.json" "$RUNNER_TEMP/cyclic-evidence/replay/request.json"
+          cmp "$RUNNER_TEMP/cyclic-evidence/run/rows.jsonl" "$RUNNER_TEMP/cyclic-evidence/replay/rows.jsonl"
+      - name: Retain outcome records including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cyclic-conformance-${{ matrix.python }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cyclic-evidence/**
+          if-no-files-found: warn
+          retention-days: 14
