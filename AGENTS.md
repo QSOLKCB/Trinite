@@ -12,7 +12,10 @@ Inspect any more specific `AGENTS.md` in the paths you change.
   tensor reader. Use small explicit modules; no registry or workflow framework.
 - CPU with the hash-locked dependencies is the canonical native numerical lane.
   Never substitute a backend, download model code implicitly, or use pretrained/
-  teacher inputs in a native run. The isolated external NCM reference below is
+  teacher inputs in an existing native run. The explicitly owner-approved
+  [teacher-origin formal lane](docs/TEACHER-INTAKE.md) is a separate versioned
+  exception for verified numeric operands only, never raw prose or answers.
+  The isolated external NCM reference below is
   not a native model or training input. Geometry loss stays zero until its own
   reviewed protocol.
 - Keep narrative documentation under `docs/` and README concise. This root file
