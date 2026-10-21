@@ -103,6 +103,7 @@ class Numerical(unittest.TestCase):
         with patch('cyclic_learning_v1.experiment.run_steps',side_effect=synthetic_update), \
              patch('cyclic_learning_v1.experiment.score',side_effect=synthetic_score):
             result=report(expected_request=request(require_environment()))
+        self.assertEqual(result['schema'],'trinite.cyclic-learning-report.v2')
         self.assertEqual(calls,['decimal','decimal','sexagesimal','sexagesimal']*2)
         for cell in result['cells']:
             self.assertEqual(cell['untrained']['model_identity'],cell['initial_model_identity'])

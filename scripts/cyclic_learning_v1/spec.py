@@ -4,7 +4,7 @@ from trinite.contracts import ContractError, identity, json_bytes
 from .data import ARMS, examples, validate, admission, validate_admission
 ROOT=Path(__file__).resolve().parents[2]
 MODEL_ID='trinite.cyclic-encoding-dense-64.v1'
-PROTOCOL={'schema':'trinite.cyclic-learning-protocol.v1','model_id':MODEL_ID,
+PROTOCOL={'schema':'trinite.cyclic-learning-protocol.v2','model_id':MODEL_ID,
  'model':{'context_length':64,'blocks':1,'width':16,'heads':2,'feed_forward_width':32},
  'lane':'dense','geometry_loss':'0','seeds':[0,1],'arms':list(ARMS),
  'steps':32,'batch_size':4,'max_target_tokens':512,'cell_seconds':180,
@@ -48,7 +48,7 @@ def targets(seed):
 def request(environment):
     rows=examples(); validate(rows); validate_admission(admission())
     ordered={str(seed):schedule(seed) for seed in PROTOCOL['seeds']}
-    return {'schema':'trinite.cyclic-learning-request.v1','protocol':PROTOCOL,
+    return {'schema':'trinite.cyclic-learning-request.v2','protocol':PROTOCOL,
       'protocol_identity':identity(json_bytes(PROTOCOL)),'source':sources(),'environment':environment,
       'admission':admission(),'items':rows,'dataset_identity':identity(json_bytes(rows)),
       'counts':{s:{'rows':sum(r['split']==s for r in rows),'families':len({r['family'] for r in rows if r['split']==s})}

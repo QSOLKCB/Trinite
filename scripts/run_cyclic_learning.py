@@ -55,7 +55,7 @@ def numerical():
 
 def validate_report_binding(raw, expected_identity):
     value=parse_json(raw,canonical=True)
-    if (type(value) is not dict or value.get('schema')!='trinite.cyclic-learning-report.v1'
+    if (type(value) is not dict or value.get('schema')!='trinite.cyclic-learning-report.v2'
             or value.get('request_identity')!=expected_identity):
         raise ContractError('completed report differs from supplied request binding')
     return value
@@ -129,9 +129,7 @@ def main():
             expected=read(args.expected_report)
             if identity(expected)!=args.expected_identity:
                 raise ContractError('expected report digest mismatch')
-            parsed=parse_json(expected,canonical=True)
-            if type(parsed) is not dict or parsed.get('request_identity')!=args.request_identity:
-                raise ContractError('expected report request differs')
+            validate_report_binding(expected,args.request_identity)
         folder=args.output.with_name(args.output.name+'.attempt-'+uuid.uuid4().hex)
         folder.mkdir()
         publish(folder/'request.json',raw)

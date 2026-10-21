@@ -115,5 +115,5 @@ def report(*,expected_request,on_cell=None):
         cells.append(cell)
     if frozen!=request(require_environment()):
         raise ContractError('source/input/environment changed during run')
-    return {'schema':'trinite.cyclic-learning-report.v1','request_identity':identity(json_bytes(frozen)),
+    return {'schema':'trinite.cyclic-learning-report.v2','request_identity':identity(json_bytes(frozen)),
             'cells':cells,'scope':'exploratory matched encoding comparison, not geometric reasoning or base superiority'}

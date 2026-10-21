@@ -1,6 +1,13 @@
-# Matched cyclic representation pilot v1
+# Matched cyclic representation pilot: evidence v2
 
-Status: prospective implementation, not an executed learning-quality result. This
+Status: prospective implementation, not an executed learning-quality result.
+Protocol, request and report schemas are `trinite.cyclic-learning-protocol.v2`,
+`trinite.cyclic-learning-request.v2` and `trinite.cyclic-learning-report.v2`.
+They require per-arm untrained scores; the earlier v1 report schema is rejected,
+not silently reinterpreted. The unchanged model, generated data and package lane
+retain their separate v1 identifiers. Prior prospective v1 sources remain in Git
+commits cf37bb4a2b1cb757abda9a29ec632b77c6209860 and
+0b53bea39c5b8bcf1c308f80500e6e211b4c6586; no target v1 experiment was run. This
 checkout-only lane is separate from PR58 exact cyclic software conformance,
 NEXUS donor conformance, integral geometry and ternary scale-refit experiments.
 It does not unlock Phase 5 or establish geometric reasoning.

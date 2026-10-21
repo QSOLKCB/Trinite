@@ -100,7 +100,7 @@ with tempfile.TemporaryDirectory() as d:
     request_id=g['identity'](raw)
     for mode in ('success','collision','io_error','wrong_binding','status_error','journal_error','storage_failure','intent_error','status_and_journal_error'):
         output=folder/(mode+'.json')
-        payload=g['json_bytes']({'schema':'trinite.cyclic-learning-report.v1',
+        payload=g['json_bytes']({'schema':'trinite.cyclic-learning-report.v2',
                    'request_identity':request_id if mode!='wrong_binding' else 'sha256:'+'0'*64})
         def worker(command,**kwargs):
             Path(command[command.index('--output')+1]).write_bytes(payload)
@@ -191,7 +191,7 @@ with tempfile.TemporaryDirectory() as d:
     def report(*,expected_request,on_cell):
         if expected_request!=g['numerical']():
             raise RuntimeError('validated request was not passed into report')
-        return {'schema':'trinite.cyclic-learning-report.v1','request_identity':'sha256:'+'0'*64}
+        return {'schema':'trinite.cyclic-learning-report.v2','request_identity':'sha256:'+'0'*64}
     argv=['launcher','_worker','--request',str(request),'--request-identity',g['identity'](raw),'--output',str(output)]
     with patch.object(sys,'argv',argv),patch('cyclic_learning_v1.experiment.report',side_effect=report):
         if ns['main']()!=1 or output.exists():
@@ -232,14 +232,14 @@ with tempfile.TemporaryDirectory() as d:
     request=folder/'request.json'
     raw=g['json_bytes'](g['numerical']());request.write_bytes(raw)
     request_id=g['identity'](raw)
-    expected_raw=g['json_bytes']({'schema':'trinite.cyclic-learning-report.v1',
+    expected_raw=g['json_bytes']({'schema':'trinite.cyclic-learning-report.v2',
                                 'request_identity':request_id,'synthetic':'expected'})
     expected_id=g['identity'](expected_raw)
     for mode in ('exact','mismatch','failure','timeout'):
         expected=folder/(mode+'-external.json');expected.write_bytes(expected_raw)
         output=folder/(mode+'.json')
         payload=expected_raw if mode=='exact' else g['json_bytes']({
-            'schema':'trinite.cyclic-learning-report.v1','request_identity':request_id,'synthetic':'different'})
+            'schema':'trinite.cyclic-learning-report.v2','request_identity':request_id,'synthetic':'different'})
         def worker(command,**kwargs):
             report=Path(command[command.index('--output')+1]);attempt=report.parent
             if (attempt/'expected-report.json').read_bytes()!=expected_raw:
@@ -266,6 +266,58 @@ with tempfile.TemporaryDirectory() as d:
                 raise RuntimeError('comparison does not bind both identities')
         if output.exists()!=(mode=='exact'):raise RuntimeError('failed replay published output')
 ''' % str(LAUNCHER)
+        p=subprocess.run([sys.executable,'-I','-c',code],capture_output=True,text=True)
+        self.assertEqual(p.returncode,0,p.stderr)
+
+
+class EvidenceSchemaVersions(unittest.TestCase):
+    def test_v1_report_rejected_even_with_matching_request_identity(self):
+        code=r"""
+import runpy,tempfile,sys
+from pathlib import Path
+from unittest.mock import patch
+ns=runpy.run_path(%r)
+g=ns['main'].__globals__
+g['numerical']=lambda: {'schema':'trinite.cyclic-learning-request.v2',
+                      'protocol':{'schema':'trinite.cyclic-learning-protocol.v2'},'synthetic':'schema test'}
+with tempfile.TemporaryDirectory() as d:
+    folder=Path(d)
+    request=folder/'request.json';raw=g['json_bytes'](g['numerical']());request.write_bytes(raw)
+    request_id=g['identity'](raw)
+    old=g['json_bytes']({'schema':'trinite.cyclic-learning-report.v1','request_identity':request_id})
+    new=g['json_bytes']({'schema':'trinite.cyclic-learning-report.v2','request_identity':request_id})
+    try:g['validate_report_binding'](old,request_id)
+    except g['ContractError']:pass
+    else:raise RuntimeError('v1 report accepted as v2 evidence')
+    g['validate_report_binding'](new,request_id)
+    expected=folder/'expected.json';expected.write_bytes(old)
+    output=folder/'output.json'
+    argv=['launcher','replay','--request',str(request),'--request-identity',request_id,
+          '--output',str(output),'--expected-report',str(expected),'--expected-identity',g['identity'](old)]
+    with patch.object(sys,'argv',argv),patch('subprocess.run') as worker:
+        if ns['main']()!=1:raise RuntimeError('old baseline schema accepted')
+        worker.assert_not_called()
+    if output.exists() or expected.read_bytes()!=old or list(folder.glob('output.json.attempt-*')):
+        raise RuntimeError('rejected baseline started a run or changed existing evidence')
+    # Correct identity cannot turn a v1 worker envelope into a v2 report.
+    argv=['launcher','_worker','--request',str(request),'--request-identity',request_id,'--output',str(output)]
+    with patch.object(sys,'argv',argv),patch('cyclic_learning_v1.experiment.report',return_value=g['parse_json'](old,canonical=True)):
+        if ns['main']()!=1 or output.exists():raise RuntimeError('old worker report accepted')
+    if output.with_name(output.name+'.rejected.json').read_bytes()!=old:
+        raise RuntimeError('old worker report not retained as rejected')
+    # Independently reject obsolete request and nested protocol identifiers.
+    for field in ('request','protocol'):
+        value=g['numerical']()
+        if field=='request':value['schema']='trinite.cyclic-learning-request.v1'
+        else:value['protocol']['schema']='trinite.cyclic-learning-protocol.v1'
+        obsolete=g['json_bytes'](value);request.write_bytes(obsolete)
+        argv=['launcher','run','--request',str(request),'--request-identity',g['identity'](obsolete),'--output',str(folder/(field+'.json'))]
+        with patch.object(sys,'argv',argv),patch('subprocess.run') as worker:
+            if ns['main']()!=1:raise RuntimeError('obsolete request/protocol accepted')
+            worker.assert_not_called()
+        if request.read_bytes()!=obsolete:raise RuntimeError('rejected request changed')
+
+""" % str(LAUNCHER)
         p=subprocess.run([sys.executable,'-I','-c',code],capture_output=True,text=True)
         self.assertEqual(p.returncode,0,p.stderr)
 

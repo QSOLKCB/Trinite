@@ -48,3 +48,11 @@ class Contracts(unittest.TestCase):
         for text in ('r60:rot360[00:60,00:01]=','r10:rot360[00360,00001]=',
                      'r10:rot360[00001,00002]=junk','r60:rot360[00001,00002]='):
             with self.assertRaises(ContractError):parse_prompt(text)
+
+    def test_v2_evidence_ids_keep_unchanged_model_and_data_ids(self):
+        from cyclic_learning_v1.spec import PROTOCOL,MODEL_ID
+        frozen=request({'test':'schema contract only'})
+        self.assertEqual(PROTOCOL['schema'],'trinite.cyclic-learning-protocol.v2')
+        self.assertEqual(frozen['schema'],'trinite.cyclic-learning-request.v2')
+        self.assertEqual(MODEL_ID,'trinite.cyclic-encoding-dense-64.v1')
+        self.assertEqual(admission()['source_id'],'trinite.cyclic-composition-facts.v1')
