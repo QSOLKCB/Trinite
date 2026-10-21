@@ -747,3 +747,15 @@ or change historical producers, fixtures and negative results.
   establish student benefit or clear existing learning, Phase 5, scaling or
   release gates. Apply the explicitly reviewed teacher-origin admission policy,
   not blanket admission of unverified teacher prose.
+
+### Inserted tiny output-only comparison before Qwen/LFM
+
+After PR #62 retained the local gpt-oss result, the next prospective step is the
+[Needle3 versus Bonsai2-2B output-only lane](TINY-OUTPUT.md). It compares literal
+numeric extraction and exact modular answers, not teacher proposal admission or
+student training. Needle is model-plus-engine assisted, with upstream repair;
+Prism is text-only rotated ternary with non-ternary scales/auxiliary tensors.
+No target inference or actual fit is claimed. Runtime compatibility and a reviewed
+local adapter remain preflight prerequisites. Colibri is an inference engine,
+not a model. Keep the Qwen/LFM proposal above as the following planned PR #64;
+numbering is a plan, not a result or permission to launch it.
