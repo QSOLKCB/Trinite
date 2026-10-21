@@ -24,7 +24,7 @@ The original “No Copyrighted Data” requirement remains strict. A permissive 
 
 Start with generator-defined formal facts, arithmetic, truth tables, graph relations, and templated deductions whose content and provenance can be audited. Independently generated data still needs a rights assessment; “synthetic” is not an exemption. Public-domain material needs an evidenced public-domain basis for the applicable use/jurisdiction. An explicit dedication is evaluated and recorded rather than treated as a global guarantee.
 
-Unknown rights, scraped text, inherited pretrained corpora, model-generated teacher answers, and unverifiable source lineage are excluded from the native lane. Copyrighted generator code remains software with its own license; admission concerns the resulting data and source content embedded in it. Keep prose templates minimal, formal, and audited. Do not copy textbook explanations or problem wording.
+Unknown rights, scraped text, inherited pretrained corpora, model-generated teacher answers, and unverifiable source lineage are excluded from existing native lanes. The narrowly scoped, explicitly approved teacher-origin numeric-operand exception below does not admit those other categories. Copyrighted generator code remains software with its own license; admission concerns the resulting data and source content embedded in it. Keep prose templates minimal, formal, and audited. Do not copy textbook explanations or problem wording.
 
 ## Required records
 
@@ -76,3 +76,34 @@ been trained and admits no donor text or model output.
 ## Finite maths admission
 
 [MATHS.md](MATHS.md) adds a separate source-specific bounded formal admission: 12 finite-maths/algebra tasks, independent exact labels/parser checks, source identities, rights evidence and orbit-grouped splits. Both carriers and all algebra projections/RHS variants stay in their family. No textbook or donor prose enters the native lane; earlier admissions remain unchanged.
+
+
+## Explicit teacher-origin formal-input exception (2026-10-21)
+
+Trent Slade / QSOLKCB explicitly approved use of teacher-origin data on
+2026-10-21. The separately versioned [teacher intake and CPU pilot](TEACHER-INTAKE.md)
+implements only bounded modular-addition operand proposals from the frozen
+`openai/gpt-oss-20b` teacher. It does not relax historical admissions or retroactively
+reclassify their evidence. Existing native sources, fixtures, unknown-rights
+corpora, teacher answers and free-form reasoning remain excluded.
+
+The new `trinite.teacher-origin-formal-policy.v1` admits only canonical numeric
+instances selected from exactly 32 frozen slots, after strict bounded parsing,
+independent exact verification and regeneration of every per-item receipt.
+The source-specific rights decision is the owner's explicit approval of this
+bounded numeric-input use, not a legal guarantee that all AI outputs are
+uncopyrightable. Minimal prompts and numeric answers are produced by the
+repository's own formal generator/oracle. Preserve the teacher's causal role
+in choosing operands, complete raw response custody, artifact/runtime manifests,
+request identity, prompt/sampling protocol, failures and rejected proposals.
+Raw responses, traces, supplied answers and external tokenizer text are retained
+only in quarantine; none enter the student's tokenizer, batches or labels.
+Teacher weights are not student initialization and are not repository assets.
+
+Fewer than 16 unique valid inputs blocks the experiment without refilling.
+A distinct CPU request seals accepted inputs before any student training;
+whole-modulus heldouts, a matched generator-only control and a fixed train-only
+learnability diagnostic are mandatory. The authoritative native updater is
+reused unchanged under new model/protocol/request identities with fully
+disclosed teacher lineage. This affects TRI-I02/I03/I07/I11/I14 only for the
+new reviewed lane; it does not unlock historical research or release gates.
