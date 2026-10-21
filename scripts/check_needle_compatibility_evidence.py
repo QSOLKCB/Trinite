@@ -12,6 +12,7 @@ import re
 import tempfile
 import types
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ FOLDER = ROOT / 'fixtures/needle-compatibility-local-20261021'
 COMMITMENT = 'sha256:2e38d7a9153c7a95ce205c48d2927bce2ad184861b55a7aad6af9a4d00b3c2c3'
 LIMIT = 4 * 1024 * 1024
 TOTAL = 24 * 1024 * 1024
+FIXTURE_FILES = ('objects.zip', 'commitment.json', '.gitattributes')
 PREFIX = 'assets/.trinite-needle-compatibility-v2-attempt/'
 PACKET = 'sha256:3a4384848c8d2ef99d44051662134be364fac3f7b3d46c8704972f3a90627081'
 REQUEST = 'sha256:71d51bae151c124b0de3ba6dd2e1efab704bc61a2a8285e22b84ac3a17121716'
@@ -65,8 +67,13 @@ def read(path, limit=LIMIT):
     return raw
 
 
-def inventory(folder):
-    raw = read(folder / 'commitment.json')
+def snapshot(folder):
+    require({x.name for x in folder.iterdir()} == set(FIXTURE_FILES), 'fixture inventory')
+    return {name: read(folder / name) for name in FIXTURE_FILES}
+
+
+def inventory(captured):
+    raw = captured['commitment.json']
     require(digest(raw) == COMMITMENT, 'commitment mismatch')
     p = json.loads(raw)
     require(canonical(p) == raw, 'noncanonical commitment')
@@ -76,9 +83,8 @@ def inventory(folder):
     require(p['producer_commit'] == '8823a92cdaf28139a852f896af457b3b0a013535'
             and p['producer_tree'] == '29942d2ff759cb4cefcc512308932f12d933d361', 'producer pin')
     require(p['added_members'] == p['public_transformations'] == [], 'unexpected transformations')
-    require({x.name for x in folder.iterdir()} == {'commitment.json', 'objects.zip', '.gitattributes'}, 'fixture inventory')
-    require(read(folder / '.gitattributes') == b'objects.zip binary\ncommitment.json text eol=lf\n', 'binary rule')
-    data = read(folder / 'objects.zip')
+    require(captured['.gitattributes'] == b'objects.zip binary\ncommitment.json text eol=lf\n', 'binary rule')
+    data = captured['objects.zip']
     require(digest(data) == p['objects_archive']['identity'] and len(data) == p['objects_archive']['bytes'], 'archive identity')
     expected = {r['stored_path'] for r in p['members'].values()}
     objects = {}; total = 0
@@ -262,12 +268,13 @@ def evidence_check(m, module):
 
 
 def audit(folder=FOLDER, source_root=ROOT):
-    _, members = inventory(folder)
-    before = {name: digest(read(folder / name)) for name in ('objects.zip', 'commitment.json', '.gitattributes')}
+    captured = snapshot(folder)
+    before = {name: digest(raw) for name, raw in captured.items()}
+    _, members = inventory(captured)
     with tempfile.TemporaryDirectory(prefix='needle-evidence-') as temp:
         module = source_module(members, Path(temp), source_root)
         result = evidence_check(members, module)
-    require(before == {name: digest(read(folder / name)) for name in before}, 'fixture changed')
+    require(before == {name: digest(raw) for name, raw in snapshot(folder).items()}, 'fixture changed')
     require(not {'torch', 'needle', 'transformers'} & set(sys.modules), 'runtime imported')
     return result
 
@@ -286,12 +293,41 @@ class FunctionalTests(unittest.TestCase):
             for name in ('commitment.json', 'objects.zip', '.gitattributes'):
                 (folder / name).write_bytes(read(FOLDER / name))
             (folder / 'objects.zip').write_bytes(b'corrupt')
-            with self.assertRaisesRegex(ValueError, 'archive identity'): inventory(folder)
+            with self.assertRaisesRegex(ValueError, 'archive identity'): inventory(snapshot(folder))
             (folder / 'commitment.json').write_bytes(b'{}\n')
-            with self.assertRaisesRegex(ValueError, 'commitment mismatch'): inventory(folder)
+            with self.assertRaisesRegex(ValueError, 'commitment mismatch'): inventory(snapshot(folder))
+
+    def test_snapshot_replacement_during_audit(self):
+        original_inventory = inventory
+        for changed in FIXTURE_FILES:
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as temp:
+                folder = Path(temp)
+                for name, raw in snapshot(FOLDER).items():
+                    (folder / name).write_bytes(raw)
+                def replace_after_validation(captured):
+                    result = original_inventory(captured)
+                    (folder / changed).write_bytes(b'replaced after validation')
+                    return result
+                with mock.patch.dict(globals(), inventory=replace_after_validation):
+                    with self.assertRaisesRegex(ValueError, 'fixture changed'):
+                        audit(folder)
+
+    def test_snapshot_inventory_change_during_audit(self):
+        original_inventory = inventory
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+            for name, raw in snapshot(FOLDER).items():
+                (folder / name).write_bytes(raw)
+            def add_after_validation(captured):
+                result = original_inventory(captured)
+                (folder / 'unexpected.txt').write_bytes(b'new file')
+                return result
+            with mock.patch.dict(globals(), inventory=add_after_validation):
+                with self.assertRaisesRegex(ValueError, 'fixture inventory'):
+                    audit(folder)
 
     def test_dependency_closure_before_import(self):
-        _, original = inventory(FOLDER)
+        _, original = inventory(snapshot(FOLDER))
         for missing in SOURCE:
             with self.subTest(missing=missing), tempfile.TemporaryDirectory() as temp:
                 root = Path(temp) / 'sources'; staged = Path(temp) / 'staged'
@@ -299,16 +335,25 @@ class FunctionalTests(unittest.TestCase):
                     if name == missing: continue
                     p = root / name; p.parent.mkdir(parents=True, exist_ok=True)
                     p.write_bytes(read(ROOT / name))
-                with self.assertRaises(ValueError): source_module(original, staged, root)
+                with mock.patch('builtins.compile') as compiler, mock.patch('builtins.exec') as executor:
+                    with self.assertRaises(ValueError): source_module(original, staged, root)
+                    compiler.assert_not_called(); executor.assert_not_called()
                 self.assertFalse(staged.exists())
         with tempfile.TemporaryDirectory() as temp:
             for name in SOURCE:
                 m = dict(original); m['checkout/' + name] += b'\n'
-                with self.assertRaisesRegex(ValueError, 'authoritative source mismatch'):
-                    source_module(m, Path(temp))
+                with mock.patch('builtins.compile') as compiler, mock.patch('builtins.exec') as executor:
+                    with self.assertRaisesRegex(ValueError, 'authoritative source mismatch'):
+                        source_module(m, Path(temp))
+                    compiler.assert_not_called(); executor.assert_not_called()
+        # Positive control demonstrates both spies observe the valid load path.
+        with tempfile.TemporaryDirectory() as temp:
+            with mock.patch('builtins.compile', wraps=compile) as compiler, mock.patch('builtins.exec', wraps=exec) as executor:
+                source_module(original, Path(temp))
+                compiler.assert_called_once(); executor.assert_called_once()
 
     def test_raw_packet_and_mapping_mutations(self):
-        _, original = inventory(FOLDER)
+        _, original = inventory(snapshot(FOLDER))
         with tempfile.TemporaryDirectory() as temp:
             module = source_module(original, Path(temp))
             for name in ('reports/result.json', 'reports/request.json', PREFIX + 'sdk_serialization.bin',
@@ -321,7 +366,7 @@ class FunctionalTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'staged mapping'): evidence_check(m, module)
 
     def test_actual_verifier_semantic_mutations(self):
-        _, m = inventory(FOLDER)
+        _, m = inventory(snapshot(FOLDER))
         with tempfile.TemporaryDirectory() as temp:
             module = source_module(m, Path(temp))
             mutations = [lambda p: p.update(target_readiness=True),

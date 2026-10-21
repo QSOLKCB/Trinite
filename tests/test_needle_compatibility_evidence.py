@@ -15,7 +15,7 @@ class NeedleCompatibilityEvidenceTests(unittest.TestCase):
                                      str(CHECKER), '--self-test'],
                                     capture_output=True, text=True, timeout=120, check=False)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn('Ran 6 tests', result.stderr)
+            self.assertIn('Ran 8 tests', result.stderr)
             self.assertIn('OK', result.stderr)
 
     def test_nonisolated_invocation_rejected(self):
