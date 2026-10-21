@@ -1,0 +1,21 @@
+name: Needle compatibility retained evidence
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Read-only archive and actual pinned verifier
+        run: python -I -S -B scripts/check_needle_compatibility_evidence.py
+      - name: Offline regressions, normal and optimized
+        run: |
+          python -B -m unittest discover -s tests -p test_needle_compatibility_evidence.py -v
+          python -B -O -m unittest discover -s tests -p test_needle_compatibility_evidence.py -v
