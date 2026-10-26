@@ -24,7 +24,8 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [Frozen-checkpoint unseen evaluation](UNSEEN-EVALUATION.md) | Source-bound historical held-out diagnosis; exploratory, not fresh confirmation |
 | [Historical unseen negative result](UNSEEN-NEGATIVE-RESULT.md) | Seed-0 training fit versus held-out failure, exact public row preservation |
 | [Coverage diagnostic](COVERAGE-DIAGNOSTIC.md) | Read-only support analysis and addition-first development proposal; no target training |
-| [Addition-first development experiment](ADDITION-DEVELOPMENT.md) | Matched coverage schedules, six-cell bounded native workflow and retained audit; target execution unrun |
+| [Addition-first development experiment](ADDITION-DEVELOPMENT.md) | Matched coverage schedules, original six-cell producer contract and retained audit; later next-step status in ROADMAP-V1 |
+| [Frozen addition all-token diagnostic](FROZEN-TOKEN-DIAGNOSTIC.md) | Source-bound gold-prefix observations, preserved raw scores, no retraining or target diagnostic result |
 | [Compute/KV harness proposal](COMPUTE-KV-HARNESS-PROPOSAL.md) | Uncached resource instrumentation followed by separately gated cached inference |
 | [Research update, 26 October](research/UPDATE-2026-10-26.md) | Later research candidates and source-pinned shrek_GPT lessons |
 | [Research assessment, 22 October](research/ASSESSMENT-2026-10-22.md) | Dated supporting rationale and original source/rights limitations |

@@ -789,3 +789,15 @@ No target inference or actual fit is claimed. Runtime compatibility and a review
 local adapter remain preflight prerequisites. Colibri is an inference engine,
 not a model. Keep the Qwen/LFM proposal above as the following planned PR #64;
 numbering is a plan, not a result or permission to launch it.
+
+
+## Frozen addition all-token observational diagnostics
+
+The separately versioned [frozen token diagnostic](FROZEN-TOKEN-DIAGNOSTIC.md)
+adds source-bound, model-only import and bounded all-answer-position observations
+for all six final addition-development checkpoints. Gold-prefix probabilities and
+ranks, including EOS, remain separate from byte-preserved original raw scores.
+This is engineering implementation, not a target diagnostic result, retraining,
+causal explanation, successful generalisation, or a newly passed learning gate.
+Review, exact-commit green CI and explicit owner local-run authorization precede
+target execution. Original source commitments and historical negatives stay intact.

@@ -7,6 +7,24 @@ Integrated and extended on 26 October 2026 at the owner's request.
 
 **Baseline:** immutable [v0.4.0](https://github.com/QSOLKCB/Trinite/releases/tag/v0.4.0), commit `be4ac55b79f88be3c1a6052d5bc61f1d31be1f4a`.
 
+## Current next increment — 26 October 2026
+
+The coverage proposal was followed by the separately frozen
+[addition-development implementation](ADDITION-DEVELOPMENT.md) in PR #71 and an
+owner-returned local matched-coverage run. Those original producer sources and
+artifacts are preserved; an implementation-era “unrun” statement in the frozen
+producer contract is not a statement that the owner never ran it later.
+
+The next implemented PR is the [frozen all-token diagnostic](FROZEN-TOKEN-DIAGNOSTIC.md):
+all six fixed final checkpoints, all three development strata, every answer token
+including EOS, and explicit correct-token probability/rank versus EOS. Gold-prefix
+observations stay separate from byte-preserved original prompt-only scores.
+There is no retraining, checkpoint election, answer repair, fresh confirmation or
+new learning-gate claim. Its engineering controls are not target diagnostic
+results; target execution still needs review, green exact-commit CI and separate
+owner local-run authorization. The milestone text below preserves the earlier
+chronology rather than proposing another already-completed coverage run.
+
 ## Compatibility and authority
 
 The original docs-only roadmap records plans under TRI-I01–TRI-I14; it changes no
