@@ -371,3 +371,12 @@ native Decoder initialization, validation, blocks, norms and tied output without
 changing historical source bytes or adding a second optimizer/scorer. The fixed
 `check_position_coupling.py` emits an engineering-only source-bound report, not a
 research checkpoint or learning result. [Contract and prospective study](POSITION-COUPLING.md).
+
+## Partial balanced-addition result verification
+
+`scripts/balanced_result_v1/` authenticates the immutable 43-file public subset
+and its separately pinned derivative source-binding receipt. It reuses original
+admission, score checking and descriptive maps; it does not load checkpoints,
+construct models, update parameters or claim closed custody. The checker uses
+the pinned CPU dependencies because authoritative inspection imports Torch.
+See [the outcome and verification limits](BALANCED-ADDITION-RESULT.md).

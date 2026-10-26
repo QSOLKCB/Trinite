@@ -42,6 +42,10 @@ jobs:
       - name: Length-matched admission, bounded controller and retained negative controls
         run: |
           python -B -m unittest discover -s tests/balanced_addition_v1 -v
+      - name: Read-only public result preservation and tamper controls
+        run: |
+          python -B scripts/check_balanced_result.py
+          python -B -m unittest discover -s tests/balanced_result_v1 -v
       - name: Existing native positive learning and optimizer replay controls
         run: python -B -m unittest discover -s tests/training -v
       # Tiny injected conformance plans only; never run the six-cell research protocol in CI.
