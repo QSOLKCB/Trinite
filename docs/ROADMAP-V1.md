@@ -66,6 +66,13 @@ read-only audit/summarize. The full target run is prospective, and this does not
 close Milestone 1's scientific/positive-control evidence or the broader
 measurement list below. Historical numerical producers remain unchanged.
 
+The additive [frozen-checkpoint unseen-evaluation workflow](UNSEEN-EVALUATION.md)
+prepares a separate inference-only diagnosis using the final step-4,096 model
+and all historical arithmetic validation/test rows. These families are unseen
+to that checkpoint's declared training schedule, but historically research-exposed:
+results remain exploratory, not fresh confirmation. This implementation performs
+no target evaluation and does not close a scientific gate.
+
 Reuse the authoritative updater and existing positive controls. Provide one documented preflight/freeze/run/summarize/audit workflow with predictable `reports/` outputs. No new independent training implementation.
 
 Add focused measurements:
