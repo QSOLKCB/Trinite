@@ -21,6 +21,7 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [ROADMAP.md](ROADMAP.md) | Current development-order entrypoint and preserved phase gates/history |
 | [ROADMAP-V1.md](ROADMAP-V1.md) | Diagnostic-first milestones, RSH/integer/capacity tracks and conditional v1 scope |
 | [Native diagnostic workflow](NATIVE-DIAGNOSTIC.md) | Source-bound dense-arithmetic preflight, prospective run and read-only audit |
+| [Frozen-checkpoint unseen evaluation](UNSEEN-EVALUATION.md) | Source-bound historical held-out diagnosis; exploratory, not fresh confirmation |
 | [Compute/KV harness proposal](COMPUTE-KV-HARNESS-PROPOSAL.md) | Uncached resource instrumentation followed by separately gated cached inference |
 | [Research update, 26 October](research/UPDATE-2026-10-26.md) | Later research candidates and source-pinned shrek_GPT lessons |
 | [Research assessment, 22 October](research/ASSESSMENT-2026-10-22.md) | Dated supporting rationale and original source/rights limitations |
@@ -58,6 +59,9 @@ The historical training-only diagnostic is [CONVERGENCE.md](CONVERGENCE.md),
 with its frozen [protocol](CONVERGENCE-PROTOCOL.md). The additive
 [native diagnostic workflow](NATIVE-DIAGNOSTIC.md) implements the first narrow
 slice of [ROADMAP-V1.md](ROADMAP-V1.md); its target experiment remains pending.
+The separate [unseen-evaluation workflow](UNSEEN-EVALUATION.md) prepares
+read-only frozen-checkpoint inference on historical validation/test rows;
+its target evaluation remains unrun by the implementation.
 
 - [Training budget development](BUDGET.md) and [frozen protocol](BUDGET-PROTOCOL.md).
 - [Exact game-theory foundations](GAME-THEORY.md); numeric corpus prepared, training pending.
