@@ -352,3 +352,13 @@ transport/replay. Its stdlib contracts and tests never run an external model.
 The separately authorized CUDA boundary is not imported by native Trinite or
 its installed package. No training or historical source changes.
 See [the external pilot contract](NCM-REFERENCE-PILOT.md).
+
+## Coverage-balanced addition composition
+
+`scripts/balanced_addition_v1/` owns the new finite corpus, frozen length-matched
+schedule, plan/request and six-cell orchestration described in
+[BALANCED-ADDITION](BALANCED-ADDITION.md). It delegates native updates, scoring,
+safe checkpoint tensors and custody to their existing authoritative modules.
+Its reporting adapter reuses the historical pure failure classifier on new
+source-bound raw predictions; it does not pass new producers through the old
+fixed-admission checkpoint importer. No core model or numerical updater changes.
