@@ -801,3 +801,15 @@ This is engineering implementation, not a target diagnostic result, retraining,
 causal explanation, successful generalisation, or a newly passed learning gate.
 Review, exact-commit green CI and explicit owner local-run authorization precede
 target execution. Original source commitments and historical negatives stay intact.
+
+
+## Frozen finite-domain failure mapping
+
+The [failure-map v1](FAILURE-MAP.md) implementation complements the all-token
+diagnostic with raw prompt-only coverage of all 338 already admitted 0–12 inputs
+for all six final checkpoints. It retains seen anchors, exact historical-output
+comparisons, controlled carrier/order contrasts, confounded range/length labels,
+all per-case failures and explicit untested cells. Consistent wrong answers are
+not successes. This is implementation/conformance, not a measured target map,
+retraining, fresh confirmation or advancement of a learning/release gate.
+Original producers, bound contracts and negative results remain unchanged.

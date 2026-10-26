@@ -25,6 +25,15 @@ results; target execution still needs review, green exact-commit CI and separate
 owner local-run authorization. The milestone text below preserves the earlier
 chronology rather than proposing another already-completed coverage run.
 
+The subsequent [frozen failure-map implementation](FAILURE-MAP.md) adds a
+complementary prompt-only view: all 338 admitted addition inputs for each of the
+same six checkpoints, seen-anchor replay, arm-specific exposure, full case maps,
+and separate correctness/consistency counts. It does not replace the all-token
+conditional diagnostic, retrain, repair, or establish new target results. A
+replay mismatch is a plumbing/reproducibility failure, not an accuracy gate;
+valid negative maps remain complete evidence. Its own reviewed green commit and
+explicit owner-run authorization are still prerequisites to target execution.
+
 ## Compatibility and authority
 
 The original docs-only roadmap records plans under TRI-I01–TRI-I14; it changes no
