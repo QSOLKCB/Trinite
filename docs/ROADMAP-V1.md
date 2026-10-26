@@ -94,6 +94,15 @@ Add focused measurements:
 
 ## Milestone 2: one useful native dense task
 
+The [addition-first development workflow](ADDITION-DEVELOPMENT.md) now implements
+a separately admitted nonnegative addition experiment: five versus ten unique
+training families at exactly matched scheduled answer/carrier/token exposure
+and operand marginals. It provides a frozen six-cell request, bounded native
+training/final-development scoring, retained failures and read-only audit. The
+three development strata are public exploratory facts, not fresh confirmation.
+No target research cell has been executed by this implementation; this gate
+remains open. The historical negative result and all of its sources are unchanged.
+
 Select one admitted task with historical training success and a documented held-out weakness. Specify its intended user-facing value, input range, error tolerance and whether an exact algorithm is the actual better tool. A neural arithmetic module must not be represented as exact merely because its average accuracy is high.
 
 Freeze a bounded development protocol using the successful historical dense configuration as an anchor. Distinguish interpolation, new combinations, longer inputs and new task families. Use training-only curves to choose a recipe; do not repeatedly tune on the historical test split and call it fresh confirmation.
