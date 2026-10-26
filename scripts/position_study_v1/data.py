@@ -145,7 +145,7 @@ def schedule(arm):
 def exposure(arm):
     rows = schedule(arm); tok = ByteTokenizer(64)
     encoded = [tok.encode(r['text'],answer_start=len(r['prompt'])) for r in rows]
-    positions = []
+    positions = []; roles = {}
     # Native loss slices the padded BATCH, not individual rows. Short examples
     # retain EOS as a live unscored input alongside longer rows. Count exactly
     # those lookups, never assume every row loses its own last token.
@@ -154,7 +154,12 @@ def exposure(arm):
         shifted_length = max(len(e.input_ids) for e in batch)-1
         for r,e in zip(rows[start:start+len(batch)],batch):
             live = min(len(e.input_ids),shifted_length)
-            positions.append(prefix_positions(r['prompt'],live-1-len(r['prompt']),mode=MODES[arm]))
+            ps=prefix_positions(r['prompt'],live-1-len(r['prompt']),mode=MODES[arm])
+            positions.append(ps)
+            digits=[f'operand-significance-{d}' for d in range(r['width'],0,-1)]
+            labels=['bos',*digits,'plus',*digits,'equals',
+                    *(f'answer-slot-{i}' for i in range(r['width']+1)),'unscored-short-row-eos']
+            for p,label in zip(ps,labels):roles.setdefault(str(p),Counter())[label]+=200
     hist = Counter(p for ps in positions for p in ps)
     return {'schema': 'trinite.position-study-exposure.v1',
         'arm': arm, 'cycle_identity': identity(json_bytes([r['example_identity'] for r in rows])),
@@ -164,6 +169,7 @@ def exposure(arm):
         'live_unscored_eos_input_tokens': sum(map(len,positions))*200-sum(len(e.input_ids)-1 for e in encoded)*200,
         'scheduled_target_tokens': sum(sum(e.loss_mask) for e in encoded)*200,
         'training_position_row_lookups': {str(k):v*200 for k,v in sorted(hist.items())},
+        'training_position_row_roles':{k:dict(sorted(v.items())) for k,v in sorted(roles.items())},
         'unexposed_position_rows': sorted(set(range(64))-set(hist)),
         'row_scope': 'actual live inputs after shifting each right-padded batch, including unscored short-row EOS; lookup exposure is not gradient support or significance transfer'}
 

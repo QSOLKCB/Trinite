@@ -371,3 +371,14 @@ native Decoder initialization, validation, blocks, norms and tied output without
 changing historical source bytes or adding a second optimizer/scorer. The fixed
 `check_position_coupling.py` emits an engineering-only source-bound report, not a
 research checkpoint or learning result. [Contract and prospective study](POSITION-COUPLING.md).
+
+## Prospective position-coupling study
+
+`scripts/position_study_v1/` composes the frozen admission, stateless live-prefix
+position adapter, native numerical updater/loss/scorer and shared safe named
+tensor reader. New versioned scoring binds input-derived caps and reversed
+fixed-width syntax; prediction journals preserve partial scoring. The fixed
+`run_position_study.py` owns bounded preflight/freeze/run/read-only audit/summary.
+Structural evidence verification is separate from optimizer/prediction replay.
+No historical runtime/fixture changes or target experiment is included. See
+[position study v1](POSITION-STUDY-V1.md).

@@ -140,3 +140,7 @@ research evidence. No trained model changes or Phase 5 claim.
 - [CPU position coupling preparation](POSITION-COUPLING.md): explicit-position
   conformance and prospective format-matched arithmetic study; no target training
   or learned LUT execution.
+
+- [Prospective position study v1](POSITION-STUDY-V1.md): frozen format-matched
+  coupling ablation, perturbation probes and source-bound owner-local workflow;
+  engineering tests only, target execution remains gated.

@@ -1,0 +1,47 @@
+name: Position study engineering conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: position-study-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engineering-controls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONPATH: src:scripts
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Acquire canonical hash-locked CPU dependencies
+        run: |
+          python -m pip install --require-hashes --no-deps -r requirements.lock
+          python -m pip check
+      - name: Frozen inventory, stateless positions and tiny evidence controls
+        run: |
+          python -B -m unittest discover -s tests/position_study_v1 -v
+      - name: Existing native positive learning and optimizer replay controls
+        run: python -B -m unittest discover -s tests/training -v
+      # Tiny injected conformance plans only; never run the six-cell research protocol in CI.

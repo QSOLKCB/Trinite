@@ -3,8 +3,9 @@
 Status: prospective development protocol, frozen before target outcomes. No
 target training or target inference is authorized by this implementation PR.
 Tiny injected tests establish engineering conformance only. The separate
-preservation work for the balanced-addition negative/mixed result is not part
-of this change. Its original bound artifacts remain the evidence authority.
+[PR76 preservation work](https://github.com/QSOLKCB/Trinite/pull/76) for the
+balanced-addition negative/mixed result is separate. Its original bound
+artifacts remain the evidence authority; the public subset is partial custody.
 
 The one corrective hypothesis is place-value position coupling. Both fresh
 dense arms receive identical examples, padded operands, reversed fixed-width
@@ -80,6 +81,11 @@ length causal effects. All are development; historical0–12 facts are exposed.
 If probes guide a later change they remain development evidence. Fresh
 confirmation needs a later independently gated experiment.
 
+Preflight and the request freeze all pair identities and counts. Unseen probes
+have24 reversal,204 equal-sum,32 increment and12 width-rendering pairs. Each
+length stratum has11 reversal,36 equal-sum and14 increment pairs. These are
+correlated transforms, not independent sample counts.
+
 Schedule: iterate training families in the listed order, each order `(a,b)` then
 `(b,a)`, each admitted width in ascending order. Diagonals deliberately occupy
 both order slots; diagnostics contain unique rows only. This yields160 visits:
@@ -111,6 +117,9 @@ control lookup rows0–9; candidate rows0–3. Candidate rows4/5 used at longer
 significances are untrained; control later sequence rows are also untrained.
 The request records exact row lookup counts from actual shifted inputs.
 Lookup exposure alone cannot establish transfer to a new digit significance.
+It also records row roles: candidate row3 is exposed only as answer-slot2,
+never as an operand digit during training. These are lookup counts, not a
+measurement of nonzero gradients in every visit.
 All possible prompt/cap addresses fit context64; maximum full prefix length17.
 
 A stateless live-prefix adapter derives BOS, complete prompt through the first
@@ -163,6 +172,14 @@ outputs should differ with the correct numeric delta. Two identical wrong
 answers cannot pass. Include labelled non-neural constant/majority, lookup and
 exact-oracle controls; none repair neural predictions.
 
+Numeric correctness is a separately versioned secondary diagnostic: remove only
+an actual terminal EOS, reverse **all** emitted ASCII digits and interpret the
+result as an integer. Empty/non-digit bodies are invalid. Do not fill, truncate
+or repair output. An early EOS after a numerically correct shorter body can
+count numerically correct while failing canonical width+EOS accuracy. Retain
+PR75's strict fixed-width decoder result separately; all criteria and
+both-correct pair counts use canonical exactness.
+
 Descriptive support requires all six cells structurally verified, candidate
 seen-family accuracy≥95%, seen regression≤2 percentage points versus paired
 control, and **each seed** gaining≥10 points in unseen-family accuracy.
@@ -206,8 +223,10 @@ PYTHONPATH=src:scripts python -B scripts/run_position_study.py summarize \
 
 Read-only audit verifies actual admission, source/environment/request binding,
 safe tensors, complete evidence inventory, original upstream custody, retained
-history consistency and recalculated metrics. It does not rerun inference or
-optimizer updates. Deterministic resume is a tested engineering API, not an
+history consistency and recalculated metrics. It reconstructs fresh seeded
+initial states and their training-only initial losses for checkpoint context;
+it does not replay trained-checkpoint generation or optimizer updates.
+Deterministic resume is a tested engineering API, not an
 automatic target retry workflow. Full numerical replay and independent-host
 replication remain separate later operations, never inferred from structural
 audit. Retain full source/request/checkpoints/raw outputs/logs/failures and the
