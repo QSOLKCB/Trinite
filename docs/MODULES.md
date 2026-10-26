@@ -382,3 +382,11 @@ fixed-width syntax; prediction journals preserve partial scoring. The fixed
 Structural evidence verification is separate from optimizer/prediction replay.
 No historical runtime/fixture changes or target experiment is included. See
 [position study v1](POSITION-STUDY-V1.md).
+## Partial balanced-addition result verification
+
+`scripts/balanced_result_v1/` authenticates the immutable 43-file public subset
+and its separately pinned derivative source-binding receipt. It reuses original
+admission, score checking and descriptive maps; it does not load checkpoints,
+construct models, update parameters or claim closed custody. The checker uses
+the pinned CPU dependencies because authoritative inspection imports Torch.
+See [the outcome and verification limits](BALANCED-ADDITION-RESULT.md).
