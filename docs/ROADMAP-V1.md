@@ -9,30 +9,38 @@ Integrated and extended on 26 October 2026 at the owner's request.
 
 ## Current next increment — 26 October 2026
 
-The coverage proposal was followed by the separately frozen
-[addition-development implementation](ADDITION-DEVELOPMENT.md) in PR #71 and an
-owner-returned local matched-coverage run. Those original producer sources and
-artifacts are preserved; an implementation-era “unrun” statement in the frozen
-producer contract is not a statement that the owner never ran it later.
+The next implemented learning experiment is the separately versioned
+[coverage-balanced addition recipe](BALANCED-ADDITION.md): fresh paired seeds,
+40 broad-output training families versus the original five-family control,
+unchanged 86,528-parameter dense capacity, and exact matched visit/input/target
+budgets. Shared whole-family development, seen-anchor regressions and raw
+failure/pair maps are included in the same run; another diagnostic-only PR is
+not needed simply to interpret its outputs.
 
-The next implemented PR is the [frozen all-token diagnostic](FROZEN-TOKEN-DIAGNOSTIC.md):
-all six fixed final checkpoints, all three development strata, every answer token
-including EOS, and explicit correct-token probability/rank versus EOS. Gold-prefix
-observations stay separate from byte-preserved original prompt-only scores.
-There is no retraining, checkpoint election, answer repair, fresh confirmation or
-new learning-gate claim. Its engineering controls are not target diagnostic
-results; target execution still needs review, green exact-commit CI and separate
-owner local-run authorization. The milestone text below preserves the earlier
-chronology rather than proposing another already-completed coverage run.
+The candidate supports all sums0–18 and both single-digit operand roles, while
+shared development covers all five control answer values plus candidate-only
+answer values and separate range/length shifts. Output/operand marginals,
+coverage and repetition change: this is a **data-recipe comparison**, not an
+isolated output-digit causal test or a demonstrated fix. Its implementation and
+tiny conformance controls are not target learning evidence. Review, green
+exact-commit CI and explicit owner local-run authorization precede execution;
+all six outcomes and failures must be retained.
 
-The subsequent [frozen failure-map implementation](FAILURE-MAP.md) adds a
-complementary prompt-only view: all 338 admitted addition inputs for each of the
-same six checkpoints, seen-anchor replay, arm-specific exposure, full case maps,
-and separate correctness/consistency counts. It does not replace the all-token
-conditional diagnostic, retrain, repair, or establish new target results. A
-replay mismatch is a plumbing/reproducibility failure, not an accuracy gate;
-valid negative maps remain complete evidence. Its own reviewed green commit and
-explicit owner-run authorization are still prerequisites to target execution.
+Earlier increments were [addition development](ADDITION-DEVELOPMENT.md) in PR#71,
+the [all-token diagnostic](FROZEN-TOKEN-DIAGNOSTIC.md) in PR#72 and the
+[failure map](FAILURE-MAP.md) in PR#73. The owner subsequently returned local
+matched-coverage and frozen-diagnostic results; their negative transfer evidence
+motivates the new recipe, not a proven architecture defect. Original producer
+sources, bound implementation-era contracts, checkpoints and negative evidence
+remain unchanged. A frozen contract's implementation-time “unrun” statement is
+not a claim that the owner never ran it later. No private handover packet is
+published by this roadmap update.
+
+These public families have historical research exposure. The new experiment
+remains developmental, not fresh confirmation; it does not elect old checkpoints,
+resume or repair them, add geometry/ternary/KV changes, or pass a learning gate.
+The milestone text below retains the earlier chronology rather than prescribing
+another already-completed diagnostic or coverage run.
 
 ## Compatibility and authority
 

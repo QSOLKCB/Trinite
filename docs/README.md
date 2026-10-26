@@ -132,3 +132,7 @@ research evidence. No trained model changes or Phase 5 claim.
 - [External NCM reference feasibility pilot](NCM-REFERENCE-PILOT.md): isolated
   pretrained Sudoku adapter and CPU contracts; [RTX smoke result and archive](NCM-RTX-SMOKE-RESULTS.md)
   retain the initial failure and successful four-board replay, not generalization evidence.
+
+- [Coverage-balanced addition](BALANCED-ADDITION.md): prospective broad-output
+  training recipe, paired fixed-budget comparison and shared development failure
+  maps; implementation/conformance only, no target learning claim.

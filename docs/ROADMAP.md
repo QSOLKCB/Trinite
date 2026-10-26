@@ -813,3 +813,16 @@ all per-case failures and explicit untested cells. Consistent wrong answers are
 not successes. This is implementation/conformance, not a measured target map,
 retraining, fresh confirmation or advancement of a learning/release gate.
 Original producers, bound contracts and negative results remain unchanged.
+
+## Coverage-balanced addition training recipe
+
+The [separately versioned balanced-addition lane](BALANCED-ADDITION.md) implements
+fresh paired-seed training of a40-family broad-output recipe against the existing
+five-family control at fixed capacity and exact matched token/visit budgets.
+It includes common family-held-out evaluation, seen-anchor regressions and raw
+failure/pair maps within the same run. Output/operand marginals, repetition and
+unique coverage differ: this is a data-recipe comparison, not an isolated causal
+mechanism test. Engineering conformance is not a measured target outcome or a
+passed learning gate. Previous source closures, diagnostics and negative evidence
+remain unchanged; review, green CI and explicit local-run authorization precede
+research execution.
