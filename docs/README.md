@@ -141,6 +141,9 @@ research evidence. No trained model changes or Phase 5 claim.
   conformance and prospective format-matched arithmetic study; no target training
   or learned LUT execution.
 
+- [Prospective position study v1](POSITION-STUDY-V1.md): frozen format-matched
+  coupling ablation, perturbation probes and source-bound owner-local workflow;
+  engineering tests only, target execution remains gated.
 - [Coverage-balanced addition result](BALANCED-ADDITION-RESULT.md): all six
   completed cells, mixed/negative transfer evidence and a byte-exact partial
   public subset; no new training or replay claim.

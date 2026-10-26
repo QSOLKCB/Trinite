@@ -321,3 +321,16 @@ without the gates in the research update.
 - [TinyStories](https://arxiv.org/abs/2305.07759): narrow distributions can support small models; story fluency is not exact reasoning.
 
 See the [dated research assessment](research/ASSESSMENT-2026-10-22.md) for primary-source dates, detailed historical counts, license caveats, hardware estimates and access limitations. See the [subsequent-source ledger](research/UPDATE-2026-10-26.md) for later research candidates and their admission gates. No external models or papers were independently reproduced during this research.
+
+## Prospective position-coupling study — 27 October 2026
+
+The [separately versioned study](POSITION-STUDY-V1.md) implements the next
+controlled intervention after the six-cell coverage result being preserved in
+[PR76](https://github.com/QSOLKCB/Trinite/pull/76). Its two arms share the new
+padded/reversed format and every numerical/training choice; only position
+addressing differs. Exact family inventories, perturbation probes, exposure,
+fixed-zero offsets, budgets and descriptive criteria are frozen before target
+outcomes. Tiny engineering checks do not demonstrate improvement or close a
+learning gate. Review, exact-commit CI and separate owner-local authorization
+remain prerequisites to executing the target matrix. No adaptive repair, seed
+selection, LUT, ternary, capacity, geometry or KV change is bundled.
