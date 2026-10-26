@@ -59,6 +59,13 @@ Historical chronology belongs in linked documentation, not repeated competing â€
 
 ## Milestone 1: one canonical native diagnostic workflow
 
+**Implementation status:** the checkout-only [native diagnostic v1 workflow](NATIVE-DIAGNOSTIC.md)
+provides the first dense-arithmetic engineering slice: mechanics preflight,
+source-bound freeze/run, teacher-forced versus raw-generation observations and
+read-only audit/summarize. The full target run is prospective, and this does not
+close Milestone 1's scientific/positive-control evidence or the broader
+measurement list below. Historical numerical producers remain unchanged.
+
 Reuse the authoritative updater and existing positive controls. Provide one documented preflight/freeze/run/summarize/audit workflow with predictable `reports/` outputs. No new independent training implementation.
 
 Add focused measurements:
