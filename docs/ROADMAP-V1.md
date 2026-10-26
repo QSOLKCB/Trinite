@@ -3,13 +3,13 @@
 Original research prepared 22 October 2026 (UTC+10:30), checked 21 October.
 Integrated and extended on 26 October 2026 at the owner's request.
 
-**Status: documentation plan; no experiment or implementation is enabled.** This is the current recommended development order, linked from [ROADMAP.md](ROADMAP.md). The [dated assessment](research/ASSESSMENT-2026-10-22.md) supplies the original rationale; the [26 October research update](research/UPDATE-2026-10-26.md) adds later sources and the shrek_GPT review. Historical protocols, release tags, evidence and existing scientific gates remain unchanged. The workbench/model v1 distinction below is a proposed release-scope decision, not an adopted relaxation of Phase 9. Any change to project-wide release criteria requires a separately reviewed decision.
+**Status: development roadmap; later diagnostic implementations and the dated negative result are linked below. This document grants no target execution authority.** This is the current recommended development order, linked from [ROADMAP.md](ROADMAP.md). The [dated assessment](research/ASSESSMENT-2026-10-22.md) supplies the original rationale; the [26 October research update](research/UPDATE-2026-10-26.md) adds later sources and the shrek_GPT review. Historical protocols, release tags, evidence and existing scientific gates remain unchanged. The workbench/model v1 distinction below is a proposed release-scope decision, not an adopted relaxation of Phase 9. Any change to project-wide release criteria requires a separately reviewed decision.
 
 **Baseline:** immutable [v0.4.0](https://github.com/QSOLKCB/Trinite/releases/tag/v0.4.0), commit `be4ac55b79f88be3c1a6052d5bc61f1d31be1f4a`.
 
 ## Compatibility and authority
 
-This docs-only increment records plans under TRI-I01–TRI-I14; it changes no
+The original docs-only roadmap records plans under TRI-I01–TRI-I14; it changes no
 numerical operation, admission policy, installed interface, fixture, protocol,
 parameter cap or source-bound producer. Every later implementation must name
 its affected requirements and freeze its own compatibility contract before
@@ -62,16 +62,20 @@ Historical chronology belongs in linked documentation, not repeated competing �
 **Implementation status:** the checkout-only [native diagnostic v1 workflow](NATIVE-DIAGNOSTIC.md)
 provides the first dense-arithmetic engineering slice: mechanics preflight,
 source-bound freeze/run, teacher-forced versus raw-generation observations and
-read-only audit/summarize. The full target run is prospective, and this does not
-close Milestone 1's scientific/positive-control evidence or the broader
-measurement list below. Historical numerical producers remain unchanged.
+read-only audit/summarize. The owner subsequently ran seed 0 locally: its final checkpoint fit 264/264 training
+rows, followed by 0/64 validation and 0/64 test complete answers in the separate
+inference run. See the [dated negative result](UNSEEN-NEGATIVE-RESULT.md). This does
+not close the broader measurement list or any learning gate. Historical numerical
+producers remain unchanged.
 
 The additive [frozen-checkpoint unseen-evaluation workflow](UNSEEN-EVALUATION.md)
 prepares a separate inference-only diagnosis using the final step-4,096 model
 and all historical arithmetic validation/test rows. These families are unseen
 to that checkpoint's declared training schedule, but historically research-exposed:
-results remain exploratory, not fresh confirmation. This implementation performs
-no target evaluation and does not close a scientific gate.
+results remain exploratory, not fresh confirmation. The original implementation performed no target evaluation; the later owner-run
+result is now preserved. It does not close a scientific gate. The next implemented
+step is the [read-only coverage diagnostic and addition-first proposal](COVERAGE-DIAGNOSTIC.md),
+not additional training or a claimed fix.
 
 Reuse the authoritative updater and existing positive controls. Provide one documented preflight/freeze/run/summarize/audit workflow with predictable `reports/` outputs. No new independent training implementation.
 
