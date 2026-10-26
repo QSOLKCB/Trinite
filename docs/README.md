@@ -140,3 +140,7 @@ research evidence. No trained model changes or Phase 5 claim.
 - [CPU position coupling preparation](POSITION-COUPLING.md): explicit-position
   conformance and prospective format-matched arithmetic study; no target training
   or learned LUT execution.
+
+- [Coverage-balanced addition result](BALANCED-ADDITION-RESULT.md): all six
+  completed cells, mixed/negative transfer evidence and a byte-exact partial
+  public subset; no new training or replay claim.

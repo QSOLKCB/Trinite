@@ -837,3 +837,15 @@ freeze a separate format-matched two-arm study with explicit family inventories,
 carry coverage, offset exposure, budgets and success thresholds. HashedNets-style
 learned LUT sharing remains an independent later compression direction. Prior
 producers, negatives and learning gates remain unchanged.
+
+## Coverage-balanced addition: retained local result
+
+The [26 October six-cell result](BALANCED-ADDITION-RESULT.md) fits all training
+rows and seen anchors but does not reliably improve shared development transfer:
+candidate seeds score 8/56, 0/56 and 0/56 versus control 4/56 in each; every
+range/length result is 0/138. All outcomes are preserved as partial public
+source-bound evidence, not closed custody or numerical replay. This completes
+assessment of the existing coverage recipe, not a learning gate. Position
+conformance remains engineering preparation; a separate frozen format-matched
+study is the next prospective decision, not permission to run it. Earlier
+implementation-time contract statements and source closures remain unchanged.

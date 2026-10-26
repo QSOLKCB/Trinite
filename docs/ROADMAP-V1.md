@@ -7,6 +7,18 @@ Integrated and extended on 26 October 2026 at the owner's request.
 
 **Baseline:** immutable [v0.4.0](https://github.com/QSOLKCB/Trinite/releases/tag/v0.4.0), commit `be4ac55b79f88be3c1a6052d5bc61f1d31be1f4a`.
 
+## Latest evidence — 26 October 2026
+
+The authorized coverage-balanced run is now complete and its
+[all-six-cell result is preserved](BALANCED-ADDITION-RESULT.md). All candidate
+training rows fit (144/144) and seen anchors remain 20/20, but candidate in-range
+counts are 8/56, 0/56, 0/56 versus 4/56 for each control; range/length is 0/138
+in every cell. Do not rerun the pending recipe or call coverage a demonstrated
+fix. A separately frozen, format-matched CPU position study is a prospective
+next decision, not an authorized experiment here. Public evidence is a partial
+subset, not closed custody or numerical replay. The implementation-era plan
+below is retained as chronology; historical sources and negatives are unchanged.
+
 ## Current next increment — 26 October 2026
 
 The next implemented learning experiment is the separately versioned
