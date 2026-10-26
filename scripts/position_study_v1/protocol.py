@@ -18,7 +18,7 @@ PROTOCOL = {
     'milestones': list(MILESTONES), 'position_configuration': POSITION_CONFIG,
     'schedule': 'position-study-family-order-width-cycle.v1',
     'cycle_visits': 160, 'cycles': 200, 'scheduled_visits': 32000,
-    'scheduled_model_input_tokens': 300800, 'scheduled_target_tokens': 121600,
+    'scheduled_model_input_tokens': 307200, 'scheduled_target_tokens': 121600,
     'inventory': {'train': [64, 154], 'unseen': [24, 56],
                   'length3': [12, 23], 'length4': [12, 23]},
     'matched': ['all data and schedule', 'effective seeded parameters', 'optimizer',

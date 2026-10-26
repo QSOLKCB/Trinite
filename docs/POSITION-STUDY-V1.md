@@ -84,9 +84,14 @@ Schedule: iterate training families in the listed order, each order `(a,b)` then
 `(b,a)`, each admitted width in ascending order. Diagonals deliberately occupy
 both order slots; diagnostics contain unique rows only. This yields160 visits:
 32 width1 and128 width2. Repeat200 cycles, batch8, 4,000 updates: **32,000
-visits, 300,800 unpadded shifted model-input tokens, 121,600 scored answer+EOS
-targets per cell**. Width1 input/target lengths are7/3, width2 are10/4.
-Padding is excluded. These are new totals, not inherited historical totals.
+visits, 307,200 live shifted model-input tokens, 121,600 scored answer+EOS
+targets per cell**. Per-example predictor input/target lengths are7/3 for
+width1 and10/4 for width2, giving300,800 predictor input tokens. Native loss
+shifts the padded batch: mixed-width batches retain short-row EOS as a live
+unscored input, adding6,400 lookups. Padding is excluded. The request separates
+both totals; neither is inherited from the historical format. This static batch
+accounting correction was made during engineering validation before any target
+outcomes; dataset/order/budget/criteria were not selected from outcomes.
 
 ## Numerical and positional contract
 
@@ -124,6 +129,19 @@ short-width output without passing a global long-width cap into the mapper.
 New scoring semantics explicitly bind this cap and representation. Preserve
 raw token IDs; compute references only in the evaluator. No oracle answer,
 carry state or solver result enters generation or positional addressing.
+
+The scorer uses the authoritative native scorer one selected item at a time
+with a complete training-only majority pool. Training items use an internal
+test-selection view to select one item, then retain their original train split;
+this neither introduces probes nor changes the loss/update split. Training
+majorities are width-local; probe majority is over all training widths. Raw
+predictions are journalled and fsynced after each completed item. Each declared
+score has an exclusive bounded JSONL journal, retained on failure and hash-bound
+on completion. A killed process can leave an unfinished last write; such an
+attempt cannot certify completion. The new classifier admits leading zeroes in
+reversed answers and the D+2 cap; historical decimal/cap5 classification is
+incompatible. Independent malformed, early-EOS and missing-EOS flags supplement
+the disjoint primary failure category.
 
 Same-shape ordinary offset0 parity: exact logits, captures, canonical masked
 loss and all parameter gradients. Cross-shape comparisons: absolute2e-6,

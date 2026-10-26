@@ -145,16 +145,27 @@ def schedule(arm):
 def exposure(arm):
     rows = schedule(arm); tok = ByteTokenizer(64)
     encoded = [tok.encode(r['text'],answer_start=len(r['prompt'])) for r in rows]
-    positions = [prefix_positions(r['prompt'],r['width']+1,mode=MODES[arm]) for r in rows]
+    positions = []
+    # Native loss slices the padded BATCH, not individual rows. Short examples
+    # retain EOS as a live unscored input alongside longer rows. Count exactly
+    # those lookups, never assume every row loses its own last token.
+    for start in range(0,len(rows),PROTOCOL['batch_size']):
+        batch = encoded[start:start+PROTOCOL['batch_size']]
+        shifted_length = max(len(e.input_ids) for e in batch)-1
+        for r,e in zip(rows[start:start+len(batch)],batch):
+            live = min(len(e.input_ids),shifted_length)
+            positions.append(prefix_positions(r['prompt'],live-1-len(r['prompt']),mode=MODES[arm]))
     hist = Counter(p for ps in positions for p in ps)
     return {'schema': 'trinite.position-study-exposure.v1',
         'arm': arm, 'cycle_identity': identity(json_bytes([r['example_identity'] for r in rows])),
         'cycle_visits': len(rows), 'cycles': 200, 'scheduled_visits': len(rows)*200,
-        'scheduled_model_input_tokens': sum(len(e.input_ids)-1 for e in encoded)*200,
+        'scheduled_model_input_tokens': sum(map(len,positions))*200,
+        'per_example_predictor_input_tokens': sum(len(e.input_ids)-1 for e in encoded)*200,
+        'live_unscored_eos_input_tokens': sum(map(len,positions))*200-sum(len(e.input_ids)-1 for e in encoded)*200,
         'scheduled_target_tokens': sum(sum(e.loss_mask) for e in encoded)*200,
         'training_position_row_lookups': {str(k):v*200 for k,v in sorted(hist.items())},
         'unexposed_position_rows': sorted(set(range(64))-set(hist)),
-        'row_scope': 'actual unpadded shifted model inputs, including prompt and emitted digit slots; no EOS input at final slot; lookup exposure is not significance transfer'}
+        'row_scope': 'actual live inputs after shifting each right-padded batch, including unscored short-row EOS; lookup exposure is not gradient support or significance transfer'}
 
 
 def validate_matching():
