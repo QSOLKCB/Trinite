@@ -362,3 +362,12 @@ safe checkpoint tensors and custody to their existing authoritative modules.
 Its reporting adapter reuses the historical pure failure classifier on new
 source-bound raw predictions; it does not pass new producers through the old
 fixed-admission checkpoint importer. No core model or numerical updater changes.
+
+## Checkout-only position interface conformance
+
+`scripts/position_coupling_v1/` owns an explicit-position dense forward boundary,
+input-only arithmetic slot mapping and bounded synthetic parity checks. It reuses
+native Decoder initialization, validation, blocks, norms and tied output without
+changing historical source bytes or adding a second optimizer/scorer. The fixed
+`check_position_coupling.py` emits an engineering-only source-bound report, not a
+research checkpoint or learning result. [Contract and prospective study](POSITION-COUPLING.md).

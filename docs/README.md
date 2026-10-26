@@ -136,3 +136,7 @@ research evidence. No trained model changes or Phase 5 claim.
 - [Coverage-balanced addition](BALANCED-ADDITION.md): prospective broad-output
   training recipe, paired fixed-budget comparison and shared development failure
   maps; implementation/conformance only, no target learning claim.
+
+- [CPU position coupling preparation](POSITION-COUPLING.md): explicit-position
+  conformance and prospective format-matched arithmetic study; no target training
+  or learned LUT execution.

@@ -826,3 +826,14 @@ mechanism test. Engineering conformance is not a measured target outcome or a
 passed learning gate. Previous source closures, diagnostics and negative evidence
 remain unchanged; review, green CI and explicit local-run authorization precede
 research execution.
+
+## CPU-first arithmetic position preparation
+
+The [position interface conformance increment](POSITION-COUPLING.md) implements
+validated explicit positions, prompt/slot-derived significance addresses and a
+bounded source-bound native parity check. It is not the target position-coupling
+training study. First assess the existing #74 balanced-coverage evidence; then
+freeze a separate format-matched two-arm study with explicit family inventories,
+carry coverage, offset exposure, budgets and success thresholds. HashedNets-style
+learned LUT sharing remains an independent later compression direction. Prior
+producers, negatives and learning gates remain unchanged.
