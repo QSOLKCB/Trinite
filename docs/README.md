@@ -18,7 +18,11 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [RESEARCH.md](RESEARCH.md) | Geometric reasoning, controls, comparisons, and evidence limits |
 | [INFERENCE.md](INFERENCE.md) | CPU execution, export, inspection, and resource measurements |
 | [PROVENANCE.md](PROVENANCE.md) | Observation boundary and evidence requirements |
-| [ROADMAP.md](ROADMAP.md) | Ordered implementation phases and completion gates |
+| [ROADMAP.md](ROADMAP.md) | Current development-order entrypoint and preserved phase gates/history |
+| [ROADMAP-V1.md](ROADMAP-V1.md) | Diagnostic-first milestones, RSH/integer/capacity tracks and conditional v1 scope |
+| [Compute/KV harness proposal](COMPUTE-KV-HARNESS-PROPOSAL.md) | Uncached resource instrumentation followed by separately gated cached inference |
+| [Research update, 26 October](research/UPDATE-2026-10-26.md) | Later research candidates and source-pinned shrek_GPT lessons |
+| [Research assessment, 22 October](research/ASSESSMENT-2026-10-22.md) | Dated supporting rationale and original source/rights limitations |
 | [INSTRUCTIONS.md](INSTRUCTIONS.md) | Contributor and implementing-agent workflow |
 | [GETTING_STARTED.md](GETTING_STARTED.md) | Runnable foundation/model commands, dependency acquisition, and artifacts |
 | [PHASE-1.md](PHASE-1.md) | Foundation conformance evidence and limits |
@@ -49,8 +53,9 @@ Tail-end reproduction, formal verification and distribution plans are in
 [ROADMAP.md](ROADMAP.md#tail-end-reproduction-verification-and-distribution).
 The initial pre-launch agent handoff is [QBRAID.md](QBRAID.md).
 
-The next training-only diagnostic is [CONVERGENCE.md](CONVERGENCE.md), with
-its frozen [protocol](CONVERGENCE-PROTOCOL.md).
+The historical training-only diagnostic is [CONVERGENCE.md](CONVERGENCE.md),
+with its frozen [protocol](CONVERGENCE-PROTOCOL.md). For the current proposed
+next workflow, see [ROADMAP-V1.md](ROADMAP-V1.md).
 
 - [Training budget development](BUDGET.md) and [frozen protocol](BUDGET-PROTOCOL.md).
 - [Exact game-theory foundations](GAME-THEORY.md); numeric corpus prepared, training pending.

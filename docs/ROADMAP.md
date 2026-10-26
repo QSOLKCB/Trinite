@@ -1,5 +1,35 @@
 # Roadmap
 
+## Current development order — 26 October 2026
+
+The [diagnostic-first v1 roadmap](ROADMAP-V1.md) now consolidates the 22 October
+research and [subsequent findings](research/UPDATE-2026-10-26.md), including a
+source-pinned shrek_GPT review. Start there for **what to do next**; the phase
+contracts and historical chronology below remain preserved and authoritative
+for their existing numerical, evidence and scientific gates.
+
+1. One canonical native diagnostic workflow, using existing successful controls.
+2. One useful dense task and one evidence-justified intervention.
+3. Fresh confirmation before a matched ternary comparison.
+4. Safe CPU inference/export, measured resources and independent reproduction.
+
+RSH exact geometry, bounded-integer inference and the three-size capacity study
+remain separate prospective tracks. Geometry loss stays zero. The proposed
+workbench-versus-trained-model v1 distinction is not a release authorization or
+waiver of the original Phase 9 requirements. No new model run, teacher call,
+training, data intake, cap change, runtime or release is enabled by these docs.
+The immutable v0.4.0 baseline remains `be4ac55b79f88be3c1a6052d5bc61f1d31be1f4a`.
+
+**Status correction for the older “next” entries below:** the local teacher pilot
+is [complete without demonstrated advantage](TEACHER-PILOT-LOCAL-EVIDENCE.md).
+The [Bonsai/Needle preflight](TINY-PREFLIGHT-LOCAL-EVIDENCE.md) and
+[Needle compatibility v2 attempt](NEEDLE-COMPATIBILITY-LOCAL-EVIDENCE.md) are
+retained negative/blocked results, not a completed 64-call comparison. The old
+proposed PR #64 number is superseded, not a pending reservation. Qwen/LFM
+remains optional future work, behind native diagnosis; no silent rerun follows.
+
+## Preserved phase plan and research chronology
+
 Phases 0–4 are merged. The merged OPT detour applies exact reuse and CI orchestration improvements, with independent equivalence checks and scoped timing evidence in [OPTIMIZATION.md](OPTIMIZATION.md). The following three-lane/QEC detour is implemented and measured in [COMPARISON.md](COMPARISON.md). Phase 5 remains the next geometry phase; the foundations learning-adequacy gate precedes it; fresh confirmatory evaluation and independent replication remain empirical gates. Phases 5–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md), [PHASE-2.md](PHASE-2.md), [PHASE-3.md](PHASE-3.md), and [PHASE-4.md](PHASE-4.md) for evidence and limits.
 
 | Phase | Deliverable | Completion gate |
