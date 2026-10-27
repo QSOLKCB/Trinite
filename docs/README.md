@@ -152,4 +152,6 @@ research evidence. No trained model changes or Phase 5 claim.
   mixed/negative transfer findings, byte-exact partial public evidence and
   read-only metric verification; no new numerical run or replay claim.
 
-- [CPU positional-exposure ablation](POSITION-EXPOSURE-V1.md): prospective twelve-cell matched offset/addressing study; coarse-role coverage with explicit fine-role gaps, no target result.
+- [CPU positional-exposure ablation](POSITION-EXPOSURE-V1.md): frozen pre-outcome twelve-cell matched offset/addressing protocol; coarse-role coverage with explicit fine-role gaps.
+
+- [Positional-exposure negative result](POSITION-EXPOSURE-RESULT.md): all twelve cells, four failed frozen contrasts and partial public evidence.
