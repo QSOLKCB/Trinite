@@ -35,6 +35,10 @@ The later [seed-0 native diagnostic](docs/UNSEEN-NEGATIVE-RESULT.md) fit all 264
 
 The [position-coupling study](docs/POSITION-STUDY-RESULT.md) retained perfect training fit in all six cells, but did not meet its frozen transfer criteria: unseen whole-family gains varied by seed and both longer-number strata failed. The mixed/negative development result is preserved without changing the protocol.
 
+A separate [CPU positional-exposure ablation](docs/POSITION-EXPOSURE-V1.md) now
+implements matched fixed/balanced-offset controls. Its target run is unperformed;
+coarse address/role coverage does not supply unseen arithmetic significances.
+
 The [four-cell procedural-QEC v3 study](docs/PROCEDURAL-QEC-V3-NEGATIVE-RESULT.md) also failed its training gate; complete replay and archival checks passed, while historical control ordering was not preserved.
 
 Phase 4's initial item-versus-carrier geometry contrasts were negative. The E8/ETQ parity checks prove exact finite-payload agreement, and the activation-to-lattice experiment is **retrospective and training-exposed**—neither demonstrates learned geometric reasoning. **Geometry loss remains zero.** See the [roadmap](docs/ROADMAP.md), [Phase 4 limitations](docs/PHASE-4.md) and [initial milestone notes](docs/RELEASE-NOTES-v0.1.0.md) for the complete status.

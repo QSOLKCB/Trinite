@@ -865,3 +865,14 @@ This completes assessment of that frozen run, not a learning or release gate.
 A possible later investigation must separate carry transfer from positional/role
 exposure and retain matched controls; no next experiment, adaptive repair,
 router implementation or fresh confirmation is authorized by this result note.
+
+## Prospective CPU address/coarse-role exposure ablation
+
+The separately versioned [exposure protocol](POSITION-EXPOSURE-V1.md) implements
+sequence/coupled addressing crossed with fixed-zero/balanced cycle offsets,
+three seeds and concurrent controls. Arithmetic examples, format and per-cell
+budget remain unchanged. The static gate covers embedding address/coarse-role
+pairs, not untrained significance/answer-slot roles; those gaps stay explicit.
+Target execution remains unrun and requires review, green exact-commit CI and
+separate owner-local authorization. This does not replace preserved negative
+results, implement carry curriculum/router work or advance a learning gate.

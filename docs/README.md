@@ -151,3 +151,5 @@ research evidence. No trained model changes or Phase 5 claim.
 - [Position-coupling result](POSITION-STUDY-RESULT.md): all six completed cells,
   mixed/negative transfer findings, byte-exact partial public evidence and
   read-only metric verification; no new numerical run or replay claim.
+
+- [CPU positional-exposure ablation](POSITION-EXPOSURE-V1.md): prospective twelve-cell matched offset/addressing study; coarse-role coverage with explicit fine-role gaps, no target result.
