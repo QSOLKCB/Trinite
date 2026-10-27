@@ -1,0 +1,27 @@
+"""Prospective music-only development pilot; frozen before any model outcomes."""
+SEEDS = (17, 29)
+PROTOCOL = {
+    'schema': 'trinite.music-learning-protocol.v1',
+    'seeds': list(SEEDS), 'lane': 'dense', 'initialization': 'native-random',
+    'steps': 64, 'batch_size': 8, 'learning_rate': '0.001',
+    'model': {'context_length': 256, 'blocks': 1, 'width': 32, 'heads': 4, 'feed_forward_width': 64},
+    'max_target_tokens': 32768, 'max_update_seconds': 120,
+    'generation_cap': 64, 'worker_seconds': 900,
+    'max_worker_log_bytes': 1048576, 'max_artifact_bytes': 16777216,
+    'max_retained_payload_bytes': 33554432,
+    'schedule': 'fixed source-bound example-identity hash rank over 480 unique train projections; 512 cyclic visits',
+    'diagnostics': '480 unique train projections only; final update; never heldout loss',
+    'evaluation': 'untrained and fixed final checkpoint; all train/validation/test rows',
+    'selection': 'fixed final step; no tuning, retries, election, early stopping or repair',
+    'decoding': 'raw prompt-only greedy; fixed 64 new-token cap; EOS included in exact score',
+    'criteria': {'train_each_task_fraction': [9, 10], 'heldout_each_task_fraction': [4, 5],
+                 'heldout_each_task_majority_margin': [1, 10],
+                 'all_seeds_required': True},
+    'criteria_scope': 'tiny fixed smoke/learnability pilot; training fit prerequisite for heldout interpretation; descriptive flags only, never learning/release gates',
+    'easy_readout_tasks': ['bar_boundaries', 'group_onsets', 'duration'],
+    'structural_tasks': ['attacks', 'rests', 'ties'],
+    'exposure': 'eight public development parent families; four train, two validation, two test; correlated construction grammar',
+    'baselines': ['native untrained model', 'train-only per-task majority answer', 'train-only per-task/meter majority answer'],
+    'geometry_loss': '0', 'e8': False, 'arithmetic_bridge': False,
+    'fresh_confirmation': False, 'learning_adequate': False, 'phase5_ready': False, 'release_ready': False,
+}
