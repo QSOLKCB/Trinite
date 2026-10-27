@@ -9,7 +9,7 @@ an untested hypothesis requiring its own frozen matched experiment.
 
 ## Exact symbolic contract
 
-`src/trinite/music_v1/core.py` owns immutable `Meter`, `Event`, `Score`, validation,
+`scripts/symbolic_music_v1/core.py` owns immutable `Meter`, `Event`, `Score`, validation,
 JSON-value conversion, exact timeline and symbolic annotations. Durations are
 positive **whole-note fractions**, not seconds or floating-point labels. For
 example `[3, 8]` is a dotted quarter; `[1, 16]` is a sixteenth. Reduced integer pairs
@@ -91,15 +91,15 @@ failed bundles; generate only into a fresh destination, never reseal history.
 ## Usage (checkout root, Python 3.11+)
 
 ```sh
-PYTHONPATH=src python -B -m unittest discover -s tests/music_v1 -v
-PYTHONPATH=src python -O -B -m unittest discover -s tests/music_v1 -v
+PYTHONPATH=scripts python -B -m unittest discover -s tests/music_v1 -v
+PYTHONPATH=scripts python -O -B -m unittest discover -s tests/music_v1 -v
 # The parent output directory must already exist; the destination must not.
-PYTHONPATH=src python scripts/run_symbolic_music.py generate /tmp/music-v1
+PYTHONPATH=scripts python scripts/run_symbolic_music.py generate /tmp/music-v1
 # Retain the printed SHA-256 independently, then supply it verbatim:
-PYTHONPATH=src python scripts/run_symbolic_music.py verify /tmp/music-v1 \
+PYTHONPATH=scripts python scripts/run_symbolic_music.py verify /tmp/music-v1 \
   --manifest-sha256 <retained-sha256>
 # Optional, separate audition. Never write audio inside the symbolic bundle.
-PYTHONPATH=src python scripts/run_symbolic_music.py render /tmp/music-example.wav --row 1
+PYTHONPATH=scripts python scripts/run_symbolic_music.py render /tmp/music-example.wav --row 1
 ```
 
 `render.py` is an opt-in standard-library sine-wave audition: mono 16-bit PCM,
@@ -130,7 +130,10 @@ third-party rights are waived. No donor demonstrates music-to-arithmetic transfe
 ## Compatibility and verification scope
 
 Affected requirements: **TRI-I01, I03, I05, I07–I09, I11–I14**. The isolated
-`music_v1` package imports only the standard library. Model/tokenizer/updater,
+`scripts/symbolic_music_v1` checkout-only package imports only the standard library.
+It stays outside `src/trinite` because historical receipts recursively inventory
+that native source tree; adding even unrelated modules there would break original
+source closure. No installed native API is extended. Model/tokenizer/updater,
 existing admission/scorers, geometry, all historical fixtures and producer source
 commitments remain unchanged. E8 is wholly excluded from this baseline, not an
 uncontrolled optional input. Any later geometry comparison or numerical bridge

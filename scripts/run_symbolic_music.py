@@ -4,8 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
-from trinite.music_v1.corpus import generate, write_bundle, verify_bundle
-from trinite.music_v1.core import from_dict
+from symbolic_music_v1.corpus import generate, write_bundle, verify_bundle
+from symbolic_music_v1.core import from_dict
 
 
 def main():
@@ -28,7 +28,7 @@ def main():
     else:
         if not 0 <= args.row < 160:
             parser.error("row must be in 0..159")
-        from trinite.music_v1.render import wav_bytes
+        from symbolic_music_v1.render import wav_bytes
         data = wav_bytes(from_dict(generate()[args.row]["input"]["score"]))
         with args.destination.open("xb") as stream:
             stream.write(data)

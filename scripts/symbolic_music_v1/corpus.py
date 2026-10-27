@@ -20,9 +20,9 @@ GROUPINGS = (
     (8, 16, (2, 2, 2, 2)), (8, 16, (3, 3, 2)),
 )
 SOURCES = (
-    "src/trinite/__init__.py", "src/trinite/music_v1/__init__.py",
-    "src/trinite/music_v1/core.py", "src/trinite/music_v1/corpus.py",
-    "src/trinite/music_v1/oracle.py",
+    "scripts/symbolic_music_v1/__init__.py",
+    "scripts/symbolic_music_v1/core.py", "scripts/symbolic_music_v1/corpus.py",
+    "scripts/symbolic_music_v1/oracle.py",
     "scripts/run_symbolic_music.py", "docs/SYMBOLIC-MUSIC.md",
 )
 
@@ -135,7 +135,7 @@ def validate_rows(rows):
 
 
 def source_hashes(root):
-    if Path(root).resolve() != Path(__file__).resolve().parents[3]:
+    if Path(root).resolve() != Path(__file__).resolve().parents[2]:
         raise ValueError("source root must be the executing checkout")
     return {name: digest((Path(root) / name).read_bytes()) for name in SOURCES}
 

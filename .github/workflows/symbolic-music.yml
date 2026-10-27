@@ -26,11 +26,11 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Exact symbolic and isolated optional-render contracts (stdlib only)
         run: |
-          PYTHONPATH=src python -B -m unittest discover -s tests/music_v1 -v
-          PYTHONPATH=src python -O -B -m unittest discover -s tests/music_v1 -v
+          PYTHONPATH=scripts python -B -m unittest discover -s tests/music_v1 -v
+          PYTHONPATH=scripts python -O -B -m unittest discover -s tests/music_v1 -v
       - name: Fresh source-bound corpus replay, no model or training
         run: |
-          export PYTHONPATH=src
+          export PYTHONPATH=scripts
           commitment=$(python -B scripts/run_symbolic_music.py generate "$RUNNER_TEMP/music-v1")
           python -B scripts/run_symbolic_music.py verify "$RUNNER_TEMP/music-v1" --manifest-sha256 "$commitment"
           git diff --exit-code

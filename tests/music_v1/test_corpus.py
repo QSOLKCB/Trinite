@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-from trinite.music_v1.corpus import (
+from symbolic_music_v1.corpus import (
     generate, validate_rows, family_split, artifacts, write_bundle, verify_bundle,
 )
 
@@ -77,7 +77,7 @@ class CorpusTests(unittest.TestCase):
                 verify_bundle(ROOT, destination, commitment)
 
     def test_source_change_rejected(self):
-        from trinite.music_v1.corpus import SOURCES
+        from symbolic_music_v1.corpus import SOURCES
         with tempfile.TemporaryDirectory() as temporary:
             other = Path(temporary) / 'source'
             for name in SOURCES:
@@ -96,14 +96,14 @@ class CorpusTests(unittest.TestCase):
 
     def test_optional_render_not_imported_by_symbolic_path(self):
         result = subprocess.run([sys.executable, '-c',
-            'import sys; from trinite.music_v1.corpus import generate; generate(); '
+            'import sys; from symbolic_music_v1.corpus import generate; generate(); '
             'assert not any(n in sys.modules for n in '
-            '["torch", "numpy", "trinite.music_v1.render", "trinite.geometry", "trinite.training"])'],
+            '["torch", "numpy", "symbolic_music_v1.render", "trinite.geometry", "trinite.training"])'],
             capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         allowed = {'__future__', 'dataclasses', 'fractions', 'hashlib', 'json', 'pathlib', 'math', 'core', 'oracle'}
         for name in ('core.py', 'corpus.py', 'oracle.py'):
-            tree = ast.parse((ROOT / 'src/trinite/music_v1' / name).read_text())
+            tree = ast.parse((ROOT / 'scripts/symbolic_music_v1' / name).read_text())
             imports = set()
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):

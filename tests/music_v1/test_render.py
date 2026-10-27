@@ -4,8 +4,8 @@ import unittest
 import random
 import wave
 
-from trinite.music_v1.core import Event, Meter, Score, labels
-from trinite.music_v1.render import wav_bytes
+from symbolic_music_v1.core import Event, Meter, Score, labels
+from symbolic_music_v1.render import wav_bytes
 
 
 class RenderTests(unittest.TestCase):

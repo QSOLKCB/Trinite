@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError
 from fractions import Fraction as F
 import unittest
 
-from trinite.music_v1.core import Event, Meter, Score, from_dict, labels, timeline, to_dict
+from symbolic_music_v1.core import Event, Meter, Score, from_dict, labels, timeline, to_dict
 
 
 class CoreTests(unittest.TestCase):

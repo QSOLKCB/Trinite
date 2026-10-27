@@ -1,8 +1,8 @@
 import copy
 import unittest
 
-from trinite.music_v1.corpus import generate
-from trinite.music_v1.oracle import annotate
+from symbolic_music_v1.corpus import generate
+from symbolic_music_v1.oracle import annotate
 
 
 def event(a, b, pitch=60, tie_in=False, tie_out=False):
