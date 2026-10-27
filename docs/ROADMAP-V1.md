@@ -42,9 +42,12 @@ After that evidence, consider only the indicated separately frozen next step:
 3. **Arithmetic bridge only after family-held-out music success:** use a separate
    admitted, matched protocol; music memorization alone does not justify transfer.
 
-**CPU resource ledger independently:** proceed with bounded engineering
-measurement without altering native numerics or waiting for a learning claim;
-unsupported KV caching is not measured zero or permission to add a cache.
+**CPU resource ledger independently:** planning and non-model resource accounting
+need not wait for a learning claim. This pointer authorizes no model execution,
+profiling or benchmarking. Model-based measurements require a separately reviewed
+bounded scope, green exact-commit CI and explicit owner-local run authorization.
+Keep native numerics unchanged; unsupported KV caching is not measured zero or
+permission to add a cache.
 
 Finish the #85 evidence first on the learning track. These conditional directions
 are not target-run authorization or implemented experiments. Historical sources,
