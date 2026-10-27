@@ -46,3 +46,13 @@ PROVENANCE surrounds runs as an observer. It is not an extra neural layer, optim
 ## Full inspection
 
 Implemented inspection lists all named modules, tensor shapes, dtypes, parameter sharing, trainability, quantizer scales/codes, and forward-operation settings. Implemented captures select layer and absolute token positions explicitly, retaining per-token float32 states without pooling. Context/pooling analysis is future geometry work. Attention dumps are not implemented. Selecting every hidden layer is explicit and subject to the aggregate capture limit. No default unbounded retention of the autograd graph.
+
+## Prospective model-size ceiling
+
+The [8B parameter policy](MODEL-SIZE-POLICY.md) caps future native architectures
+at 8,000,000,000 unique total parameters, including frozen learned parameters
+and all experts, with genuine tied parameters counted once. It is a ceiling,
+not a scaling target or CPU feasibility claim. The current 5M constructor limit
+and smaller per-run budgets remain unchanged. The isolated prospective adapter
+requires explicit adoption; historical workflows are not silently retrofitted.
+Own-teacher distillation and quantization remain separately gated future work.
