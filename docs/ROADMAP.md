@@ -876,3 +876,18 @@ pairs, not untrained significance/answer-slot roles; those gaps stay explicit.
 Target execution remains unrun and requires review, green exact-commit CI and
 separate owner-local authorization. This does not replace preserved negative
 results, implement carry curriculum/router work or advance a learning gate.
+
+## Prospective native capacity ceiling and own-model compression
+
+The [model-size policy v1](MODEL-SIZE-POLICY.md) establishes **8,000,000,000 total
+unique parameters as a ceiling, not a goal**. Its checkout-only preflight and
+native adapter are engineering preparation; explicit adoption in new source-bound
+workflows is required. Existing 5M native limits, historical source closures,
+negative results, learning gates and diagnostic-first order remain unchanged.
+
+After demonstrated useful learning, a separately reviewed study may distill our
+own teacher (which need not reach 8B) into a smaller student, then assess a
+quantized candidate with rights/provenance, fresh held-out evaluation, safe
+artifact parity and measured CPU resources. Quantization reduces precision/bytes,
+not parameter count. No scaling, teacher/student run, download, distillation,
+new quantization implementation or release is authorized by this roadmap entry.
