@@ -143,7 +143,11 @@ research evidence. No trained model changes or Phase 5 claim.
 
 - [Prospective position study v1](POSITION-STUDY-V1.md): frozen format-matched
   coupling ablation, perturbation probes and source-bound owner-local workflow;
-  engineering tests only, target execution remains gated.
+  original pre-outcome contract; the completed owner-local run is recorded separately below.
 - [Coverage-balanced addition result](BALANCED-ADDITION-RESULT.md): all six
   completed cells, mixed/negative transfer evidence and a byte-exact partial
   public subset; no new training or replay claim.
+
+- [Position-coupling result](POSITION-STUDY-RESULT.md): all six completed cells,
+  mixed/negative transfer findings, byte-exact partial public evidence and
+  read-only metric verification; no new numerical run or replay claim.

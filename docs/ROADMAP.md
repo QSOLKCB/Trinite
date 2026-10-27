@@ -849,3 +849,19 @@ assessment of the existing coverage recipe, not a learning gate. Position
 conformance remains engineering preparation; a separate frozen format-matched
 study is the next prospective decision, not permission to run it. Earlier
 implementation-time contract statements and source closures remain unchanged.
+
+## Position coupling: retained local result — 26 October 2026 UTC
+
+The separately frozen PR #77 study has now completed its owner-authorized
+six-cell run. The [preserved mixed/negative result](POSITION-STUDY-RESULT.md)
+retains perfect training fit but does not meet its all-seed/length transfer
+criteria: unseen whole-family gains are −1, 0 and +3 out of 24, and both
+longer-number strata score zero in all cells. Public evidence is partial custody,
+not numerical replay or independent replication. Earlier prospective paragraphs
+remain historical implementation-time statements; the frozen protocol and its
+original source bindings are unchanged.
+
+This completes assessment of that frozen run, not a learning or release gate.
+A possible later investigation must separate carry transfer from positional/role
+exposure and retain matched controls; no next experiment, adaptive repair,
+router implementation or fresh confirmation is authorized by this result note.
