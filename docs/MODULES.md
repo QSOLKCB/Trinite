@@ -399,3 +399,14 @@ the frozen admission, score validator and descriptive reporting, without
 constructing models, loading checkpoints, updating parameters or claiming closed
 custody. `check_position_result.py` is a read-only checkout entrypoint requiring
 the pinned CPU imports. See [the outcome and limits](POSITION-STUDY-RESULT.md).
+
+## Prospective positional-exposure ablation
+
+`scripts/position_exposure_v1/` and `scripts/run_position_exposure.py` compose the
+unchanged original arithmetic admission, numerical updater, scorer and safe tensor
+reader into a separate twelve-cell factorial workflow. Deterministic cycle offsets
+are explicit training context; evaluation stays at zero. Static admission covers
+address/coarse-role pairs and retains detailed significance gaps. Source-bound
+requests, cursor/checkpoint identities, raw journals and partial-failure custody
+remain explicit. See [the contract](POSITION-EXPOSURE-V1.md); engineering tests
+are not target results or trained numerical replay.
