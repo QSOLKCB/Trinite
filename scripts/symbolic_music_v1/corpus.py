@@ -180,23 +180,81 @@ def write_bundle(root, destination):
 
 
 def verify_bundle(root, destination, expected_manifest_sha256):
-    """Read-only byte replay plus independently retained manifest commitment."""
-    if type(expected_manifest_sha256) is not str or len(expected_manifest_sha256) != 64:
+    """Check observed descriptor-read bytes, not immutable after-return state.
+
+    Requires POSIX no-follow descriptor primitives. Metadata rechecks detect
+    observed concurrent changes conservatively; they do not establish an atomic
+    filesystem snapshot or exclude every race against an uncooperative writer.
+    """
+    import os
+    import stat
+
+    if (type(expected_manifest_sha256) is not str
+            or len(expected_manifest_sha256) != 64
+            or any(c not in "0123456789abcdef" for c in expected_manifest_sha256)):
         raise ValueError("independent manifest SHA256 required")
+    if (os.name != "posix"
+            or not all(hasattr(os, name) for name in ("O_NOFOLLOW", "O_DIRECTORY", "O_NONBLOCK"))
+            or os.open not in os.supports_dir_fd
+            or os.stat not in os.supports_dir_fd
+            or os.stat not in os.supports_follow_symlinks
+            or os.listdir not in os.supports_fd):
+        raise ValueError("bundle verification requires POSIX no-follow descriptor primitives")
     destination = Path(destination)
     expected = artifacts(root)
-    if destination.is_symlink() or not destination.is_dir():
-        raise ValueError("bundle must be a real directory")
-    if {p.name for p in destination.iterdir()} != set(expected):
-        raise ValueError("bundle inventory mismatch")
-    for name, data in expected.items():
-        path = destination / name
-        if path.is_symlink() or not path.is_file() or path.stat().st_size != len(data):
-            raise ValueError("bundle member type/size mismatch")
-        if path.read_bytes() != data:
-            raise ValueError(f"source-bound replay mismatch: {name}")
+
+    def identity(info):
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
+                info.st_ctime_ns, info.st_mode)
+
+    directory = None
+    try:
+        directory = os.open(destination, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        directory_identity = identity(os.fstat(directory))
+        if set(os.listdir(directory)) != set(expected):
+            raise ValueError("bundle inventory mismatch")
+        observed = {}
+        for name, data in expected.items():
+            member = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                             dir_fd=directory)
+            try:
+                before = os.fstat(member)
+                if not stat.S_ISREG(before.st_mode) or before.st_size != len(data):
+                    raise ValueError("bundle member type/size mismatch")
+                # The one extra byte rejects growth without an unbounded read.
+                chunks, remaining = [], len(data) + 1
+                while remaining:
+                    chunk = os.read(member, min(65536, remaining))
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    remaining -= len(chunk)
+                if identity(os.fstat(member)) != identity(before):
+                    raise ValueError("bundle member changed during read")
+                if b"".join(chunks) != data:
+                    raise ValueError(f"source-bound replay mismatch: {name}")
+                observed[name] = identity(before)
+            finally:
+                os.close(member)
+        # Revisit *all* members, not just the last one read: an earlier member
+        # may have changed while later descriptor bytes were being observed.
+        for name, original in observed.items():
+            current = os.stat(name, dir_fd=directory, follow_symlinks=False)
+            if not stat.S_ISREG(current.st_mode) or identity(current) != original:
+                raise ValueError("bundle member changed across snapshot reads")
+        if set(os.listdir(directory)) != set(expected):
+            raise ValueError("bundle inventory changed across snapshot reads")
+        if (identity(os.fstat(directory)) != directory_identity
+                or identity(os.stat(destination, follow_symlinks=False)) != directory_identity):
+            raise ValueError("bundle directory changed across snapshot reads")
+    except OSError as error:
+        raise ValueError("bundle descriptor snapshot could not be verified") from error
+    finally:
+        if directory is not None:
+            os.close(directory)
     actual = digest(expected["manifest.json"])
     if actual != expected_manifest_sha256:
         raise ValueError("external manifest commitment mismatch")
     return {"schema": SCHEMA, "verified": True, "manifest_sha256": actual,
-            "scope": "source-bound exact corpus replay, not learning or closed custody"}
+            "scope": "source-bound exact corpus replay of observed snapshot bytes; "
+                     "not an atomic snapshot, immutable after-return state, learning or closed custody"}

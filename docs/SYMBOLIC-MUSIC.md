@@ -84,11 +84,24 @@ SHA-256, plus hashes of input-only, audit and admission bytes. Rendering is not
 part of symbolic truth and is absent from that source closure. Verification
 requires the independently retained manifest SHA-256, regenerates all expected
 bytes from current source and rejects altered labels, source, splits, inventory,
-symlinks or extra audio. It is read-only exact source/corpus replay, **not** closed
+symlinks or extra audio. The POSIX bundle reader opens the directory and each member with no-follow
+semantics, reads through those same descriptors, and rechecks descriptor and
+path metadata plus inventory before returning. Unsupported no-follow/dir-fd
+primitives fail closed. This detects observed concurrent mutation but is not an
+atomic filesystem snapshot or a lock against uncooperative writers: verified
+means the bytes observed during this call, not a guarantee that live paths stay
+unchanged afterward. Verify in an exclusively owned, quiescent directory.
+It is read-only exact source/corpus replay, **not** closed
 PROVENANCE custody, external authorship attestation or optimizer replay. Retain
 failed bundles; generate only into a fresh destination, never reseal history.
+Generation intentionally retains incomplete attempts after write failures. The
+manifest is written last; a directory is not a complete bundle until full replay
+succeeds against the retained commitment. Concurrent readers must not treat
+directory existence as publication. An interrupted attempt is never overwritten
+or silently cleaned up; retry at a fresh destination. This explicit
+failure-retention contract takes precedence over transparent same-path retries.
 
-## Usage (checkout root, Python 3.11+)
+## Usage (checkout root, Python 3.11+; POSIX for bundle verification)
 
 ```sh
 PYTHONPATH=scripts python -B -m unittest discover -s tests/music_v1 -v

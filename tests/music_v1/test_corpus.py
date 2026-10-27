@@ -2,11 +2,13 @@ import ast
 from copy import deepcopy
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from symbolic_music_v1.corpus import (
     generate, validate_rows, family_split, artifacts, write_bundle, verify_bundle,
@@ -76,7 +78,33 @@ class CorpusTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verify_bundle(ROOT, destination, commitment)
 
-    def test_source_change_rejected(self):
+    def test_interrupted_generation_retains_incomplete_attempt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / 'attempt'
+            original = Path.open
+            written = 0
+
+            def fail_third(path, *args, **kwargs):
+                nonlocal written
+                if path.parent == destination and args == ('xb',):
+                    written += 1
+                    if written == 3:
+                        raise OSError('injected write failure')
+                return original(path, *args, **kwargs)
+
+            with patch.object(Path, 'open', fail_third):
+                with self.assertRaises(OSError):
+                    write_bundle(ROOT, destination)
+            self.assertTrue(destination.is_dir())
+            self.assertEqual(len(list(destination.iterdir())), 2)
+            self.assertFalse((destination / 'manifest.json').exists())
+            with self.assertRaises(ValueError):
+                verify_bundle(ROOT, destination, '0' * 64)
+            with self.assertRaises(FileExistsError):
+                write_bundle(ROOT, destination)
+            write_bundle(ROOT, Path(temporary) / 'fresh-attempt')
+
+    def test_foreign_source_root_rejected(self):
         from symbolic_music_v1.corpus import SOURCES
         with tempfile.TemporaryDirectory() as temporary:
             other = Path(temporary) / 'source'
@@ -94,6 +122,32 @@ class CorpusTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verify_bundle(other, destination, commitment)
 
+    def test_changed_executing_source_rejected(self):
+        from symbolic_music_v1.corpus import SOURCES
+        with tempfile.TemporaryDirectory() as temporary:
+            other = Path(temporary) / 'source'
+            for name in SOURCES:
+                target = other / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((ROOT / name).read_bytes())
+            destination = Path(temporary) / 'corpus'
+            commitment = write_bundle(ROOT, destination)
+            command = [sys.executable, '-B', str(other / 'scripts/run_symbolic_music.py'),
+                       'verify', str(destination), '--manifest-sha256', commitment]
+            env = dict(os.environ, PYTHONPATH=str(other / 'scripts'))
+            # This interpreter actually imports and executes the copied source.
+            result = subprocess.run(command, cwd=other, env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for name in ('scripts/symbolic_music_v1/core.py', 'docs/SYMBOLIC-MUSIC.md'):
+                path = other / name
+                original = path.read_bytes()
+                path.write_bytes(original + b'\n# source identity changed\n')
+                result = subprocess.run(command, cwd=other, env=env, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('source-bound replay mismatch', result.stderr)
+                self.assertNotIn('source root must be the executing checkout', result.stderr)
+                path.write_bytes(original)
+
     def test_optional_render_not_imported_by_symbolic_path(self):
         result = subprocess.run([sys.executable, '-c',
             'import sys; from symbolic_music_v1.corpus import generate; generate(); '
@@ -101,7 +155,7 @@ class CorpusTests(unittest.TestCase):
             '["torch", "numpy", "symbolic_music_v1.render", "trinite.geometry", "trinite.training"])'],
             capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
-        allowed = {'__future__', 'dataclasses', 'fractions', 'hashlib', 'json', 'pathlib', 'math', 'core', 'oracle'}
+        allowed = {'__future__', 'dataclasses', 'fractions', 'hashlib', 'json', 'pathlib', 'math', 'os', 'stat', 'core', 'oracle'}
         for name in ('core.py', 'corpus.py', 'oracle.py'):
             tree = ast.parse((ROOT / 'scripts/symbolic_music_v1' / name).read_text())
             imports = set()
