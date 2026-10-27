@@ -410,3 +410,8 @@ address/coarse-role pairs and retains detailed significance gaps. Source-bound
 requests, cursor/checkpoint identities, raw journals and partial-failure custody
 remain explicit. See [the contract](POSITION-EXPOSURE-V1.md); engineering tests
 are not target results or trained numerical replay.
+
+
+## Positional-exposure result preservation
+
+`scripts/position_exposure_result_v1/` and `scripts/check_position_exposure_result.py` verify the [negative twelve-cell public subset](POSITION-EXPOSURE-RESULT.md) read-only, reusing authoritative admission/scoring/exposure/reporting and prior public-result checks. They do not construct models, load checkpoints or run training/generation. Historical study and result modules remain unchanged.

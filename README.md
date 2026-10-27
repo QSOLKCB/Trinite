@@ -36,8 +36,10 @@ The later [seed-0 native diagnostic](docs/UNSEEN-NEGATIVE-RESULT.md) fit all 264
 The [position-coupling study](docs/POSITION-STUDY-RESULT.md) retained perfect training fit in all six cells, but did not meet its frozen transfer criteria: unseen whole-family gains varied by seed and both longer-number strata failed. The mixed/negative development result is preserved without changing the protocol.
 
 A separate [CPU positional-exposure ablation](docs/POSITION-EXPOSURE-V1.md) now
-implements matched fixed/balanced-offset controls. Its target run is unperformed;
-coarse address/role coverage does not supply unseen arithmetic significances.
+preserves a [negative twelve-cell result](docs/POSITION-EXPOSURE-RESULT.md):
+balanced offsets reduced offset-zero training fit and unseen performance at the
+fixed budget. All four frozen contrasts failed; coarse address/role coverage
+did not supply unseen arithmetic significances.
 
 The [four-cell procedural-QEC v3 study](docs/PROCEDURAL-QEC-V3-NEGATIVE-RESULT.md) also failed its training gate; complete replay and archival checks passed, while historical control ordering was not preserved.
 
