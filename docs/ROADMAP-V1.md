@@ -7,6 +7,52 @@ Integrated and extended on 26 October 2026 at the owner's request.
 
 **Baseline:** immutable [v0.4.0](https://github.com/QSOLKCB/Trinite/releases/tag/v0.4.0), commit `be4ac55b79f88be3c1a6052d5bc61f1d31be1f4a`.
 
+## Current-status pointer — 27 October 2026
+
+This pointer supersedes the older “next” ordering below, not frozen contracts or
+implementation-time statements. Retain those sections as research chronology.
+
+- **Arithmetic evidence:** the [coverage result](BALANCED-ADDITION-RESULT.md),
+  [position-study result](POSITION-STUDY-RESULT.md) and
+  [positional-exposure result](POSITION-EXPOSURE-RESULT.md) are preserved negative
+  or mixed development outcomes, not pending recipes or demonstrated transfer fixes.
+- **Music evidence:** [PR #83](https://github.com/QSOLKCB/Trinite/pull/83) preserves
+  the [negative training-fit pilot](MUSIC-LEARNING-RESULT.md): both seeds scored
+  0/480 train answer-plus-EOS, and all 3,840 retained predictions reached the
+  generation cap without EOS. Its public subset is partial custody, not optimizer
+  replay; it does not refute eventual music learning.
+- **Size policy:** merged [PR #84](https://github.com/QSOLKCB/Trinite/pull/84)
+  supplies a prospective [8B ceiling](MODEL-SIZE-POLICY.md), not a size goal or
+  CPU-feasibility claim. Explicit adoption is required in new workflows; the
+  existing 5M native constructor ceiling and stricter run budgets are unchanged.
+- **Next evidence:** merged [PR #85](https://github.com/QSOLKCB/Trinite/pull/85)
+  implements the [train-only one/four-example diagnostic](MUSIC-OVERFIT.md).
+  Owner-local target evidence is still pending. First verify review and green CI
+  for the exact merged commit, then obtain separate explicit owner-local run
+  authorization; retain every fixed cell, failure and independently bound receipt.
+  Implementation and conformance are not training-fit results.
+
+After that evidence, consider only the indicated separately frozen next step:
+
+1. **Target-loss intervention only if justified:** weak first-answer or EOS
+   diagnostics may motivate one controlled loss experiment, not automatic reweighting,
+   budget growth, checkpoint selection or a change to the frozen #85 producer.
+2. **Musical contrast only after training fit:** then test input-sensitive musical
+   distinctions against declared trivial controls and whole-family holdouts.
+3. **Arithmetic bridge only after family-held-out music success:** use a separate
+   admitted, matched protocol; music memorization alone does not justify transfer.
+
+**CPU resource ledger independently:** planning and non-model resource accounting
+need not wait for a learning claim. This pointer authorizes no model execution,
+profiling or benchmarking. Model-based measurements require a separately reviewed
+bounded scope, green exact-commit CI and explicit owner-local run authorization.
+Keep native numerics unchanged; unsupported KV caching is not measured zero or
+permission to add a cache.
+
+Finish the #85 evidence first on the learning track. These conditional directions
+are not target-run authorization or implemented experiments. Historical sources,
+fixtures, negatives and learning/Phase 5/release gates remain unchanged.
+
 ## Latest evidence — 26 October 2026
 
 The authorized coverage-balanced run is now complete and its
