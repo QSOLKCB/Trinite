@@ -33,6 +33,8 @@ The first 27-cell dense/ternary/four-state comparison recorded **0% held-out com
 
 The later [seed-0 native diagnostic](docs/UNSEEN-NEGATIVE-RESULT.md) fit all 264 training rows but scored **0/64 validation and 0/64 test complete answers**. The exact public row subset and [coverage diagnostic](docs/COVERAGE-DIAGNOSTIC.md) preserve this historical, exploratory generalisation failure; it is not a fresh confirmation study.
 
+The [position-coupling study](docs/POSITION-STUDY-RESULT.md) retained perfect training fit in all six cells, but did not meet its frozen transfer criteria: unseen whole-family gains varied by seed and both longer-number strata failed. The mixed/negative development result is preserved without changing the protocol.
+
 The [four-cell procedural-QEC v3 study](docs/PROCEDURAL-QEC-V3-NEGATIVE-RESULT.md) also failed its training gate; complete replay and archival checks passed, while historical control ordering was not preserved.
 
 Phase 4's initial item-versus-carrier geometry contrasts were negative. The E8/ETQ parity checks prove exact finite-payload agreement, and the activation-to-lattice experiment is **retrospective and training-exposed**—neither demonstrates learned geometric reasoning. **Geometry loss remains zero.** See the [roadmap](docs/ROADMAP.md), [Phase 4 limitations](docs/PHASE-4.md) and [initial milestone notes](docs/RELEASE-NOTES-v0.1.0.md) for the complete status.

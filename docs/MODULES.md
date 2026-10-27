@@ -390,3 +390,12 @@ admission, score checking and descriptive maps; it does not load checkpoints,
 construct models, update parameters or claim closed custody. The checker uses
 the pinned CPU dependencies because authoritative inspection imports Torch.
 See [the outcome and verification limits](BALANCED-ADDITION-RESULT.md).
+
+## Partial position-study result verification
+
+`scripts/position_result_v1/` authenticates the selected original public-data
+records and the separately pinned derivative source-binding receipt. It reuses
+the frozen admission, score validator and descriptive reporting, without
+constructing models, loading checkpoints, updating parameters or claiming closed
+custody. `check_position_result.py` is a read-only checkout entrypoint requiring
+the pinned CPU imports. See [the outcome and limits](POSITION-STUDY-RESULT.md).
