@@ -19,6 +19,7 @@ jobs:
         python: ['3.11', '3.12', '3.13']
     env:
       PYTHONPATH: src:scripts
+      PYTHONDONTWRITEBYTECODE: '1'
       OMP_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
       OPENBLAS_NUM_THREADS: '1'
