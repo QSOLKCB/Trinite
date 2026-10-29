@@ -46,8 +46,13 @@ def original_source(path):
         env.update(GIT_NO_REPLACE_OBJECTS='1', GIT_CONFIG_NOSYSTEM='1',
                    GIT_CONFIG_GLOBAL=os.devnull)
         return subprocess.check_output(
-            ['git', '--no-replace-objects', '-c', 'core.fsmonitor=false', '-C', str(root), *args],
+            ['git', '--no-replace-objects', '--work-tree=' + str(root),
+             '-c', 'core.fsmonitor=false', '-C', str(root), *args],
             env=env, timeout=30, stderr=subprocess.PIPE).decode().strip()
+    # Repository-local core.worktree must never redirect cleanliness checks
+    # away from the exact directory whose source bytes will be imported.
+    if git('rev-parse', '--show-toplevel') != str(root):
+        raise ValueError('original producer effective worktree differs')
     if (git('rev-parse', 'HEAD') != ORIGINAL_COMMIT
             or git('rev-parse', 'HEAD^{tree}') != ORIGINAL_TREE
             or git('status', '--porcelain', '--untracked-files=all')):

@@ -1,5 +1,6 @@
 """Controller failure doubles; never evidence of original-checkpoint admission."""
 from argparse import Namespace
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -183,6 +184,51 @@ class ControllerFailureDoubles(unittest.TestCase):
                     w.audit(self.args)
                 if old is None: path.unlink()
                 else: path.write_bytes(old)
+
+    def test_relative_inputs_reach_actual_child_as_caller_anchored_paths(self):
+        # Real bounded subprocess, intentionally synthetic worker, no custody claim.
+        checkout = self.root / 'worker-checkout'
+        package = checkout / 'scripts/frozen_music_eval_v1'
+        package.mkdir(parents=True)
+        (package / 'worker.py').write_text(
+            "import json, os, sys\n"
+            "print(json.dumps({'cwd':os.getcwd(),'argv':sys.argv[1:]}))\n")
+        old_cwd = Path.cwd()
+        try:
+            os.chdir(self.root)
+            self.args.original_source = 'original-source'
+            self.args.original_run = './original-run'
+            with patch.object(w, 'ROOT', checkout):
+                relative_log = self.root / 'relative.log'
+                w.launch('inspect', self.args, relative_log)
+                self.args.original_source = str(self.source)
+                self.args.original_run = str(self.original)
+                absolute_log = self.root / 'absolute.log'
+                w.launch('inspect', self.args, absolute_log)
+            self.assertEqual(relative_log.read_bytes(), absolute_log.read_bytes())
+            import json
+            received = json.loads(relative_log.read_bytes())
+            self.assertEqual(received['cwd'], str(checkout))
+            argv = received['argv']
+            self.assertEqual(argv[argv.index('--original-source') + 1], str(self.source))
+            self.assertEqual(argv[argv.index('--original-run') + 1], str(self.original))
+            self.assertEqual(argv[argv.index('--original-request-identity') + 1],
+                             self.args.original_request_identity)
+            self.assertEqual(argv[argv.index('--original-matrix-identity') + 1],
+                             self.args.original_matrix_identity)
+        finally:
+            os.chdir(old_cwd)
+
+    def test_path_normalization_does_not_resolve_away_symlinks(self):
+        alias = self.root / 'alias'; alias.symlink_to(self.source, target_is_directory=True)
+        self.args.original_source = str(alias)
+        args = w.original_args(self.args)
+        self.assertEqual(args[args.index('--original-source') + 1], str(alias))
+        # A leaf alias remains visible for the worker's lstat check; linked
+        # ancestors are already rejected by the common safe-path contract.
+        self.args.original_source = str(alias / 'child')
+        with self.assertRaisesRegex(ValueError, 'non-link'):
+            w.original_args(self.args)
 
     def test_original_binding_args_are_mandatory(self):
         self.args.original_matrix_identity = None

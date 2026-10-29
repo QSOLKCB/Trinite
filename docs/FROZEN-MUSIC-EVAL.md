@@ -42,7 +42,9 @@ validated as retained structure, never installed into an optimizer. Only native
 model tensors are restored for inference. No pickle or unsafe loading fallback
 is available. Source caches, executable shadows and unsafe paths fail admission. Git
 replacement objects and ambient Git selectors cannot redirect the pinned
-source checks.
+source checks. Git queries explicitly use the same validated worktree that
+will supply imports; repository-local worktree redirection cannot hide extra
+runtime files.
 
 Keep the original run read-only and quiescent. Before/after inventories detect
 observed changes, not hostile concurrent-writer attacks. Do not overwrite,
@@ -122,6 +124,13 @@ Review and green CI for the exact evaluation commit precede separately explicit
 owner-local inference authorization. Implementation and conformance do not
 constitute that authorization. Use the hash-locked CPU environment and fixed
 launcher `python -I -B scripts/run_frozen_music_eval.py`:
+
+The entrypoint rejects missing isolation/bytecode guards before filesystem or
+project imports. Always supply `-I -B`: a script-level guard cannot undo Python
+startup or site code already executed by an interpreter launched without `-I`.
+Relative original-source/run paths are anchored to the caller's working
+directory before worker launch; normalization does not follow symlink aliases.
+Identity arguments remain unchanged.
 
 - `preflight`: regenerate the finite inventory and evaluation contract without
   loading target checkpoints or executing a model.

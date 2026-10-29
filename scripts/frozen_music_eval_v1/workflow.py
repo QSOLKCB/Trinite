@@ -22,6 +22,10 @@ def original_args(args):
         value = getattr(args, name, None)
         if not value:
             raise ValueError('original producer/run and independent identities required')
+        # Resolve filesystem arguments in the caller's cwd, not the worker's
+        # fixed checkout cwd. Do not follow a symlink into an unchecked alias.
+        if name in ('original_source', 'original_run'):
+            value = safe_path(value)
         result.extend(['--' + name.replace('_', '-'), str(value)])
     return result
 

@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,38 @@ class Boundaries(unittest.TestCase):
                 capture_output=True, timeout=30)
             self.assertNotEqual(result.returncode, 0, arguments)
             self.assertIn(b'error:', result.stderr)
+
+    def test_launcher_rejects_missing_flags_before_imports_or_cache_writes(self):
+        # A disposable copy also makes the pre-fix failure safe to reproduce:
+        # the old missing-B entrypoint writes caches only inside this directory.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkout = root / 'checkout'; checkout.mkdir()
+            for name in ('src', 'scripts'):
+                shutil.copytree(a.ROOT / name, checkout / name,
+                                ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '*.pyo'))
+            ambient = root / 'ambient'; ambient.mkdir()
+            sentinel = ambient / 'sentinel-executed'
+            (ambient / 'pathlib.py').write_text(
+                "open(" + repr(str(sentinel)) + ", 'w').write('benign sentinel')\n"
+                "raise RuntimeError('BENIGN_AMBIENT_PATHLIB_EXECUTED')\n")
+            env = dict(os.environ, PYTHONPATH=str(ambient))
+            env.pop('PYTHONDONTWRITEBYTECODE', None)
+            launcher = checkout / 'scripts/run_frozen_music_eval.py'
+            for flags in (('-I',), ('-B',), ()):
+                result = subprocess.run([sys.executable, *flags, str(launcher), 'preflight'],
+                    env=env, cwd=root, capture_output=True, timeout=30)
+                with self.subTest(flags=flags):
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(b'Use python -I -B', result.stderr)
+                    self.assertNotIn(b'BENIGN_AMBIENT_PATHLIB_EXECUTED', result.stderr)
+                    self.assertFalse(sentinel.exists())
+                    self.assertFalse(list(checkout.rglob('__pycache__')))
+            result = subprocess.run([sys.executable, '-I', '-B', str(launcher), 'preflight'],
+                env=env, cwd=root, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertFalse(sentinel.exists())
+            self.assertFalse(list(checkout.rglob('__pycache__')))
 
     def test_safe_reads_no_links_noncanonical_json_or_overwrites(self):
         with tempfile.TemporaryDirectory() as directory:

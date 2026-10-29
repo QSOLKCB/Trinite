@@ -5,6 +5,8 @@ import random
 import hashlib
 import os
 import subprocess
+import shutil
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -144,7 +146,8 @@ class FrozenInference(unittest.TestCase):
             expected = b'original\n'
             blob = hashlib.sha1(b'blob '+str(len(expected)).encode()+b'\0'+expected).hexdigest()
             def git(argv, **kwargs):
-                command = argv[6:]
+                command = argv[7:]
+                if command == ['rev-parse','--show-toplevel']: return str(root).encode()
                 if command == ['rev-parse','HEAD']: return ORIGINAL_COMMIT.encode()
                 if command == ['rev-parse','HEAD^{tree}']: return ORIGINAL_TREE.encode()
                 if command[0] in ('status','ls-files'): return b''
@@ -162,7 +165,8 @@ class FrozenInference(unittest.TestCase):
             (root/'src').mkdir(); (root/'scripts').mkdir()
             (root/'src/hidden.pyc').write_bytes(b'not executable')
             def git(argv, **kwargs):
-                command = argv[6:]
+                command = argv[7:]
+                if command == ['rev-parse','--show-toplevel']: return str(root).encode()
                 if command == ['rev-parse','HEAD']: return ORIGINAL_COMMIT.encode()
                 if command == ['rev-parse','HEAD^{tree}']: return ORIGINAL_TREE.encode()
                 if command[0] == 'status': return b''
@@ -205,6 +209,60 @@ class FrozenInference(unittest.TestCase):
                 with patch('trinite.model.Decoder',side_effect=AssertionError('model construction forbidden')):
                     with self.assertRaisesRegex(ValueError,'exact original|bytes differ'):
                         original_source(root)
+
+    def test_core_worktree_redirect_cannot_hide_native_import_shadows(self):
+        import frozen_music_eval_v1.worker as worker
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory); root = base/'original'; root.mkdir()
+            mirror = base/'clean-mirror'
+            env = {k:v for k,v in os.environ.items() if not k.startswith('GIT_')}
+            env.update(GIT_CONFIG_NOSYSTEM='1',GIT_CONFIG_GLOBAL=os.devnull,
+                       PYTHONDONTWRITEBYTECODE='1')
+            def git(*args):
+                return subprocess.check_output(['git','-C',str(root),*args],
+                    env=env,stderr=subprocess.PIPE).decode().strip()
+            git('init'); git('config','user.name','Conformance')
+            git('config','user.email','conformance@example.invalid')
+            (root/'src').mkdir(); (root/'scripts').mkdir()
+            (root/'src/marker.py').write_text('original = True\n')
+            (root/'scripts/marker.py').write_text('original = True\n')
+            git('add','.'); git('commit','-m','original')
+            commit=git('rev-parse','HEAD'); tree=git('rev-parse','HEAD^{tree}')
+            shutil.copytree(root,mirror,ignore=shutil.ignore_patterns('.git'))
+            git('config','core.worktree',str(mirror))
+            self.assertEqual(git('rev-parse','--show-toplevel'),str(mirror))
+            with patch.object(worker,'ORIGINAL_COMMIT',commit),patch.object(worker,'ORIGINAL_TREE',tree):
+                # A clean actual root remains admissible despite irrelevant config.
+                self.assertEqual(original_source(root),root)
+                for ignored in (False,True):
+                    with self.subTest(ignored=ignored):
+                        sentinel=base/'SENTINEL_EXECUTED'
+                        shadow=root/'src/torch.py'
+                        shadow.write_text('from pathlib import Path\nPath('+repr(str(sentinel))+').touch()\n'
+                                          'raise RuntimeError("shadow imported")\n')
+                        (root/'.git/info/exclude').write_text('src/torch.py\n' if ignored else '')
+                        # Unpinned Git sees a clean mirror in both cases.
+                        self.assertEqual(git('status','--porcelain','--untracked-files=all'),'')
+                        code = """import sys
+sys.path.insert(0,sys.argv[1])
+from frozen_music_eval_v1 import worker
+worker.ORIGINAL_COMMIT=sys.argv[3]; worker.ORIGINAL_TREE=sys.argv[4]
+try:
+    worker.inspect_original(sys.argv[2],sys.argv[5], 'sha256:'+'0'*64,'sha256:'+'1'*64)
+except ValueError as error:
+    assert 'exact original' in str(error) or 'ignored original' in str(error), str(error)
+    assert 'torch' not in sys.modules
+    print('rejected-before-native-import')
+else:
+    raise AssertionError('redirected worktree admitted shadow')
+"""
+                        result=subprocess.run([sys.executable,'-I','-B','-c',code,
+                            str(Path(worker.__file__).resolve().parents[1]),str(root),commit,tree,
+                            str(base/'no-run-input')],env=env,capture_output=True,text=True,timeout=30)
+                        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                        self.assertEqual(result.stdout.strip(),'rejected-before-native-import')
+                        self.assertFalse(sentinel.exists())
+                        shadow.unlink()
 
     def test_original_source_leaf_symlink_rejected_before_git(self):
         with tempfile.TemporaryDirectory() as directory:
