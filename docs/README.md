@@ -27,6 +27,7 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [Addition-first development experiment](ADDITION-DEVELOPMENT.md) | Matched coverage schedules, original six-cell producer contract and retained audit; later next-step status in ROADMAP-V1 |
 | [Frozen addition all-token diagnostic](FROZEN-TOKEN-DIAGNOSTIC.md) | Source-bound gold-prefix observations, preserved raw scores, no retraining or target diagnostic result |
 | [Frozen addition failure map](FAILURE-MAP.md) | All 338 admitted inputs across six frozen models; seen anchors, raw replay, failure categories and correctness/consistency kept distinct |
+| [Memory traffic accounting](MEMORY-TRAFFIC.md) | Native tensor observations and separately labelled analytic weight/activation/cache costs; no cache backend |
 | [Compute/KV harness proposal](COMPUTE-KV-HARNESS-PROPOSAL.md) | Uncached resource instrumentation followed by separately gated cached inference |
 | [Research update, 26 October](research/UPDATE-2026-10-26.md) | Later research candidates and source-pinned shrek_GPT lessons |
 | [Research assessment, 22 October](research/ASSESSMENT-2026-10-22.md) | Dated supporting rationale and original source/rights limitations |
