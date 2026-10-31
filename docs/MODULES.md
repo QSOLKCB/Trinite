@@ -415,3 +415,13 @@ are not target results or trained numerical replay.
 ## Positional-exposure result preservation
 
 `scripts/position_exposure_result_v1/` and `scripts/check_position_exposure_result.py` verify the [negative twelve-cell public subset](POSITION-EXPOSURE-RESULT.md) read-only, reusing authoritative admission/scoring/exposure/reporting and prior public-result checks. They do not construct models, load checkpoints or run training/generation. Historical study and result modules remain unchanged.
+
+
+## Memory traffic accounting v1
+
+`scripts/memory_traffic_v1/` owns integer-only, source-bound shape accounting and
+an opt-in metadata observer around the unchanged native CPU forward. It does
+not import training, load checkpoints, implement cache attention or change the
+historical CPU ledger. The standard-library CLI imports no numerical backend;
+the separate native adapter requires one explicitly supplied eval/no-grad model.
+See [memory accounting](MEMORY-TRAFFIC.md) for scope and counting conventions.
