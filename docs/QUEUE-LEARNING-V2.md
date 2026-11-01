@@ -1,15 +1,16 @@
 # Queue-learning v2: proposed bounded fit-first pilot
 
-**Preregistered preparation, not execution authorization.** The
+**Implementation for review, not execution authorization.** The
 [diagnosis](QUEUE-EOS-DIAGNOSIS-V2.md) found no demonstrated numerical defect.
-The implementation adds detached diagnostics, deterministic contracts and exact
-proposal/data functions under `scripts/queue_learning_v2/`. There is deliberately
-no v2 scientific run command. The plans and fit subset are prepared; optimizer
-steps have not been executed. The v1 controller cannot execute this proposal.
-Before any future execution, a reviewed v2 controller must enforce this contract,
-including the resource limits and new source-bound admission/freeze; it must not
-reuse v1 approval, schema or receipts. Any source change needs a new green merge,
-feasibility and freeze before approval. Preparation CI cannot launch this study.
+PR #114 retained the proposal, diagnostics and exact data recipe; those evidence
+files remain unchanged. The separately source-bound v2 controller now implements
+this contract through `scripts/run_queue_learning_v2.py`. Its engineering tests
+use mocked numerical updates and harmless subprocesses, not a new scientific
+optimizer experiment. The v1 controller/approval cannot execute this study.
+After a reviewed green merge of this implementation, obtain fresh supervised
+feasibility, freeze and explicit owner approval of that exact freeze. Any source,
+data or runtime change requires fresh receipts and approval. CI cannot launch
+this study; original v1 producers, fixtures and negative results stay unchanged.
 
 ## Rationale and exact changes
 
@@ -175,3 +176,115 @@ runtime requires a new receipt, freeze and explicit approval, not edited pins.
 
 TOMBSTONE-derived learning needs its own task definition, admission, baselines,
 family split, evaluation protocol and authorization in a separate follow-on.
+
+
+## Implemented controller and operator boundary
+
+Affected requirements: TRI-I02/I03/I07/I08/I11/I12/I13/I14. This is a new v2
+execution schema, not a migration of v1 authorization or evidence. The preserved
+`protocol.PROTOCOL` remains the non-executable proposal; `spec.PROTOCOL` is the
+source-bound executable contract whose admission still requires exact approval.
+The complete native updater, decoder and closed safe tensor reader are reused;
+no alternative numerical implementation or dependency change is introduced.
+
+The fixed launcher applies the 4 GiB address-space rlimit before native imports.
+An outer Linux supervisor covers the whole study, including admission, baseline
+construction, commitment and scoring. Inner supervisors cover each sequential
+worker and checkpoint validation, charging a main cell's wait for the other cell
+against its 900-second lifecycle. An atomic update marker and per-step journal
+allow the parent to terminate an update that hangs past 120 seconds. Fit/main
+updates and targets are statically reserved; failed cells never replenish them.
+An exclusive run claim and per-attempt claims beside the independently retained
+preparation anchors prevent repeating a consumed freeze in a new output folder.
+Do not remove or copy these claims to manufacture another attempt.
+
+The supervisor monitors transitive descendants, including new sessions, adopts
+orphans, kills outstanding processes and reaps them before sealing the final
+inventory. Receipts retain bounded stdout/stderr, sampled per-process/tree RSS,
+kernel child high-water RSS and cumulative reaped CPU usage. **RSS is sampled**,
+not a kernel-enforced allocation ceiling or proof that no transient aggregate
+peak occurred. AS is a hard inherited per-process limit. `/proc` inspection
+failure is terminal. The fixed workers are cooperative trusted code; the parent
+marker prevents accidental unsupervised internal CLI use, not hostile same-user
+execution or kernel-level attestation. These are process-tree, not host limits.
+
+Final fit acceptance independently safe-restores the bound step-128 checkpoint
+and regenerates all eight canonical decimal+EOS outputs, rather than trusting a
+boolean. Each main worker revalidates the fit certificate and starts a fresh
+native state. Any failed worker, invalid checkpoint, fit miss or reached budget
+stops subsequent work. Stops before the scoring phase do not access fresh
+held-out targets; failures during scoring retain partial scores and never
+resume. All 640 planned method/episode cells remain in `predictions.json`, including
+partial raw outputs, timeout/failure and not-attempted statuses. Unscored exact
+counts are explicitly unknown, never invented zero errors. Successful scoring
+still uses the unchanged complete two-anchor public barrier before private reads.
+
+Successful scoring retains the unchanged v1 gate's raw `scores/summary.json`
+for audit and writes a separately versioned `scores/summary-v2.json`, also used
+in `run.json.summary`. The v2 reporting adapter maps every rational metric with
+a zero denominator to `null` (including numeric exact-match when no numeric
+outputs exist), without changing counts, coverage, nonzero-denominator rational
+values or historical v1 results. Verification independently recomputes the raw
+v1 aggregation and then checks the normalized v2 summary and run record.
+
+### Post-merge commands (not permission to execute)
+
+Use the hash-locked CPU environment and build both pinned Rust crates offline.
+Use a clean checkout of the actual reviewed green main SHA, and fresh disjoint
+artifact directories outside it. The feasibility command performs three
+engineering forward/backward/clip measurements, **zero optimizer steps**, a
+worst-context diagnostic/inference envelope and IO timing:
+
+```sh
+python -I -B scripts/run_queue_learning_v2.py feasibility --out /absolute/new/feasibility
+python -I -B scripts/run_queue_learning_v2.py freeze \
+  --feasibility /absolute/new/feasibility/supervised-feasibility.json \
+  --feasibility-sha "$FEASIBILITY_SHA" --out /absolute/new/frozen \
+  --anchors /absolute/separate/preparation-anchors.json
+```
+
+Only `supervised-feasibility.json`, sealed after successful resource supervision
+and reaping, is usable; the inner `feasibility.json` is not an admission receipt.
+Retain the printed SHA independently. Retain freeze and preparation SHA anchors
+outside the checkout and **stop for the owner's approval of that exact freeze**.
+Local JSON cannot prove human authorship, review, green remote CI or chronology.
+The canonical declaration (sorted keys, compact separators, final newline) is:
+
+```json
+{"approved_by":"Trent Slade","authorization":"execute queue-learning-v2 fit seed 17 once; only after final 8/8 at step 128, main seeds 17 and 29 once at step 256","freeze_sha256":"<FREEZE_SHA>","implementation_commit":"<reviewed merged green main SHA>","reviewed_merged_green":true,"schema":"trinite.queue-learning-owner-approval.v2"}
+```
+
+Only after that explicit approval:
+
+```sh
+python -I -B scripts/run_queue_learning_v2.py run \
+  --frozen /absolute/new/frozen --freeze-sha "$FREEZE_SHA" \
+  --anchors /absolute/separate/preparation-anchors.json --anchors-sha "$PREPARATION_SHA" \
+  --approval /absolute/separate/owner-approval.json \
+  --out /absolute/new/run --run-anchors /absolute/separate/run-anchors
+python -I -B scripts/run_queue_learning_v2.py verify \
+  --frozen /absolute/new/frozen --freeze-sha "$FREEZE_SHA" \
+  --anchors /absolute/separate/preparation-anchors.json --anchors-sha "$PREPARATION_SHA" \
+  --run /absolute/new/run --run-anchors /absolute/separate/run-anchors --run-sha "$RUN_SHA"
+```
+
+The externally retained final `RUN_SHA` binds `final-inventory.json`, including
+the outer supervision receipt, every retained partial artifact and inner run
+record. `verify` is read-only custody, source/checkpoint structure and gate
+verification, **not optimizer replay**. It does not turn a stopped/incomplete
+study into successful execution or establish learning adequacy. Retain the
+complete source checkout, dependency locks, Rust builds, feasibility, frozen
+inputs, owner approval, claims, both anchor sets and all failures. Do not reseal
+historical evidence or reuse a foreign-environment checkpoint as training state.
+
+Engineering conformance:
+
+```sh
+PYTHONPATH=src:scripts python -B -m unittest discover -s tests/queue_learning_v2 -v
+PYTHONPATH=src:scripts python -O -B -m unittest discover -s tests/queue_learning_v2 -v
+```
+
+The mocked 128/256 counter transitions in these tests are not native optimizer
+steps, learning measurements or feasibility approval. Real subprocess tests
+exercise bounded output, deadlines, RSS rejection, closed pipes, orphan cleanup
+and reaping. Existing diagnostic/native/evaluator suites remain required too.
