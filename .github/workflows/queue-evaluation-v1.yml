@@ -1,0 +1,42 @@
+name: Queue evaluation v1 conformance
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: queue-evaluator-v1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  rust-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: external/queue-evaluator-v1
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install explicit official Rust toolchain
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal --component rustfmt --component clippy
+          rustc --version --verbose
+          cargo --version
+      - name: Offline locked conformance (local queue dependency only)
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --offline --locked --all-targets -- -D warnings
+          cargo test --offline --locked
+          cargo test --offline --locked --release
+          cargo build --offline --locked --release
+      - name: Build unchanged queue for observation parity
+        working-directory: external/queue-sim-v1
+        run: cargo build --offline --locked --release
+      - name: Two-anchor controller conformance (normal and optimized Python)
+        working-directory: .
+        run: |
+          python3 -I -B -m unittest discover -s tests/queue_evaluation_v1 -v
+          python3 -I -B -O -m unittest discover -s tests/queue_evaluation_v1 -v
