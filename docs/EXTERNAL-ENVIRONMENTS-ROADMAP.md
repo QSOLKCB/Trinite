@@ -8,7 +8,8 @@ The paired [qutrit decoder and noisy-syndrome sensor](QUTRIT-MODULES-V1.md) merg
 in [PR #108](https://github.com/QSOLKCB/Trinite/pull/108). A separate bounded
 [generic sensor environment](SENSOR-NETWORK-V1.md) merged in
 [PR #109](https://github.com/QSOLKCB/Trinite/pull/109). The
-[music-event environment](MUSIC-EVENTS-V1.md) is implemented for review. Modules are built first; training
+[music-event environment](MUSIC-EVENTS-V1.md) merged in
+[PR #110](https://github.com/QSOLKCB/Trinite/pull/110). Modules are built first; training
 comes later under separate protocols. None establishes a Trinite learning
 improvement or cross-domain transfer.
 
@@ -45,7 +46,7 @@ evidence score is undefined, not neutral.
 | 2 — Queue simulation | Merged #106: bounded FIFO arrivals, finite buffer, service capacity, delays/outages, masked integer prefix observations and separate privileged wait/overflow accounting. No learner or ternary projection yet. | Independent event/accounting oracle; unseen arrival and service families; distinguish unavailable queue measurements from an empty queue. |
 | 3 — Inventory shortages | Merged #107: finite stock, lost-sales demand, exogenous replenishment/lead times, receiving disruptions, masked prefix observations and privileged conservation/stockout outcomes. No reorder actions or learner. | Conservation checks and independent baseline; unseen demand/disruption families; distinguish zero stock, unknown stock and an unavailable supplier. |
 | 4 — Noisy sensor networks | QEC adapter merged #108. Generic sensing merged #109: bounded integer latent signals, explicit noise, bias/stuck faults, dropout and sensor-to-signal assignments. No learner, calibrated detector or network transport. | Independent latent-state oracle; held-out noise/fault/topology families; calibrated uncertainty and explicit unavailable sensors. |
-| 5 — Music-event environments | Implemented for review: bounded synthetic note intervals, timing/transposition, dropped events, channel mute and masked prefix grids with separate privileged truth. No learner or audio renderer. | Original generated material with rights records, exact event/timing oracle and held-out rhythmic/structural families. No copyrighted audio intake or audio-preservation fidelity claim. |
+| 5 — Music-event environments | Merged #110: bounded synthetic note intervals, timing/transposition, dropped events, channel mute and masked prefix grids with separate privileged truth. No learner or audio renderer. | Original generated material with rights records, exact event/timing oracle and held-out rhythmic/structural families. No copyrighted audio intake or audio-preservation fidelity claim. |
 | 6 — Cross-environment tests | Planned only after useful within-domain evidence: test whether a declared shared representation helps a new domain. | Frozen transfer protocol, matched no-transfer controls and fresh held-out families; report negative transfer and extra compute. No assumption that a common JSON interface creates transferable skill. |
 
 The race implementation is a synthetic rank generator, not a betting strategy,
@@ -63,6 +64,15 @@ fixed single-site table returns candidate corrections, never inferred success.
 Measurement corruption can cause accepted miscorrections. This branch is not
 full sensor-network completion, native learning, hardware correction or a reward
 loop. QEC repository core and historical Trinite evidence remain unchanged.
+
+## Queue evaluation infrastructure before stage 6
+
+The [queue prediction/evaluation gate](QUEUE-EVALUATION-V1.md) adds a checkout-only
+prepare/commit/score/verify path with two independently retained anchors, a fixed
+future overflow count target and explicit abstention. It reuses the unchanged
+queue dynamics. Public synthetic conformance examples establish engineering
+behavior only: no learner, training, useful within-domain evidence or completed
+transfer gate. The common JSON interface does not establish transferable skill.
 
 ## Prediction first; action and reward require a separate contract
 

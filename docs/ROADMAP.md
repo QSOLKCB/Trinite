@@ -39,7 +39,8 @@ The [qutrit decoder and noisy-syndrome adapter](QUTRIT-MODULES-V1.md) merged in
 [PR #108](https://github.com/QSOLKCB/Trinite/pull/108). The generic
 [sensor environment](SENSOR-NETWORK-V1.md) merged in
 [PR #109](https://github.com/QSOLKCB/Trinite/pull/109). The
-[music-event environment](MUSIC-EVENTS-V1.md) is implemented for review. Build modules first, train later. Independent
+[music-event environment](MUSIC-EVENTS-V1.md) merged in
+[PR #110](https://github.com/QSOLKCB/Trinite/pull/110). Build modules first, train later. Independent
 oracles, structural family splits and controlled transfer evaluation precede
 learning claims. This does not authorize implementation of future modules,
 training or target runs, or displace the diagnostic-first order above.
@@ -940,3 +941,13 @@ sensor environment merged in [PR #109](https://github.com/QSOLKCB/Trinite/pull/1
 These modules provide engineering environments, not learned reconstruction,
 audio preservation or cross-domain transfer. Admission, frozen evaluation
 protocols and explicitly authorized training remain separate future work.
+
+## Queue prediction/evaluation engineering gate
+
+Music-event infrastructure merged in [PR #110](https://github.com/QSOLKCB/Trinite/pull/110).
+The [queue-only evaluation gate](QUEUE-EVALUATION-V1.md) adds explicit preparation,
+public prediction commitment, privileged scoring and read-only artifact replay.
+Two externally retained anchors bind the private episode and public prediction;
+abstention is distinct from zero error. This is infrastructure before useful
+within-domain and cross-domain experiments, not a training or transfer result.
+Prior modules, native gates and historical evidence remain unchanged.
