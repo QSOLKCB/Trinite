@@ -1,0 +1,12 @@
+{
+  "schema": "trinite.race-request.v1",
+  "seed": 7,
+  "steps": 32,
+  "track": 1,
+  "runners": [
+    {"id": 1, "observed": [true, true, true, true, true]},
+    {"id": 2, "observed": [true, true, true, true, true]},
+    {"id": 3, "observed": [true, false, true, false, true]}
+  ],
+  "scratches": []
+}

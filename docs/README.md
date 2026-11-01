@@ -156,3 +156,10 @@ research evidence. No trained model changes or Phase 5 claim.
 - [CPU positional-exposure ablation](POSITION-EXPOSURE-V1.md): frozen pre-outcome twelve-cell matched offset/addressing protocol; coarse-role coverage with explicit fine-role gaps.
 
 - [Positional-exposure negative result](POSITION-EXPOSURE-RESULT.md): all twelve cells, four failed frozen contrasts and partial public evidence.
+
+## External synthetic race environment
+
+- [Race simulator v1](RACE-SIM-V1.md): opt-in CPU Rust process, bounded seeded
+  integer dynamics, separate learner observations and privileged outcomes.
+  Engineering conformance only; no native training, reward learner, real-racing
+  prediction or advancement of existing research gates.

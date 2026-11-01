@@ -1,0 +1,12 @@
+[package]
+name = "trinite-race-sim-v1"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+license = "MPL-2.0"
+publish = false
+
+[dependencies]
+
+[profile.release]
+overflow-checks = true
