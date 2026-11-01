@@ -1,0 +1,40 @@
+name: TOMBSTONE adapter v1 conformance
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  tombstone-adapter-v1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Explicit Rust baseline
+        run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt --component clippy
+      - name: Required system provider
+        run: pkg-config --exists openssl && "$CC" --version
+      - name: Adapter format and lint (upstream bytes unchanged)
+        working-directory: external/tombstone-adapter-v1
+        run: |
+          cargo +1.90.0 fmt -p trinite-tombstone-adapter-v1 -- --check
+          cargo +1.90.0 clippy --offline --locked -p trinite-tombstone-adapter-v1 --all-targets -- -D warnings
+          cargo +1.90.0 test --workspace --offline --locked
+          cargo +1.90.0 test --workspace --offline --locked --release
+      - name: Actual pinned C99 independent conformance and failure paths
+        run: |
+          rustup default 1.90.0
+          python3 scripts/tombstone_adapter_v1.py build
+          python3 scripts/tombstone_adapter_v1.py check
+          python3 external/tombstone-adapter-v1/tests/oracle.py external/tombstone-adapter-v1/target/release/trinite-tombstone-adapter-v1
+          python3 external/tombstone-adapter-v1/tests/provider_failure.py external/tombstone-adapter-v1/target/release/trinite-tombstone-adapter-v1
+          python3 external/tombstone-adapter-v1/tests/verify_fixture.py
+          python3 -m unittest discover -s tests/tombstone_adapter_v1 -v

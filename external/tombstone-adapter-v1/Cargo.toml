@@ -1,0 +1,16 @@
+[package]
+name = "trinite-tombstone-adapter-v1"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+license = "MPL-2.0"
+publish = false
+
+[dependencies]
+tombstone-ffi = { path = "upstream/bindings/rust" }
+
+[workspace]
+members = ["upstream/bindings/rust"]
+
+[profile.release]
+overflow-checks = true
