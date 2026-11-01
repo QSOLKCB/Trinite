@@ -16,6 +16,24 @@ class SupervisorTests(unittest.TestCase):
     def run_code(self, code, seconds=.3, **kw):
         return resources.supervise([sys.executable, '-c', code], seconds, **kw)
 
+    def test_disappearing_proc_stat_accepts_enoent_and_esrch(self):
+        # Linux can report either errno when a short-lived process disappears
+        # between enumerating /proc and reading its stat file. No worker runs.
+        for error in (FileNotFoundError(2, 'gone'), ProcessLookupError(3, 'gone')):
+            with self.subTest(error=type(error).__name__):
+                with (patch.object(Path, 'iterdir', return_value=iter([Path('/proc/12345')])),
+                      patch.object(Path, 'read_text', side_effect=error)):
+                    self.assertEqual(resources.process_table(), {})
+
+    def test_proc_permission_and_unexpected_io_failure_still_stop_inspection(self):
+        for error, expected in ((PermissionError(13, 'denied'), RuntimeError),
+                                (OSError(5, 'IO failure'), OSError)):
+            with self.subTest(error=type(error).__name__):
+                with (patch.object(Path, 'iterdir', return_value=iter([Path('/proc/12345')])),
+                      patch.object(Path, 'read_text', side_effect=error)):
+                    with self.assertRaises(expected):
+                        resources.process_table()
+
     def test_success_and_reaped_cpu(self):
         r = self.run_code('print("hello")')
         self.assertEqual((r['exit_code'], r['failure'], r['stdout']), (0, None, 'hello\n'))
