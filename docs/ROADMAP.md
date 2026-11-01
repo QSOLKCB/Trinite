@@ -33,7 +33,8 @@ remains optional future work, behind native diagnosis; no silent rerun follows.
 The [external environment roadmap](EXTERNAL-ENVIRONMENTS-ROADMAP.md) keeps
 standalone runners behind versioned observation JSON. Race simulation merged
 in [PR #105](https://github.com/QSOLKCB/Trinite/pull/105); the
-[queue module](QUEUE-SIM-V1.md) is implemented for review. Inventory, noisy-sensor
+[queue module](QUEUE-SIM-V1.md) merged in [PR #106](https://github.com/QSOLKCB/Trinite/pull/106).
+The [inventory module](INVENTORY-SIM-V1.md) is implemented for review; noisy-sensor
 and music-event modules remain planned. Build modules first, train later. Independent
 oracles, structural family splits and controlled transfer evaluation precede
 learning claims. This does not authorize implementation of future modules,
