@@ -50,6 +50,9 @@ For the prospective procedural-dataset and context-offload module sequence, see 
 Standalone module conformance is not native training or a demonstrated learning gain. The
 [procedural admission bridge](docs/PROCEDURAL-DATASET-V1.md) adds generation and
 public-only carriers, without executing training.
+The [context-symbol learning bridge](docs/CONTEXT-SYMBOL-LEARNING-V1.md) adds a
+fit-first bounded execution path for separate review and exact-freeze approval;
+its scientific schedule remains unrun.
 
 ## Get started
 
