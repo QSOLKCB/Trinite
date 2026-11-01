@@ -382,6 +382,17 @@ fixed-width syntax; prediction journals preserve partial scoring. The fixed
 Structural evidence verification is separate from optimizer/prediction replay.
 No historical runtime/fixture changes or target experiment is included. See
 [position study v1](POSITION-STUDY-V1.md).
+
+## Checkout-only supervised queue bridge
+
+`scripts/queue_learning_v1/` owns a queue-specific exact producer/admission,
+lossless masked public observation carrier, source/environment-bound freeze,
+fixed native supervised workers and a commit-all held-out barrier. It delegates
+queue dynamics and prepare/commit/score/verify to the unchanged queue evaluator,
+updates and greedy decoding to native training/comparison, and named safe
+checkpoint tensors to the shared comparison reader. No music admission, second
+updater or tensor reader is introduced. Engineering checks perform no optimizer
+steps or pilot outcome scoring. [Contract and execution stop](QUEUE-LEARNING-V1.md).
 ## Partial balanced-addition result verification
 
 `scripts/balanced_result_v1/` authenticates the immutable 43-file public subset
