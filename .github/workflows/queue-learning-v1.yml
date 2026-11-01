@@ -48,6 +48,8 @@ jobs:
       - name: Native safe reader and zero-update feasibility
         run: |
           python -B -m unittest discover -s tests/queue_learning_native -v
+          python -B -m unittest discover -s tests/queue_learning_diagnostics -v
+          python -O -B -m unittest discover -s tests/queue_learning_diagnostics -v
           python -I -B scripts/run_queue_learning_v1.py feasibility --out "$RUNNER_TEMP/queue-feasibility"
           git diff --exit-code
       - name: Retain engineering evidence including negative outputs and failures
