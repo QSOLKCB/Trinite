@@ -37,8 +37,9 @@ in [PR #105](https://github.com/QSOLKCB/Trinite/pull/105); the
 The [inventory module](INVENTORY-SIM-V1.md) merged in [PR #107](https://github.com/QSOLKCB/Trinite/pull/107).
 The [qutrit decoder and noisy-syndrome adapter](QUTRIT-MODULES-V1.md) merged in
 [PR #108](https://github.com/QSOLKCB/Trinite/pull/108). The generic
-[sensor environment](SENSOR-NETWORK-V1.md) is implemented for review; music events
-remain planned. Build modules first, train later. Independent
+[sensor environment](SENSOR-NETWORK-V1.md) merged in
+[PR #109](https://github.com/QSOLKCB/Trinite/pull/109). The
+[music-event environment](MUSIC-EVENTS-V1.md) is implemented for review. Build modules first, train later. Independent
 oracles, structural family splits and controlled transfer evaluation precede
 learning claims. This does not authorize implementation of future modules,
 training or target runs, or displace the diagnostic-first order above.
@@ -925,5 +926,17 @@ dropout and sensor-to-signal topology. Prefix observation JSON omits latent
 truth and fault labels; privileged outcomes are separate. The QEC-specific
 modules merged in [PR #108](https://github.com/QSOLKCB/Trinite/pull/108) remain
 unchanged. These are engineering environments, not learned fault detection or
-calibrated uncertainty. Music events are next in the [environment roadmap](EXTERNAL-ENVIRONMENTS-ROADMAP.md);
+calibrated uncertainty. The music-event environment is implemented below and in the
+[environment roadmap](EXTERNAL-ENVIRONMENTS-ROADMAP.md);
 training, held-out family evaluation and transfer remain separate gates.
+
+
+## External music-event environment
+
+The [music-event v1 contract](MUSIC-EVENTS-V1.md) adds original synthetic note
+intervals, timing shifts, event loss, channel mute and masked prefix observation
+grids. Ideal events and impairment controls remain privileged. The generic
+sensor environment merged in [PR #109](https://github.com/QSOLKCB/Trinite/pull/109).
+These modules provide engineering environments, not learned reconstruction,
+audio preservation or cross-domain transfer. Admission, frozen evaluation
+protocols and explicitly authorized training remain separate future work.
