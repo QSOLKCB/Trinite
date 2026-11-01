@@ -3,8 +3,9 @@
 Status: engineering roadmap, 1 November 2026. The race simulator merged in
 [PR #105](https://github.com/QSOLKCB/Trinite/pull/105). The
 [queue module](QUEUE-SIM-V1.md) merged in [PR #106](https://github.com/QSOLKCB/Trinite/pull/106).
-The [inventory module](INVENTORY-SIM-V1.md) is implemented for review; sensor
-and music environments below remain planned. Modules are built first; training
+The [inventory module](INVENTORY-SIM-V1.md) merged in [PR #107](https://github.com/QSOLKCB/Trinite/pull/107).
+A paired [qutrit decoder and noisy-syndrome sensor](QUTRIT-MODULES-V1.md) is
+implemented for review. Generic sensor networks and music remain planned. Modules are built first; training
 comes later under separate protocols. None establishes a Trinite learning
 improvement or cross-domain transfer.
 
@@ -39,8 +40,8 @@ evidence score is undefined, not neutral.
 | --- | --- | --- |
 | 1 — Race simulation | Merged #105: bounded seeded CPU integer toy dynamics, masked ternary observations, before/after scratchings and separate privileged ranks. No real-world racing calibration. | Review and exact-commit CI establish software conformance only. A separately reviewed controller, prediction commitment and evaluation protocol are still needed. |
 | 2 — Queue simulation | Merged #106: bounded FIFO arrivals, finite buffer, service capacity, delays/outages, masked integer prefix observations and separate privileged wait/overflow accounting. No learner or ternary projection yet. | Independent event/accounting oracle; unseen arrival and service families; distinguish unavailable queue measurements from an empty queue. |
-| 3 — Inventory shortages | Implemented for review: finite stock, lost-sales demand, exogenous replenishment/lead times, receiving disruptions, masked prefix observations and privileged conservation/stockout outcomes. No reorder actions or learner. | Conservation checks and independent baseline; unseen demand/disruption families; distinguish zero stock, unknown stock and an unavailable supplier. |
-| 4 — Noisy sensor networks | Planned: latent signals, noise, dropout and sensor faults; predict states or detect faults from incomplete readings. | Independent latent-state oracle; held-out noise/fault/topology families; calibrated uncertainty and explicit unavailable sensors. |
+| 3 — Inventory shortages | Merged #107: finite stock, lost-sales demand, exogenous replenishment/lead times, receiving disruptions, masked prefix observations and privileged conservation/stockout outcomes. No reorder actions or learner. | Conservation checks and independent baseline; unseen demand/disruption families; distinguish zero stock, unknown stock and an unavailable supplier. |
+| 4 — Noisy sensor networks | First QEC-focused adapter implemented for review: explicit modular syndrome corruption/dropout feeding a separate fixed five-qutrit decoder. Generic latent signals, sensor faults and network topologies remain planned. | Independent latent-state oracle; held-out noise/fault/topology families; calibrated uncertainty and explicit unavailable sensors. |
 | 5 — Music-event environments | Planned: synthetic note/timing events, missing events and channel faults; predict sequences or reconstruct bounded event properties. | Original generated material with rights records, exact event/timing oracle and held-out rhythmic/structural families. No copyrighted audio intake or audio-preservation fidelity claim. |
 | 6 — Cross-environment tests | Planned only after useful within-domain evidence: test whether a declared shared representation helps a new domain. | Frozen transfer protocol, matched no-transfer controls and fresh held-out families; report negative transfer and extra compute. No assumption that a common JSON interface creates transferable skill. |
 
@@ -49,6 +50,16 @@ physical racing model, reward trainer or installed Trinite capability. Its
 [contract at the merged commit](https://github.com/QSOLKCB/Trinite/blob/f8a78db1a04c8dfa9720b0a92630b35e3e30b42c/docs/RACE-SIM-V1.md)
 records its actual schema, deterministic scope and limitations. A seed split
 alone is insufficient: new seeds can reproduce the same structural problem.
+
+## Experimental QEC sensor/decoder branch
+
+The [paired external modules](QUTRIT-MODULES-V1.md) use genuine GF(3) qutrit
+syndromes, with a separate observation mask. Sensor output is the decoder input;
+true errors and success checks stay in a privileged engineering evaluator. The
+fixed single-site table returns candidate corrections, never inferred success.
+Measurement corruption can cause accepted miscorrections. This branch is not
+full sensor-network completion, native learning, hardware correction or a reward
+loop. QEC repository core and historical Trinite evidence remain unchanged.
 
 ## Prediction first; action and reward require a separate contract
 
