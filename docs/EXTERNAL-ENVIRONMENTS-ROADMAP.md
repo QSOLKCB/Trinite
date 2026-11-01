@@ -125,3 +125,66 @@ Future modules require separate implementation PRs. Research runs, training,
 new data intake, host/resource use and action/reward experiments require their
 own reviewed protocols and explicit authorization. This roadmap grants none of
 those permissions and advances no learning, geometry, scaling or release gate.
+
+## Procedural dataset modules: next engineering tranche
+
+The next separate implementation PRs add the following foundations, not a new
+training result. GitHub assigns PR numbers; sequencing is not a merge claim.
+
+| Module | Engineering role | Remaining experimental gate |
+| --- | --- | --- |
+| `external/ternary-evidence-v1` | Mask-aware exact rational evidence scoring; explicit support/denominator and coverage, unknown distinct from neutral. | Compare representations against independent outcomes; do not use the score as both generated truth and evidence of predictive skill. |
+| `external/tombstone-adapter-v1` | Bounded C99 splice-oracle adapter with pinned source and separate public/privileged products. | Rights/admission, family splits, baseline and source-bound controller before training. |
+| [context-symbol-relation-v1](CONTEXT-SYMBOL-RELATION-V1.md) | Total public context × symbol rule tables; compatible-world support/contradiction/mixed relations; same-symbol context counterfactuals. | Native task admission, lossless carrier, controlled baselines, grouped fresh families and explicit run approval. |
+
+These modules permit small original formal cases to be generated when needed,
+rather than requiring a massive static text corpus. This tranche supplies
+deterministic evaluators/contracts, not a general on-demand dataset generator.
+A future generator must pin version, parameters and any seeds, retain generation
+and rights records and exact case identities/receipts, and reproduce each example
+and oracle label. Storing a compact generator does not eliminate the need to
+retain protocol commitments, split inventories, failures and verification records.
+
+### Ordered bridge from modules to learning
+
+1. Review each standalone module and exact-commit CI. Preserve all existing
+   protocols, source-bound historical fixtures and queue-learning-v2 semantics.
+2. Implement separately reviewed native task admission and a compact, lossless
+   public-observation JSON adapter. Freeze token/byte budgets; reject overlength
+   instead of silently dropping rules. Measure actual context offload against
+   a baseline with identical information/semantics, including module input/output,
+   preprocessing, serialization, inference, memory and total compute costs.
+   External storage/computation is not extra parametric memory or automatically
+   larger effective context.
+3. Freeze procedural generators, structural family inventories, budgets, scoring,
+   baselines and success/failure thresholds before held-out outcomes. Keep all
+   same-table variants, counterfactuals, mask variants and index renamings in one
+   split group. Distinct seeds alone do not prove unseen structure. Old public
+   engineering fixtures remain exposed; reserve fresh locked evaluation families.
+4. Compare supervised baselines and controlled representation/module ablations,
+   with matched information, exposure and capacity and explicitly measured equal
+   compute where claimed. Report exact-answer/relation errors by family, abstention,
+   coverage, failures and negative transfer. A mask intervention that changes
+   compatible worlds must recompute its truth label; a metadata-shortcut probe
+   preserves semantics and changes irrelevant metadata. Do not conflate them.
+5. Only after review, green merged code and explicit approval of a fresh frozen
+   run execute native training. This roadmap executes no optimizer, automatically
+   authorizes no experiment and does not advance a learning or release gate.
+
+### Scaling curriculum with measured competence
+
+Increase procedural problem complexity, diversity and volume in staged,
+predeclared capacity studies only when measured competence justifies it. Preserve
+fixed anchor benchmarks and locked family-held-out tests so easier/evolving
+curricula cannot manufacture improvement. Track generator bias, duplicated
+structures, catastrophic forgetting and cross-family transfer, not just throughput.
+Freeze evaluation populations; never adapt online generation or tune the generator
+against held-out failures and still call the result unseen confirmation.
+
+Larger models can receive broader curricula within the existing
+[model-size policy](MODEL-SIZE-POLICY.md), whose 8B total unique-parameter ceiling
+is a limit, not a goal or permission to scale. More generated cases, parameters or
+external information do not guarantee learning or reasoning. Information kept in
+external modules and supplied at inference remains distinct from knowledge learned
+in weights. Capacity, context offload and useful generalization each require their
+own measured controls and fresh authorization.
