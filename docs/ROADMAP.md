@@ -985,3 +985,14 @@ a context-capacity gain or a scientific pilot. Fresh frozen baseline/ablation
 comparison, operator isolation, prediction commitment, green reviewed merged code
 and explicit training-run approval remain separate gates. Existing numerical,
 geometry, queue-v1/v2 and historical evidence remain unchanged.
+
+## Context-symbol learning execution path
+
+The [context-symbol-only v1 bridge](CONTEXT-SYMBOL-LEARNING-V1.md) implements
+fresh grouped table families, source-specific admission, native answer/EOS
+supervision, an exact final fit gate, bounded two-seed runs, fixed baselines,
+prediction commitment and read-only score verification. It is unrun engineering
+preparation. Owner review/merge, green actual main CI, fresh zero-update
+feasibility/freeze and explicit approval of the exact producer/freeze/schedule
+precede scientific training. No learning gain, queue result/status change,
+other-task training or research/release gate advancement is claimed.
