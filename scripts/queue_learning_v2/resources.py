@@ -110,6 +110,9 @@ def supervise(argv, seconds, *, progress=None, update_seconds=120, poll_seconds=
                 failure = failure or 'rss_limit'
             if progress is not None and Path(progress).exists():
                 value = read_json(Path(progress), 16384)
+                # The worker may publish during /proc sampling or file IO.
+                # Compare against the post-read clock, not the loop's stale start.
+                now = time.monotonic()
                 step, targets = value['step'], value['target_tokens']
                 gate.require(type(step) is int and type(targets) is int and
                              step >= last_step and targets >= last_targets,

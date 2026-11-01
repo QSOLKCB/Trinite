@@ -106,7 +106,11 @@ class LifecycleTests(unittest.TestCase):
     def score_all(self, *args):
         self.assertEqual(self.events[-1], 'commit-all')
         self.events.append('score-all')
-        return {'synthetic_engineering_only': True}
+        raw = {'schema': 'trinite.queue-learning-summary.v1', 'synthetic_engineering_only': True,
+               'numeric_exact_match': {'numerator': 0, 'denominator': 0}}
+        args[-1].mkdir()
+        write_json(args[-1] / 'summary.json', raw)
+        return raw
 
     def test_full_exact_sequence_and_all_output_barrier(self):
         result = controller.run(self.args)
@@ -114,6 +118,12 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(self.events, ['launch:fit', 'validate:fit', 'launch:seed17', 'validate:seed17',
             'launch:seed29', 'validate:seed29', 'constants', 'launch:infer-17', 'launch:infer-29', 'commit-all', 'score-all'])
         self.assertEqual([r['status'] for r in read_json(self.args.out / 'attempts.json')], ['completed'] * 3)
+        raw = read_json(self.args.out / 'scores/summary.json')
+        normalized = read_json(self.args.out / 'scores/summary-v2.json')
+        self.assertEqual(raw['numeric_exact_match'], {'numerator': 0, 'denominator': 0})
+        self.assertIsNone(normalized['numeric_exact_match'])
+        self.assertEqual(normalized['schema'], 'trinite.queue-learning-summary.v2')
+        self.assertEqual(read_json(self.args.out / 'run.json')['summary'], normalized)
 
     def test_failed_fit_checkpoint_stops_both_main_cells(self):
         self.fail_checkpoint = 'fit'

@@ -47,17 +47,51 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(r['failure'], 'rss_limit')
         self.assertEqual(r['exit_code'], -signal.SIGKILL)
 
+    def update_deadline(self, *, slow_sample=False):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / 'progress.json'
+            release = Path(d) / 'release'
+            code = ('import json,time;from pathlib import Path;'
+                    f'p=Path({str(p)!r});q=p.with_suffix(".next");'
+                    f'release=Path({str(release)!r});')
+            if slow_sample:
+                code += '\nwhile not release.exists(): time.sleep(.001)\n'
+            code += ('q.write_text(json.dumps({"phase":"updates","step":1,"target_tokens":22,'
+                     '"update_started_seconds_hex":time.monotonic().hex()},sort_keys=True,separators=(",",":"))+"\\n");'
+                     'q.replace(p);time.sleep(9)')
+            original = resources.process_table
+            calls = 0
+            def sampled():
+                nonlocal calls
+                calls += 1
+                if slow_sample and calls == 2:
+                    release.write_text('publish now')
+                    deadline = time.monotonic() + 2
+                    while not p.exists() and time.monotonic() < deadline:
+                        time.sleep(.001)
+                    self.assertTrue(p.exists(), 'worker did not publish progress')
+                return original()
+            with patch.object(resources, 'process_table', sampled):
+                r = self.run_code(code, 3, progress=p, update_seconds=.1)
+            self.assertEqual(r['failure'], 'update_timeout')
+            self.assertEqual(r['observed_updates'], 1)
+
     def test_update_deadline(self):
+        self.update_deadline()
+
+    def test_update_clock_published_during_slow_process_sample(self):
+        self.update_deadline(slow_sample=True)
+
+    def test_future_update_clock_is_still_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / 'progress.json'
             code = ('import json,time;from pathlib import Path;'
-                    f'p=Path({str(p)!r});'
-                    'p.write_text(json.dumps({"phase":"updates","step":1,"target_tokens":22,'
-                    '"update_started_seconds_hex":time.monotonic().hex()},sort_keys=True,separators=(",",":"))+"\\n");'
-                    'time.sleep(9)')
-            r = self.run_code(code, 3, progress=p, update_seconds=.1)
-            self.assertEqual(r['failure'], 'update_timeout')
-            self.assertEqual(r['observed_updates'], 1)
+                    f'p=Path({str(p)!r});q=p.with_suffix(".next");'
+                    'q.write_text(json.dumps({"phase":"updates","step":0,"target_tokens":0,'
+                    '"update_started_seconds_hex":(time.monotonic()+10).hex()},sort_keys=True,separators=(",",":"))+"\\n");'
+                    'q.replace(p);time.sleep(9)')
+            with self.assertRaisesRegex(ValueError, 'worker update clock changed'):
+                self.run_code(code, 3, progress=p)
 
     def test_proc_failure_still_reaps_leader(self):
         original = resources.process_table

@@ -219,6 +219,14 @@ partial raw outputs, timeout/failure and not-attempted statuses. Unscored exact
 counts are explicitly unknown, never invented zero errors. Successful scoring
 still uses the unchanged complete two-anchor public barrier before private reads.
 
+Successful scoring retains the unchanged v1 gate's raw `scores/summary.json`
+for audit and writes a separately versioned `scores/summary-v2.json`, also used
+in `run.json.summary`. The v2 reporting adapter maps every rational metric with
+a zero denominator to `null` (including numeric exact-match when no numeric
+outputs exist), without changing counts, coverage, nonzero-denominator rational
+values or historical v1 results. Verification independently recomputes the raw
+v1 aggregation and then checks the normalized v2 summary and run record.
+
 ### Post-merge commands (not permission to execute)
 
 Use the hash-locked CPU environment and build both pinned Rust crates offline.

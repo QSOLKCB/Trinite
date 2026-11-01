@@ -6,7 +6,7 @@ import queue_evaluation_v1 as gate
 from queue_learning_v1 import evaluation
 from queue_learning_v1.artifacts import anchored_json, inventory, read_json
 from trinite.contracts import parse_json
-from . import admission
+from . import admission, reporting
 from .protocol import episodes
 from .spec import PROTOCOL, sources
 from .controller import (ATTEMPTS, empty_predictions, stopped_summary,
@@ -206,9 +206,12 @@ def verify(args):
         receipts.append(expected)
     gate.require(read_json(destination / 'scores/verification.json') == {
         'barrier_sha256': record['barrier_sha256'], 'receipts': receipts}, 'v2 aggregate score receipt changed')
-    summary = evaluation.summarize(entries, destination / 'commits', destination / 'scores')
-    gate.require(summary == record['summary'] == read_json(destination / 'scores/summary.json'),
-                 'v2 score summary differs from committed predictions')
+    raw_summary = evaluation.summarize(entries, destination / 'commits', destination / 'scores')
+    gate.require(raw_summary == read_json(destination / 'scores/summary.json'),
+                 'retained v1 score summary differs from committed predictions')
+    summary = reporting.normalize(raw_summary)
+    gate.require(summary == record['summary'] == read_json(destination / 'scores/summary-v2.json'),
+                 'v2 normalized score summary differs from committed predictions')
     gate.require(retained == inventory(destination), 'v2 verifier mutated run artifacts')
     return {'verified': True, 'complete_study': True, 'heldout_verified': True,
             'optimizer_replay': False, 'operator_blindness_proved': False}

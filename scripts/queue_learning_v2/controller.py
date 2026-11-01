@@ -12,7 +12,7 @@ from queue_learning_v1 import evaluation
 from queue_learning_v1.artifacts import (anchored_json, inventory, read_json,
                                         retain_failure, write_json)
 from trinite.contracts import json_bytes, parse_json
-from . import admission
+from . import admission, reporting
 from .protocol import episodes, fit_rows
 from .resources import supervise
 from .spec import ROOT
@@ -238,8 +238,10 @@ def run(args):
                 gate.require(time.monotonic() - started < 2700, 'study deadline before scoring')
                 scoring_started = True
                 write_json(destination / 'scoring-started.json', {'barrier_sha256': barrier_sha})
-                summary = evaluation.score_all(frozen, prepares, destination / 'commits',
+                raw_summary = evaluation.score_all(frozen, prepares, destination / 'commits',
                     anchors / 'barrier.json', barrier_sha, manifest['episodes'], destination / 'scores')
+                summary = reporting.normalize(raw_summary)
+                write_json(destination / 'scores/summary-v2.json', summary)
                 scoring_completed = True
                 gate.require(time.monotonic() - started < 2700, 'study deadline after scoring')
     except Exception as error:
