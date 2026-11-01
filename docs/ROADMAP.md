@@ -31,9 +31,10 @@ remains optional future work, behind native diagnosis; no silent rerun follows.
 ## Prospective external JSON environments — 1 November 2026
 
 The [external environment roadmap](EXTERNAL-ENVIRONMENTS-ROADMAP.md) keeps
-standalone runners behind versioned observation JSON. Race simulation is under
-review in [draft PR #105](https://github.com/QSOLKCB/Trinite/pull/105); queue,
-inventory, noisy-sensor and music-event modules remain planned. Independent
+standalone runners behind versioned observation JSON. Race simulation merged
+in [PR #105](https://github.com/QSOLKCB/Trinite/pull/105); the
+[queue module](QUEUE-SIM-V1.md) is implemented for review. Inventory, noisy-sensor
+and music-event modules remain planned. Build modules first, train later. Independent
 oracles, structural family splits and controlled transfer evaluation precede
 learning claims. This does not authorize implementation of future modules,
 training or target runs, or displace the diagnostic-first order above.

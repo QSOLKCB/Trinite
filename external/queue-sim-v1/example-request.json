@@ -1,0 +1,1 @@
+{"schema":"trinite.queue-request.v1","capacity":8,"initial_queue":2,"arrivals":[2,3,1,4,2,0],"service":[2,2,3,2,4,4],"outages":[false,false,true,true,false,false],"observe_ticks":3,"observed":[true,true,true,true,true,false]}
