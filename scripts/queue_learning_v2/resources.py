@@ -34,8 +34,8 @@ def process_table():
             result[int(path.name)] = {'ppid': int(tail[1]), 'state': tail[0],
                 'start': int(tail[19]), 'rss': int(tail[21]) * os.sysconf('SC_PAGE_SIZE'),
                 'cpu_ticks': int(tail[11]) + int(tail[12])}
-        except FileNotFoundError:
-            continue  # Process disappeared during the snapshot.
+        except (FileNotFoundError, ProcessLookupError):
+            continue  # ENOENT/ESRCH: process disappeared during the snapshot.
         except (PermissionError, ValueError, IndexError) as error:
             raise RuntimeError('cannot inspect Linux process table') from error
     return result
