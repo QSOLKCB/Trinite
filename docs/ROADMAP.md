@@ -28,6 +28,16 @@ retained negative/blocked results, not a completed 64-call comparison. The old
 proposed PR #64 number is superseded, not a pending reservation. Qwen/LFM
 remains optional future work, behind native diagnosis; no silent rerun follows.
 
+## Prospective external JSON environments — 1 November 2026
+
+The [external environment roadmap](EXTERNAL-ENVIRONMENTS-ROADMAP.md) keeps
+standalone runners behind versioned observation JSON. Race simulation is under
+review in [draft PR #105](https://github.com/QSOLKCB/Trinite/pull/105); queue,
+inventory, noisy-sensor and music-event modules remain planned. Independent
+oracles, structural family splits and controlled transfer evaluation precede
+learning claims. This does not authorize implementation of future modules,
+training or target runs, or displace the diagnostic-first order above.
+
 ## Preserved phase plan and research chronology
 
 Phases 0–4 are merged. The merged OPT detour applies exact reuse and CI orchestration improvements, with independent equivalence checks and scoped timing evidence in [OPTIMIZATION.md](OPTIMIZATION.md). The following three-lane/QEC detour is implemented and measured in [COMPARISON.md](COMPARISON.md). Phase 5 remains the next geometry phase; the foundations learning-adequacy gate precedes it; fresh confirmatory evaluation and independent replication remain empirical gates. Phases 5–9 are pending. Phase numbers describe work order, not published version tags. See [PHASE-1.md](PHASE-1.md), [PHASE-2.md](PHASE-2.md), [PHASE-3.md](PHASE-3.md), and [PHASE-4.md](PHASE-4.md) for evidence and limits.
