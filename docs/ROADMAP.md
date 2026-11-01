@@ -972,3 +972,16 @@ and explicit approval of a fresh frozen run. Curriculum complexity/diversity/vol
 may later track measured competence and capacity under unchanged model-size policy,
 with fixed anchors and locked tests. No optimizer is run, queue-learning-v2 remains
 unchanged, and historical source-bound evidence and negative results are preserved.
+
+## Procedural dataset admission engineering
+
+The [three-module procedural dataset v1](PROCEDURAL-DATASET-V1.md) adds bounded
+seeded generation, nine whole structural families, lossless compact public
+carriers, unchanged 256-byte-token context admission and train-only native-oracle
+target export. Full source/binary-bound regeneration and independent formal
+oracles reject malformed, tampered, leaking and overlength artifacts. This is
+public engineering conformance—not unseen family generalization, model training,
+a context-capacity gain or a scientific pilot. Fresh frozen baseline/ablation
+comparison, operator isolation, prediction commitment, green reviewed merged code
+and explicit training-run approval remain separate gates. Existing numerical,
+geometry, queue-v1/v2 and historical evidence remain unchanged.

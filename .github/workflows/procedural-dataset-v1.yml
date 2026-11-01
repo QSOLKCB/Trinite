@@ -1,0 +1,25 @@
+name: Procedural dataset admission v1
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  procedural-dataset-v1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Explicit Rust baseline
+        run: rustup toolchain install 1.90.0 --profile minimal && rustup default 1.90.0
+      - name: Check system provider and build offline
+        run: |
+          pkg-config --exists openssl
+          python3 scripts/run_procedural_dataset_v1.py build
+      - name: Actual native oracle and adversarial admission tests
+        run: |
+          PYTHONPATH=src:scripts python3 -B -m unittest discover -s tests/procedural_dataset_v1 -v
+          PYTHONPATH=src:scripts python3 -B tests/procedural_dataset_v1/conformance.py --verify-fixture

@@ -47,7 +47,9 @@ Phase 4's initial item-versus-carrier geometry contrasts were negative. The E8/E
 
 For the prospective procedural-dataset and context-offload module sequence, see the
 [external environment roadmap](docs/EXTERNAL-ENVIRONMENTS-ROADMAP.md#procedural-dataset-modules-next-engineering-tranche).
-Standalone module conformance is not native training or a demonstrated learning gain.
+Standalone module conformance is not native training or a demonstrated learning gain. The
+[procedural admission bridge](docs/PROCEDURAL-DATASET-V1.md) adds generation and
+public-only carriers, without executing training.
 
 ## Get started
 
