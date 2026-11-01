@@ -991,8 +991,11 @@ geometry, queue-v1/v2 and historical evidence remain unchanged.
 The [context-symbol-only v1 bridge](CONTEXT-SYMBOL-LEARNING-V1.md) implements
 fresh grouped table families, source-specific admission, native answer/EOS
 supervision, an exact final fit gate, bounded two-seed runs, fixed baselines,
-prediction commitment and read-only score verification. It is unrun engineering
-preparation. Owner review/merge, green actual main CI, fresh zero-update
-feasibility/freeze and explicit approval of the exact producer/freeze/schedule
-precede scientific training. No learning gain, queue result/status change,
-other-task training or research/release gate advancement is claimed.
+prediction commitment and read-only score verification. Its later
+[owner-approved stopped run](evidence/context-symbol-learning-v1/REPORT.md)
+retains 128 fit updates and 8/8 final answer+EOS generations, followed by a failed
+independent validation subprocess. Both main seeds remain unattempted; no
+heldout scores or baseline improvement are claimed. Original frozen protocols,
+queue-v1's negative result and queue-v2's unrun status are unchanged. The
+post-run read-only checkpoint audit does not replace the failed lifecycle gate
+or authorize a retry/resume. No research/release gate advances.

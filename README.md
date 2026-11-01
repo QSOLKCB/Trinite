@@ -51,8 +51,9 @@ Standalone module conformance is not native training or a demonstrated learning 
 [procedural admission bridge](docs/PROCEDURAL-DATASET-V1.md) adds generation and
 public-only carriers, without executing training.
 The [context-symbol learning bridge](docs/CONTEXT-SYMBOL-LEARNING-V1.md) adds a
-fit-first bounded execution path for separate review and exact-freeze approval;
-its scientific schedule remains unrun.
+fit-first bounded execution path. Its [retained stopped study](docs/evidence/context-symbol-learning-v1/REPORT.md)
+reached 8/8 final training-fit answers, then stopped on the independent validation
+runtime guard; both main seeds remain unrun and no heldout scores were exposed.
 
 ## Get started
 
