@@ -25,6 +25,9 @@ def load_checkpoint(folder, info, train, seed, binding, fit=False):
 
 
 def validate_fit(folder, checkpoint_sha, packet, binding):
+    # Validation also runs in a fresh interpreter: runtime settings are local
+    # to each process and must precede the guarded native checkpoint restore.
+    numerical.configure()
     info=anchored_json(Path(folder)/'training.json',checkpoint_sha)
     train=read_json(packet)['train']
     state=load_checkpoint(folder,info,train,17,binding,True)
