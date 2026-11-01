@@ -1,0 +1,67 @@
+{
+  "schema": "trinite.ternary-evidence-request.v1",
+  "input_kind": "generic-public-trits",
+  "weights": [
+    2,
+    3,
+    0
+  ],
+  "entries": [
+    {
+      "id": "observed-neutral",
+      "active": true,
+      "trits": [
+        1,
+        0,
+        0
+      ],
+      "mask": [
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "id": "missing",
+      "active": true,
+      "trits": [
+        0,
+        0,
+        0
+      ],
+      "mask": [
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "id": "zero-weight-only",
+      "active": true,
+      "trits": [
+        0,
+        0,
+        1
+      ],
+      "mask": [
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "id": "withdrawn",
+      "active": false,
+      "trits": [
+        1,
+        1,
+        0
+      ],
+      "mask": [
+        true,
+        true,
+        false
+      ]
+    }
+  ]
+}
