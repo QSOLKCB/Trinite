@@ -393,6 +393,14 @@ updates and greedy decoding to native training/comparison, and named safe
 checkpoint tensors to the shared comparison reader. No music admission, second
 updater or tensor reader is introduced. Engineering checks perform no optimizer
 steps or pilot outcome scoring. [Contract and execution stop](QUEUE-LEARNING-V1.md).
+
+`scripts/queue_learning_v2/` adds detached train-only answer/EOS diagnostics,
+exact proposed plans and observation-only fresh-family overlap checks.
+`scripts/run_queue_diagnostics_v2.py` inspects anchored retained v1 checkpoints
+on a named foreign environment through the shared safe reader; it cannot run
+training or change v1 restore rules. There is no v2 scientific execution command.
+See [diagnosis](QUEUE-EOS-DIAGNOSIS-V2.md) and [preparation](QUEUE-LEARNING-V2.md).
+
 ## Partial balanced-addition result verification
 
 `scripts/balanced_result_v1/` authenticates the immutable 43-file public subset
