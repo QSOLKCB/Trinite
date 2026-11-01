@@ -408,6 +408,11 @@ class GateIntegrationTests(unittest.TestCase):
         verify_args = SimpleNamespace(**vars(args), run=str(destination),
             checkpoint_sha=result['checkpoint_sha256'], barrier_sha=result['barrier_sha256'], run_sha=run_sha)
         before = inventory(destination)
+        rejected = SimpleNamespace(**{**vars(verify_args), 'barrier_sha': '0' * 64})
+        with (patch.object(controller, 'frozen_context', return_value=context),
+              patch.object(controller, 'inventory', side_effect=AssertionError('no scored outcome reads'))):
+            with self.assertRaisesRegex(ValueError, 'anchor mismatch'):
+                controller.verify(rejected)
         with (patch.object(controller, 'frozen_context', return_value=context),
               patch('queue_learning_v1.numerical.configure', return_value={'engineering': True}),
               patch('queue_learning_v1.numerical.restore', return_value=SimpleNamespace(step=64))):

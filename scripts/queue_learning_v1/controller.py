@@ -350,6 +350,9 @@ def verify(args):
     frozen, manifest, prepares = frozen_context(Path(args.frozen), args.freeze_sha, args.anchors, args.anchors_sha)
     destination = gate.safe_path(args.run)
     anchor_dir = gate.safe_path(args.run_anchors)
+    # Validate the complete public barrier before even inventorying scored
+    # outcomes or restoring train state. Bad public artifacts fail first.
+    entries = evaluation.public_barrier(destination / 'commits', anchor_dir / 'barrier.json', args.barrier_sha, manifest['episodes'])
     retained = anchored_json(anchor_dir / 'run-inventory.json', args.run_sha)
     gate.require(retained == inventory(destination), 'queue run artifact inventory changed')
     checkpoint = anchored_json(anchor_dir / 'checkpoints.json', args.checkpoint_sha)
@@ -366,7 +369,6 @@ def verify(args):
                             gate.read(folder / 'metadata.json', 1024 * 1024), rows, seed,
                             args.freeze_sha, entry['checkpoint_sha256'])
             gate.require(state.step == 64, 'queue final checkpoint step mismatch')
-    entries = evaluation.public_barrier(destination / 'commits', anchor_dir / 'barrier.json', args.barrier_sha, manifest['episodes'])
     for entry in entries:
         name = entry['method'] + '-' + entry['id']
         gate.verify(frozen / entry['id'] / 'private', destination / 'commits' / name,
