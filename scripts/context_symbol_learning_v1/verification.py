@@ -3,9 +3,10 @@ from pathlib import Path
 
 import queue_evaluation_v1 as gate
 from queue_learning_v1.artifacts import anchored_json,inventory,read_json
-from trinite.contracts import json_bytes,parse_json
+from trinite.contracts import json_bytes
 from . import custody,data,numerical,oracle,scoring
 from .spec import ATTEMPTS
+from .journal import prefix as journal_prefix
 
 
 def verify(args):
@@ -51,17 +52,22 @@ def verify(args):
     predictions=read_json(run/'predictions.json')
     scoring.check_predictions(predictions)
     by_key={(r['method'],r['id']):r['raw'] for r in predictions}
+    unparsed_journals={}
     for name,seed,fit,_,_ in ATTEMPTS:
         if fit:
             continue
         journal=run/name/'predictions.jsonl'
         if journal.exists():
-            raw=[parse_json(line+b'\n',canonical=True) for line in gate.read(journal,4<<20).splitlines()]
+            raw,suffix=journal_prefix(journal)
+            if suffix:
+                gate.require(record['stopped'] is not None or not custody.successful(outer),
+                    'unparsed journal suffix in completed study')
+                unparsed_journals[str(journal.relative_to(run))]=dict(bytes=len(suffix),sha256=gate.digest(suffix))
             gate.require([r['id'] for r in raw]==[r['id'] for r in expected_packet['public'][:len(raw)]],
                 'raw prediction journal differs from declared public order')
             gate.require(all(by_key[name,r['id']]==r['raw'] for r in raw),'prediction inventory differs from raw journal')
             if next(r for r in attempts if r['name']==name)['status']=='completed':
-                gate.require(len(raw)==len(expected_packet['public']), 'completed seed missing raw predictions')
+                gate.require(not suffix and len(raw)==len(expected_packet['public']), 'completed seed missing raw predictions')
         else:
             gate.require(next(r for r in attempts if r['name']==name)['status']!='completed', 'completed seed missing raw journal')
     if (run/'baselines.json').exists():
@@ -82,8 +88,11 @@ def verify(args):
             checkpoint_inventory={n:gate.digest(gate.read(run/n/'training.json',4<<20)) for n,_,_,_,_ in ATTEMPTS})
         gate.require(external==expected,'external prediction/checkpoint commitment changed')
         if (run/'target-journal.jsonl').exists():
-            lines=gate.read(run/'target-journal.jsonl',4<<20).splitlines()
-            journal=[parse_json(line+b'\n',canonical=True) for line in lines]
+            journal,suffix=journal_prefix(run/'target-journal.jsonl')
+            if suffix:
+                gate.require(record['stopped'] is not None or not custody.successful(outer),
+                    'unparsed target suffix in completed study')
+                unparsed_journals['target-journal.jsonl']=dict(bytes=len(suffix),sha256=gate.digest(suffix))
             heldout=[r for r in content['rows'] if r['split']!='train']
             gate.require([r['id'] for r in journal]==[r['id'] for r in heldout[:len(journal)]], 'partial target order changed')
             for row,truth in zip(heldout,journal):
@@ -102,7 +111,7 @@ def verify(args):
             and all(r['status']=='completed' for r in attempts), 'complete result missing successful stages')
     gate.require(inventory(run)==before,'read-only verification changed run bytes')
     return dict(verified=True,complete=record['stopped'] is None and custody.successful(outer),
-        outer_failure=outer['failure'],producer_sha=manifest['producer_sha'],
+        outer_failure=outer['failure'],unparsed_journals=unparsed_journals,producer_sha=manifest['producer_sha'],
         scores_recomputed=targets is not None,optimizer_replay=False,scores_only=scores_only,
         scope=('portable source/custody/data/score replay; recorded runtime and tensor structure not independently validated; '
                if scores_only else 'source-bound custody, safe final checkpoint structure, fit regeneration and score replay; ')+

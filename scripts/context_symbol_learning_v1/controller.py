@@ -8,8 +8,9 @@ import time
 import queue_evaluation_v1 as gate
 from queue_learning_v1.artifacts import anchored_json, inventory, read_json, retain_failure, write_json
 from queue_learning_v2.resources import supervise
-from trinite.contracts import json_bytes,parse_json
+from trinite.contracts import json_bytes
 from . import custody,data,oracle,scoring
+from .journal import prefix as journal_prefix
 from .spec import ATTEMPTS,ROOT,TOKEN_CEILING
 
 LAUNCHER=ROOT/'scripts/run_context_symbol_learning_v1.py'
@@ -70,24 +71,26 @@ def execute(args):
             receipt=launch(command,remaining,folder/'progress.json',updates,targets)
             workers[name]=dict(attempt=receipt)
             write_json(destination/(name+'-worker.json'),receipt)
+            journal_failed=False
             if not fit:
                 journal=folder/'predictions.jsonl'
-                raw=[] if not journal.exists() else [parse_json(line+b'\n',canonical=True)
-                    for line in gate.read(journal,4<<20).splitlines()]
+                raw,suffix=([],b'') if not journal.exists() else journal_prefix(journal)
+                journal_failed=bool(suffix)
                 ids=[r['id'] for r in packet_content(content)]
                 gate.require([r['id'] for r in raw]==ids[:len(raw)], 'partial prediction journal order changed')
                 found={r['id']:r['raw'] for r in raw}
                 for row in predictions:
                     if row['method']==name and row['id'] in found:
                         row['raw']=found[row['id']]
-                if custody.successful(receipt):
+                if custody.successful(receipt) and not journal_failed:
                     gate.require(len(raw)==len(ids), 'missing final heldout predictions')
-            if not custody.successful(receipt):
+            if not custody.successful(receipt) or journal_failed:
                 record['status']='timeout' if receipt['failure'] in ('timeout','update_timeout') else 'failure'
                 for row in predictions:
                     if row['method']==name and row['raw']['status']=='not_attempted':
                         row['raw']=dict(status=record['status'])
-                stopped=name+': failed; dependent stages stopped'
+                stopped=name+(': interrupted/malformed journal; dependent stages stopped' if journal_failed
+                              else ': failed; dependent stages stopped')
                 break
             if fit:
                 fit_training_sha=gate.digest(gate.read(folder/'training.json',4<<20))

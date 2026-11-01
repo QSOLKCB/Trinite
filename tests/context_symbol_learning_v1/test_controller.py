@@ -28,7 +28,7 @@ class LifecycleTests(unittest.TestCase):
         self.stack.enter_context(patch.object(custody,'context',return_value=({'producer_sha':'c'*40},self.content)))
         self.auth=self.stack.enter_context(patch.object(custody,'authorize'))
         self.stack.enter_context(patch.object(controller,'launch',side_effect=self.worker))
-        self.events=[];self.fail=None;self.partial=False
+        self.events=[];self.fail=None;self.partial=False;self.truncated=False
         self.oracle=self.stack.enter_context(patch.object(controller.oracle,'target',side_effect=self.target))
 
     def worker(self,argv,seconds,progress=None,max_updates=640,max_targets=12232):
@@ -48,6 +48,9 @@ class LifecycleTests(unittest.TestCase):
                 if out.name==self.fail:
                     public=public[:1] if self.partial else []
                 gate.write(out/'predictions.jsonl',b''.join(json_bytes(dict(id=r['id'],raw=dict(status='malformed',tokens=[]))) for r in public))
+                if self.truncated and out.name==self.fail:
+                    with (out/'predictions.jsonl').open('ab') as stream:
+                        stream.write(b'{"id":')
         return dict(exit_code=-9 if out.name==self.fail else 0,failure='timeout' if out.name==self.fail else None)
 
     def target(self,r,log=None):
@@ -113,6 +116,29 @@ class LifecycleTests(unittest.TestCase):
         self.assertTrue(controller.execute(self.args)['failed'])
         self.assertEqual(self.events,[])
         self.oracle.assert_not_called()
+
+    def test_truncated_worker_journal_retains_prefix_and_verifies_as_incomplete(self):
+        from context_symbol_learning_v1 import verification,numerical,workers
+        from queue_learning_v1.artifacts import inventory
+        self.fail='main-17';self.partial=True;self.truncated=True
+        self.assertTrue(controller.execute(self.args)['failed'])
+        self.oracle.assert_not_called()
+        raw=(self.args.out/'main-17/predictions.jsonl').read_bytes()
+        self.assertTrue(raw.endswith(b'{"id":'))
+        predictions=read_json(self.args.out/'predictions.json')
+        self.assertEqual(sum(r['method']=='main-17' and r['raw']['status']=='malformed' for r in predictions),1)
+        write_json(self.args.out/'supervisor.json',dict(exit_code=2,failure=None))
+        sha=write_json(self.args.run_anchor,dict(schema='trinite.context-symbol-evidence-anchor.v1',
+            freeze_sha256=self.args.freeze_sha,files=inventory(self.args.out)))
+        before=inventory(self.args.out)
+        args=SimpleNamespace(**vars(self.args),run=self.args.out,run_sha=sha)
+        with (patch.object(workers,'load_checkpoint',return_value=SimpleNamespace()),
+              patch.object(workers,'validate_fit',return_value=dict(engineering_double=True)),
+              patch.object(numerical,'require_fit')):
+            result=verification.verify(args)
+        self.assertFalse(result['complete'])
+        self.assertEqual(result['unparsed_journals']['main-17/predictions.jsonl']['bytes'],6)
+        self.assertEqual(inventory(self.args.out),before)
 
     def test_rejected_approval_launches_nothing(self):
         self.auth.side_effect=ValueError('wrong freeze approval')

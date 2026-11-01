@@ -160,6 +160,10 @@ heldout privileged evaluation. The external prediction anchor binds raw tokens,
 statuses and all final checkpoint identities. No partial barrier may score.
 Partial outputs remain in their journals if a worker fails; later planned cells
 stay visible as unattempted. Oracle failures never become semantic labels.
+An interrupted/malformed journal suffix is retained byte-for-byte; only its
+complete canonical prefix enters the prediction inventory, and dependent stages
+stop. Verification reports the unparsed suffix hash/length and incomplete status;
+it never repairs the log or treats a suffix as a successful prediction.
 
 Report full-denominator exact accuracy (144 per method/split), each class's
 recall with support, exact rational macro-F1, valid-output coverage, malformed,
