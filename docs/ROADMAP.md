@@ -35,9 +35,10 @@ standalone runners behind versioned observation JSON. Race simulation merged
 in [PR #105](https://github.com/QSOLKCB/Trinite/pull/105); the
 [queue module](QUEUE-SIM-V1.md) merged in [PR #106](https://github.com/QSOLKCB/Trinite/pull/106).
 The [inventory module](INVENTORY-SIM-V1.md) merged in [PR #107](https://github.com/QSOLKCB/Trinite/pull/107).
-The [qutrit decoder and noisy-syndrome adapter](QUTRIT-MODULES-V1.md) are implemented
-for review; generic sensor networks and music events remain planned. Build modules
-first, train later. Independent
+The [qutrit decoder and noisy-syndrome adapter](QUTRIT-MODULES-V1.md) merged in
+[PR #108](https://github.com/QSOLKCB/Trinite/pull/108). The generic
+[sensor environment](SENSOR-NETWORK-V1.md) is implemented for review; music events
+remain planned. Build modules first, train later. Independent
 oracles, structural family splits and controlled transfer evaluation precede
 learning claims. This does not authorize implementation of future modules,
 training or target runs, or displace the diagnostic-first order above.
@@ -915,3 +916,14 @@ Privileged truth remains outside decoding. Candidate corrections are not success
 claims, and measurement noise can cause miscorrections. This is a scoped first
 sensor adapter, not generic sensor-network completion or native model learning.
 Modules come first; training and evaluation protocols remain separate.
+
+## Generic sensor environment
+
+The [sensor network v1 contract](SENSOR-NETWORK-V1.md) adds a bounded external
+integer sensing environment: latent signals, explicit noise, bias/stuck faults,
+dropout and sensor-to-signal topology. Prefix observation JSON omits latent
+truth and fault labels; privileged outcomes are separate. The QEC-specific
+modules merged in [PR #108](https://github.com/QSOLKCB/Trinite/pull/108) remain
+unchanged. These are engineering environments, not learned fault detection or
+calibrated uncertainty. Music events are next in the [environment roadmap](EXTERNAL-ENVIRONMENTS-ROADMAP.md);
+training, held-out family evaluation and transfer remain separate gates.
