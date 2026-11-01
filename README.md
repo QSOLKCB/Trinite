@@ -45,6 +45,10 @@ The [four-cell procedural-QEC v3 study](docs/PROCEDURAL-QEC-V3-NEGATIVE-RESULT.m
 
 Phase 4's initial item-versus-carrier geometry contrasts were negative. The E8/ETQ parity checks prove exact finite-payload agreement, and the activation-to-lattice experiment is **retrospective and training-exposed**—neither demonstrates learned geometric reasoning. **Geometry loss remains zero.** See the [roadmap](docs/ROADMAP.md), [Phase 4 limitations](docs/PHASE-4.md) and [initial milestone notes](docs/RELEASE-NOTES-v0.1.0.md) for the complete status.
 
+For the prospective procedural-dataset and context-offload module sequence, see the
+[external environment roadmap](docs/EXTERNAL-ENVIRONMENTS-ROADMAP.md#procedural-dataset-modules-next-engineering-tranche).
+Standalone module conformance is not native training or a demonstrated learning gain.
+
 ## Get started
 
 Foundation, protocol and evidence checks use the Python standard library (3.11+). Model and training tests require the separately [hash-locked CPU environment](docs/GETTING_STARTED.md); no model weights are downloaded implicitly.

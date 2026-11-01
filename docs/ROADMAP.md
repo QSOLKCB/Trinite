@@ -957,3 +957,18 @@ queue-only admission, lossless public observation carrier, grouped 384-episode
 protocol and bounded native supervised controller. Engineering checks use the
 existing two-anchor gate; no pilot training or learning result is reported.
 Reviewed green merge and explicit approval of a fresh frozen run remain required.
+
+## Prospective procedural dataset and context-offload modules
+
+The next external tranche separates exact ternary evidence scoring, a pinned
+C99 tombstone/splice adapter and the original
+[context-symbol relation module](CONTEXT-SYMBOL-RELATION-V1.md). See the
+[ordered implementation-to-learning plan](EXTERNAL-ENVIRONMENTS-ROADMAP.md#procedural-dataset-modules-next-engineering-tranche).
+These are standalone engineering foundations for reproducible on-demand formal
+examples, not native training, larger context capacity or proven learning gains.
+Next gates are task admission, compact lossless observation carriers with measured
+token/compute costs, grouped fresh evaluation families, baseline/ablation controls
+and explicit approval of a fresh frozen run. Curriculum complexity/diversity/volume
+may later track measured competence and capacity under unchanged model-size policy,
+with fixed anchors and locked tests. No optimizer is run, queue-learning-v2 remains
+unchanged, and historical source-bound evidence and negative results are preserved.

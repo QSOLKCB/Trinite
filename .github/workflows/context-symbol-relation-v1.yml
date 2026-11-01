@@ -1,0 +1,35 @@
+name: External context-symbol relation v1 conformance
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: context-symbol-relation-v1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  rust-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: external/context-symbol-relation-v1
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install explicit official Rust toolchain
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal --component rustfmt --component clippy
+          rustc --version --verbose
+          cargo --version
+      - name: Offline locked conformance (no crate dependencies)
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --offline --locked --all-targets -- -D warnings
+          cargo test --offline --locked
+          cargo test --offline --locked --release
+          cargo build --offline --locked --release
+          python3 tests/oracle.py target/release/trinite-context-symbol-relation-v1
