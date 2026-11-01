@@ -1,9 +1,11 @@
 # External environment roadmap
 
-Status: prospective engineering roadmap, 1 November 2026. The first race
-simulator is under review in [draft PR #105](https://github.com/QSOLKCB/Trinite/pull/105),
-not merged. Queue, inventory, sensor and music environments below are planned
-only. None establishes a Trinite learning improvement or cross-domain transfer.
+Status: engineering roadmap, 1 November 2026. The race simulator merged in
+[PR #105](https://github.com/QSOLKCB/Trinite/pull/105). The
+[queue module](QUEUE-SIM-V1.md) is implemented for review; inventory, sensor
+and music environments below remain planned. Modules are built first; training
+comes later under separate protocols. None establishes a Trinite learning
+improvement or cross-domain transfer.
 
 ## Boundary: the runner computes; Trinite sees observation JSON
 
@@ -34,8 +36,8 @@ evidence score is undefined, not neutral.
 
 | Stage | Scope | Gate before claiming useful model evidence |
 | --- | --- | --- |
-| 1 — Race simulation | Draft #105: bounded seeded CPU integer toy dynamics, masked ternary observations, before/after scratchings and separate privileged ranks. No real-world racing calibration. | Review and exact-commit CI establish software conformance only. A separately reviewed controller, prediction commitment and evaluation protocol are still needed. |
-| 2 — Queue simulation | Planned: arrivals, service capacity, delays and outages; predict wait/overflow under partial observations. | Independent event/accounting oracle; unseen arrival and service families; distinguish unavailable queue measurements from an empty queue. |
+| 1 — Race simulation | Merged #105: bounded seeded CPU integer toy dynamics, masked ternary observations, before/after scratchings and separate privileged ranks. No real-world racing calibration. | Review and exact-commit CI establish software conformance only. A separately reviewed controller, prediction commitment and evaluation protocol are still needed. |
+| 2 — Queue simulation | Implemented for review: bounded FIFO arrivals, finite buffer, service capacity, delays/outages, masked integer prefix observations and separate privileged wait/overflow accounting. No learner or ternary projection yet. | Independent event/accounting oracle; unseen arrival and service families; distinguish unavailable queue measurements from an empty queue. |
 | 3 — Inventory shortages | Planned: stock, demand, replenishment lead times and disruptions; predict stockouts before considering reorder actions. | Conservation checks and independent baseline; unseen demand/disruption families; distinguish zero stock, unknown stock and an unavailable supplier. |
 | 4 — Noisy sensor networks | Planned: latent signals, noise, dropout and sensor faults; predict states or detect faults from incomplete readings. | Independent latent-state oracle; held-out noise/fault/topology families; calibrated uncertainty and explicit unavailable sensors. |
 | 5 — Music-event environments | Planned: synthetic note/timing events, missing events and channel faults; predict sequences or reconstruct bounded event properties. | Original generated material with rights records, exact event/timing oracle and held-out rhythmic/structural families. No copyrighted audio intake or audio-preservation fidelity claim. |
@@ -43,7 +45,7 @@ evidence score is undefined, not neutral.
 
 The race implementation is a synthetic rank generator, not a betting strategy,
 physical racing model, reward trainer or installed Trinite capability. Its
-[proposed contract at the reviewed candidate commit](https://github.com/QSOLKCB/Trinite/blob/5b10771475fdc555518e7ce1e0701075d854deb9/docs/RACE-SIM-V1.md)
+[contract at the merged commit](https://github.com/QSOLKCB/Trinite/blob/f8a78db1a04c8dfa9720b0a92630b35e3e30b42c/docs/RACE-SIM-V1.md)
 records its actual schema, deterministic scope and limitations. A seed split
 alone is insufficient: new seeds can reproduce the same structural problem.
 
