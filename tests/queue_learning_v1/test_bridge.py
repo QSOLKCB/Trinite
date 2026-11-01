@@ -207,6 +207,18 @@ class ProtocolTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'clean reviewed main'):
                     controller.authorize({'git': {'head': 'a' * 40}}, 'b' * 64, path)
 
+    def test_child_environment_mismatch_rejects_before_admission_or_updates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            args = SimpleNamespace(frozen=str(root / 'frozen'), freeze_sha='b' * 64,
+                anchors=str(root / 'anchors.json'), anchors_sha='c' * 64, out=str(root / 'train'))
+            with (patch('queue_learning_v1.numerical.configure', return_value={'foreign': True}),
+                  patch.object(controller, 'frozen_context', return_value=(root / 'frozen', {'environment': {'expected': True}}, {})),
+                  patch.object(admission, 'training_rows', side_effect=AssertionError('no labels'))):
+                with self.assertRaisesRegex(ValueError, 'worker frozen environment changed'):
+                    controller.train_worker(args)
+            self.assertFalse((root / 'train').exists())
+
     def test_bounded_failed_worker_retains_raw_process(self):
         import sys
         timeout = controller.launch([sys.executable, '-I', '-c', 'import time; print("raw", flush=True); time.sleep(5)'], .1)

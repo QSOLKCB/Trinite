@@ -162,8 +162,9 @@ def usage(started, before):
 
 def train_worker(args):
     from . import numerical
-    numerical.configure()
+    environment = numerical.configure()
     frozen, manifest, prepares = frozen_context(Path(args.frozen), args.freeze_sha, args.anchors, args.anchors_sha)
+    gate.require(environment == manifest['environment'], 'queue train worker frozen environment changed')
     authorize(manifest, args.freeze_sha, args.approval)
     gate.disjoint(frozen, args.anchors, args.approval, args.out)
     destination = gate.fresh(args.out)
