@@ -188,3 +188,14 @@ external information do not guarantee learning or reasoning. Information kept in
 external modules and supplied at inference remains distinct from knowledge learned
 in weights. Capacity, context offload and useful generalization each require their
 own measured controls and fresh authorization.
+
+### Implemented procedural admission bridge (engineering only)
+
+[Procedural dataset v1](PROCEDURAL-DATASET-V1.md) now implements bounded
+on-demand formal generation and source-specific admission for these three modules,
+with whole dimension/length families, public-only lossless carriers, measured
+native byte-token budgets, independent oracle checks and train-only target export.
+This supersedes only the pending generator/admission portion above. Its fully
+public engineering splits are not fresh unseen evidence; no model or optimizer
+runs. It does not implement the later prediction-commitment controller or controlled
+fresh frozen comparison, nor advance the learning, scaling or release gates.
