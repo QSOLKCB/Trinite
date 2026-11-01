@@ -951,3 +951,9 @@ Two externally retained anchors bind the private episode and public prediction;
 abstention is distinct from zero error. This is infrastructure before useful
 within-domain and cross-domain experiments, not a training or transfer result.
 Prior modules, native gates and historical evidence remain unchanged.
+
+The [bounded queue-learning bridge](QUEUE-LEARNING-V1.md) now proposes a separate
+queue-only admission, lossless public observation carrier, grouped 384-episode
+protocol and bounded native supervised controller. Engineering checks use the
+existing two-anchor gate; no pilot training or learning result is reported.
+Reviewed green merge and explicit approval of a fresh frozen run remain required.
