@@ -7,7 +7,6 @@ import queue_evaluation_v1 as gate
 from queue_learning_v1.producer import episodes as historical, MASKS, KINDS
 from queue_learning_v1.spec import plan as v1_plan
 from trinite.foundations_plan import FoundationsPlan
-from .diagnostics import check_rows
 
 
 def plan(seed, *, fit=False):
@@ -22,6 +21,7 @@ def plan(seed, *, fit=False):
 
 def fit_rows(rows):
     """Eight fixed train prefixes, one label each; selection never uses label values."""
+    from .diagnostics import check_rows
     check_rows(rows)
     seen, selected = set(), []
     for row in sorted(rows, key=lambda r: hashlib.sha256(r['identity'].encode('ascii')).digest()):
