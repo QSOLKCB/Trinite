@@ -1,6 +1,7 @@
 """Exposed engineering conformance; never train or score proposed pilot outcomes."""
 from copy import deepcopy
 import random
+import subprocess
 import tempfile
 from pathlib import Path
 import unittest
@@ -187,6 +188,24 @@ class ProtocolTests(unittest.TestCase):
             with self.assertRaises((ValueError, KeyError)):
                 controller.freeze(proof, sha, root / 'frozen', root / 'anchors.json')
             self.assertFalse((root / 'frozen').exists())
+
+    def test_missing_main_is_metadata_only_and_cannot_authorize_training(self):
+        def git(argv, **kwargs):
+            if 'refs/remotes/origin/main' in argv:
+                raise subprocess.CalledProcessError(1, argv)
+            return b'a' * 40 if 'HEAD' in argv else b''
+        with patch.object(spec.subprocess, 'check_output', side_effect=git):
+            value = spec.git_identity()
+        self.assertEqual(value, {'head': 'a' * 40, 'clean': True, 'main': None})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'declaration.json'
+            write_json(path, {'schema': 'trinite.queue-learning-owner-approval.v1',
+                'freeze_sha256': 'b' * 64, 'implementation_commit': 'a' * 40,
+                'approved_by': 'Trent Slade', 'reviewed_merged_green': True,
+                'authorization': 'execute queue-learning-v1 seeds 17 and 29 once'})
+            with patch.object(controller, 'git_identity', return_value=value):
+                with self.assertRaisesRegex(ValueError, 'clean reviewed main'):
+                    controller.authorize({'git': {'head': 'a' * 40}}, 'b' * 64, path)
 
     def test_bounded_failed_worker_retains_raw_process(self):
         import sys

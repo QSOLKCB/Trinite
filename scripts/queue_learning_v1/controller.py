@@ -60,7 +60,8 @@ def freeze(feasibility_file, feasibility_sha, out, anchors_file):
     from .numerical import configure
     gate.require(configure() == proof['kernel']['environment'], 'queue feasibility environment changed')
     git = git_identity()
-    gate.require(git['clean'], 'freeze requires a clean source commit')
+    gate.require(git['clean'] and git['main'] is not None and git['head'] == git['main'],
+                 'freeze requires a clean main commit with an available origin/main ref')
     destination = gate.fresh(out)
     try:
         rows = episodes()

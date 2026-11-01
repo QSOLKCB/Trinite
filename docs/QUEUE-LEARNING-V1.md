@@ -122,6 +122,9 @@ not measured AdamW/update compliance, a guarantee against host contention, or
 training evidence. Actual runs enforce deadlines and retain timeouts. A changed
 source, binary, environment or negative feasibility result needs a new retained
 receipt; never edit an old fingerprint to pass.
+Engineering feasibility may record an absent `origin/main` in a detached shallow
+PR checkout. Freeze and training reject that state; neither substitutes `HEAD`
+for a missing reviewed-main identity.
 
 The parent imposes a stricter 120-second **entire train child** deadline,
 including imports, admission, initialization, updates, diagnostics and IO.

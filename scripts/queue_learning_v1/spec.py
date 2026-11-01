@@ -54,6 +54,12 @@ def sources():
 def git_identity():
     def git(*args):
         return subprocess.check_output(['git', *args], cwd=ROOT, timeout=5).decode('ascii').strip()
+    # Hosted engineering PR checkouts may have only a detached merge ref. A
+    # missing main is recorded, never substituted with that ref or HEAD.
+    try:
+        main = git('rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main')
+    except subprocess.CalledProcessError:
+        main = None
     return {'head': git('rev-parse', 'HEAD'),
             'clean': not bool(git('status', '--porcelain', '--untracked-files=normal')),
-            'main': git('rev-parse', 'origin/main')}
+            'main': main}
