@@ -1,0 +1,11 @@
+[package]
+name = "tombstone-ffi"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Safe Rust interface to the authoritative TOMBSTONE C99 evidence engine"
+build = "build.rs"
+
+[lib]
+name = "tombstone_ffi"
+path = "src/lib.rs"

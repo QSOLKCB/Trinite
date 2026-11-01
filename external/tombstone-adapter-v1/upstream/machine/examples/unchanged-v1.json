@@ -1,0 +1,16 @@
+{
+  "format": "tombstone.receipt",
+  "version": 1,
+  "kind": "unchanged",
+  "before": {
+    "sha256": "3a1f6ff514ca058dc8feb550820712abd7ec1300b3934fdf64cbaf5fe23f0472",
+    "size": 5
+  },
+  "after": {
+    "sha256": "3a1f6ff514ca058dc8feb550820712abd7ec1300b3934fdf64cbaf5fe23f0472",
+    "size": 5
+  },
+  "deleted": null,
+  "previous_receipt_hash": "ba68ca51013bb7a475b2d9991cf59607a1c75dfe34e73a4d1ed9a515a8d02914",
+  "receipt_hash": "84c0b5f9e478c284553822fb95fe31a72ce71a35070e963d67c328fb777f25e6"
+}

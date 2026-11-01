@@ -1,0 +1,21 @@
+{
+  "schema": "trinite.tombstone-source.v1",
+  "repository": "https://github.com/QSOLKCB/TOMBSTONE",
+  "commit": "5447558afdaa3e37f933015278b64dde6abef5d5",
+  "license": "Apache-2.0",
+  "files": {
+    "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "bindings/rust/Cargo.toml": "0384cdc2be666141ef6a50c3338cfa0885ecc3088bb087a8c8b56941df60ff29",
+    "bindings/rust/build.rs": "ddb2b28e74266e6a78a38c94bdc5790af0fc229f2881e180c25cf7c0a8af5b6a",
+    "bindings/rust/src/lib.rs": "2ccc9fe848f1eb17f7fb77db7c31d174c547bdf546b312d3b43276d54b6c1a24",
+    "src/crypto/fingerprint.c": "c96627b1185f79b5d756934d9e718a2c8928fe425b8b005abf5656c029b3d9a9",
+    "src/core/deletion.c": "ed1377d1af2a1bdee4021581e26052230bd1fb2dc61e7e2a2117fae4f6a3fdd9",
+    "src/encoding/receipt.c": "159d7f0697ac1022859bcb1fa510fdabfae828caa00f462048be6bf4746c7029",
+    "include/tombstone/fingerprint.h": "a19a5f859bb9212984a91a678a8ffdbb620a100ed9d0cb4fee351aac6bd5c74b",
+    "include/tombstone/deletion.h": "20223b1822ce6f0b2f62c61d901a2d9ee770d26b97fcef31dae30aab72fd72c0",
+    "include/tombstone/receipt.h": "4f59faec593badf12452f4e75996408f3c3d75f1d72be22a1f4bc4c70c0867b0",
+    "machine/examples/explicit-delete-v1.json": "84121cc4a05c1bf118d486b087dd48cf98270d0d5e1d04b62ef147b8e4e64871",
+    "machine/examples/observed-transition-v1.json": "392d0d9287a2cd8fd394d73dcbb914145f4b9e59f1ef199fc8f2c2c31cdea8ec",
+    "machine/examples/unchanged-v1.json": "e5f6401b3cb6e37ea5861f0cfeca99a93ffb409fbec19fad0aca700e64b56ca0"
+  }
+}
