@@ -1,0 +1,56 @@
+{
+  "schema": "trinite.ternary-evidence-result.v1",
+  "entries": [
+    {
+      "id": "observed-neutral",
+      "active": true,
+      "status": "scored",
+      "score": {
+        "numerator": 2,
+        "denominator": 5
+      },
+      "coverage": {
+        "numerator": 5,
+        "denominator": 5
+      },
+      "observed_count": 2,
+      "factor_count": 3
+    },
+    {
+      "id": "missing",
+      "active": true,
+      "status": "abstain",
+      "score": null,
+      "coverage": {
+        "numerator": 0,
+        "denominator": 5
+      },
+      "observed_count": 0,
+      "factor_count": 3
+    },
+    {
+      "id": "zero-weight-only",
+      "active": true,
+      "status": "abstain",
+      "score": null,
+      "coverage": {
+        "numerator": 0,
+        "denominator": 5
+      },
+      "observed_count": 1,
+      "factor_count": 3
+    },
+    {
+      "id": "withdrawn",
+      "active": false,
+      "status": "inactive",
+      "score": null,
+      "coverage": {
+        "numerator": 5,
+        "denominator": 5
+      },
+      "observed_count": 2,
+      "factor_count": 3
+    }
+  ]
+}
