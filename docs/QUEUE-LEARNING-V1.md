@@ -109,7 +109,7 @@ materialized by the training adapter.
 | Other optimizer settings | Native defaults: betas .9/.999, epsilon 1e-8, decay .01, clip 1, no schedule/accumulation |
 | Order | Train episode IDs ranked by SHA-256, cycle twice; same order for both seeds |
 | Targets | Hard maximum 32,768 supervised answer/EOS tokens; static worst case 2,048 |
-| Time | 120 seconds for updates; 900 seconds cumulative whole-worker wall per seed |
+| Time | 120 seconds for updates; 900 seconds elapsed whole-worker wall per seed |
 | Selection | Final step 64 only, frozen before any held-out inference |
 
 `feasibility` first validates all 384 **observations only**, masks, alias grouping,
@@ -128,8 +128,9 @@ for a missing reviewed-main identity.
 
 The parent imposes a stricter 120-second **entire train child** deadline,
 including imports, admission, initialization, updates, diagnostics and IO.
-Inference receives the remainder of the seed's 900-second cumulative worker
-allowance. Both children have bounded stdout/stderr and process-group kill/wait
+Inference receives the remainder of the seed's 900-second elapsed worker
+allowance, including time waiting for the other seed and checkpoint barrier.
+Both children have bounded stdout/stderr and process-group kill/wait
 through the existing queue gate. Native update time is also measured separately.
 The updater's field named `validation` deliberately contains a **train-only
 loss diagnostic** at step 64, never held-out data or checkpoint selection.

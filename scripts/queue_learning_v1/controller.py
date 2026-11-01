@@ -263,12 +263,13 @@ def run(args):
     authorize(manifest, args.freeze_sha, args.approval)
     destination, anchors = gate.fresh(out), gate.fresh(anchor_dir)
     started, before = time.monotonic(), resource.getrusage(resource.RUSAGE_SELF)
-    workers, checkpoints, predictions = {}, {}, {}
+    workers, checkpoints, predictions, seed_started = {}, {}, {}, {}
     launcher = [sys.executable, '-I', '-B', str(ROOT / 'scripts/run_queue_learning_v1.py')]
     try:
         common = ['--frozen', str(frozen), '--freeze-sha', args.freeze_sha,
                   '--anchors', str(args.anchors), '--anchors-sha', args.anchors_sha, '--approval', str(args.approval)]
         for seed in SEEDS:
+            seed_started[seed] = time.monotonic()
             worker = launch(launcher + ['_train', *common, '--seed', str(seed),
                             '--out', str(destination / f'train-{seed}')], 120)
             workers[str(seed)] = {'train': worker}
@@ -291,10 +292,16 @@ def run(args):
             attempted = set()
             failure_status = 'not_attempted'
             if checkpoints[str(seed)] is not None:
-                remaining = 900 - float.fromhex(workers[str(seed)]['train']['wall_seconds_hex'])
-                worker = launch(launcher + ['_infer', '--public', str(public), '--checkpoint',
-                    str(destination / f'train-{seed}'), '--checkpoint-anchors', str(anchors / 'checkpoints.json'),
-                    '--checkpoint-sha', checkpoint_sha, '--seed', str(seed), '--out', str(destination / f'infer-{seed}')], remaining)
+                # Count the entire elapsed seed lifecycle, including waiting for
+                # the other seed and the checkpoint barrier, not just active children.
+                remaining = 900 - (time.monotonic() - seed_started[seed])
+                if remaining > 0:
+                    worker = launch(launcher + ['_infer', '--public', str(public), '--checkpoint',
+                        str(destination / f'train-{seed}'), '--checkpoint-anchors', str(anchors / 'checkpoints.json'),
+                        '--checkpoint-sha', checkpoint_sha, '--seed', str(seed), '--out', str(destination / f'infer-{seed}')], remaining)
+                else:
+                    worker = {'process': {'exit_code': None, 'failure': 'whole_worker_deadline'},
+                              'wall_seconds_hex': (0.).hex(), 'elapsed_limit_exceeded': True}
                 workers[str(seed)]['infer'] = worker
                 write_json(destination / f'worker-{seed}-infer.json', worker)
                 failure_status = 'timeout' if worker['process']['failure'] == 'timeout' else 'failure'
@@ -318,6 +325,9 @@ def run(args):
             for row in heldout:
                 predictions.setdefault((f'seed{seed}', row['id']),
                                        {'status': failure_status if row['id'] in attempted else 'not_attempted'})
+            elapsed = time.monotonic() - seed_started[seed]
+            workers[str(seed)]['whole_worker_wall_seconds_hex'] = elapsed.hex()
+            workers[str(seed)]['whole_worker_limit_exceeded'] = elapsed > 900
         # Baselines use TRAIN ONLY; no held-out targets have been computed.
         train_rows = admission.training_rows(frozen, manifest, prepares)
         constants = evaluation.constants(train_rows)
@@ -338,7 +348,8 @@ def run(args):
                 'verification_scope': 'gate observation/target replay and safe checkpoint structure; no optimizer replay',
                 'failed_workers': any(v is None for v in checkpoints.values()) or
                    any(w.get('infer', {}).get('process', {}).get('exit_code', 0) != 0
-                       or w.get('infer', {}).get('elapsed_limit_exceeded', False) for w in workers.values()) or
+                       or w.get('infer', {}).get('elapsed_limit_exceeded', False)
+                       or w['whole_worker_limit_exceeded'] for w in workers.values()) or
                    any(predictions[f'seed{seed}', row['id']]['status'] in ('failure', 'timeout', 'not_attempted')
                        for seed in SEEDS for row in heldout)}
     except Exception as error:

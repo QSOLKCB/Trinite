@@ -395,11 +395,13 @@ class GateIntegrationTests(unittest.TestCase):
             approval=str(self.root / 'unused-owner-declaration.json'),
             out=str(destination), run_anchors=str(anchor_dir))
         calls = []
+        elapsed_clock = [0.]
         def launch(argv, seconds):
             stage = '_train' if '_train' in argv else '_infer'
             seed = int(argv[argv.index('--seed') + 1])
             slot = gate.fresh(argv[argv.index('--out') + 1])
             calls.append((stage, seed, seconds))
+            elapsed_clock[0] += 60 if stage == '_train' else 50
             if stage == '_train':
                 gate.write(slot / 'tensors.safetensors', b'controller-double-no-tensors')
                 gate.write(slot / 'metadata.json', b'{}\n')
@@ -414,7 +416,7 @@ class GateIntegrationTests(unittest.TestCase):
                 gate.write(slot / 'raw.jsonl', b''.join(gate.encode({'id': r['id'],
                     'raw': {'status': 'prediction', 'tokens': [48, 257]}}) for r in self.entries))
                 gate.write(slot / 'attempts.jsonl', b''.join(gate.encode({'id': r['id']}) for r in self.entries))
-            return {'process': {'exit_code': 0, 'failure': None}, 'wall_seconds_hex': (.1).hex(),
+            return {'process': {'exit_code': 0, 'failure': None}, 'wall_seconds_hex': float(60 if stage == '_train' else 50).hex(),
                     'elapsed_limit_exceeded': False}
         real_gate = gate.run
         private_requests = {gate.read(self.frozen / r['id'] / 'private/request.json') for r in self.entries}
@@ -428,6 +430,7 @@ class GateIntegrationTests(unittest.TestCase):
               patch.object(controller, 'authorize'),
               patch('queue_learning_v1.numerical.configure', return_value={'engineering': True}),
               patch.object(controller, 'launch', side_effect=launch),
+              patch.object(controller, 'time', SimpleNamespace(monotonic=lambda: elapsed_clock[0])),
               patch.object(admission, 'training_rows', return_value=pool),
               patch.object(gate, 'run', side_effect=bounded_gate)):
             result = controller.run(args)
@@ -435,6 +438,10 @@ class GateIntegrationTests(unittest.TestCase):
         self.assertEqual([(a, b) for a, b, _ in calls], [('_train',17), ('_train',29), ('_infer',17), ('_infer',29)])
         self.assertEqual([s for a, _, s in calls if a == '_train'], [120, 120])
         self.assertTrue(all(s < 900 for a, _, s in calls if a == '_infer'))
+        self.assertEqual([s for a, _, s in calls if a == '_infer'], [780, 790])
+        resources = read_json(destination / 'run.json')['workers']
+        self.assertEqual(float.fromhex(resources['17']['whole_worker_wall_seconds_hex']), 170)
+        self.assertEqual(float.fromhex(resources['29']['whole_worker_wall_seconds_hex']), 160)
         run_sha = write_json(anchor_dir / 'run-inventory.json', inventory(destination))
         verify_args = SimpleNamespace(**vars(args), run=str(destination),
             checkpoint_sha=result['checkpoint_sha256'], barrier_sha=result['barrier_sha256'], run_sha=run_sha)
