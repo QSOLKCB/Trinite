@@ -1,6 +1,9 @@
 """Public engineering conformance, never fresh scientific evaluation."""
 import hashlib
 import json
+import os
+from pathlib import Path
+import tempfile
 import subprocess
 import sys
 import unittest
@@ -118,6 +121,35 @@ class OmiTests(unittest.TestCase):
         for text in ('["O1","abcd","next",1]\n=', '["O1","0000","next",8]\n=',
                      '["O1", "0000","next",1]\n=', '["O1","0000","next",1,0]\n='):
             with self.assertRaises(ValueError): omi.decode_prompt(text)
+
+    def test_build_probes_crate_selected_toolchain(self):
+        # Real subprocesses via fake PATH proxies model rustup's directory selection:
+        # the caller sees global 1.95, while the crate's override selects 1.90.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            crate, bin_dir = root/'crate', root/'bin'
+            crate.mkdir(); bin_dir.mkdir(); (crate/'target').mkdir()
+            (crate/'rust-toolchain.toml').write_text('[toolchain]\nchannel = "1.90.0"\n')
+            rustc, cargo, log = bin_dir/'rustc', bin_dir/'cargo', root/'cargo.log'
+            rustc.write_text('#!/bin/sh\nif [ -f rust-toolchain.toml ]; then echo "rustc 1.90.0 (crate override)"; else echo "rustc 1.95.0 (global default)"; fi\n')
+            cargo.write_text('#!/bin/sh\nprintf "%s\\n" "$PWD" "$*" > "$OMI_BUILD_LOG"\n')
+            rustc.chmod(0o755); cargo.chmod(0o755)
+            with patch.dict(os.environ, PATH=str(bin_dir)+os.pathsep+os.environ.get('PATH', ''), OMI_BUILD_LOG=str(log)), \
+                 patch.object(omi, 'CRATE', crate), patch.object(omi, 'RECORD', crate/'target/omi-build.json'), \
+                 patch.object(omi, 'sources', return_value={'test': 'source'}), \
+                 patch.object(omi, 'identity', return_value={'test': 'identity'}):
+                global_version = subprocess.run(['rustc', '--version'], cwd=root, capture_output=True, check=True).stdout
+                self.assertTrue(global_version.startswith(b'rustc 1.95.0 '))
+                omi.build()
+                self.assertEqual(log.read_text().splitlines(), [str(crate), 'build --release --offline --locked'])
+                self.assertEqual(json.loads(omi.RECORD.read_text()), {'test': 'identity'})
+                log.unlink()
+                rustc.write_text('#!/bin/sh\necho "rustc 1.95.0 (wrong override)"\n')
+                with self.assertRaises(ValueError): omi.build()
+                self.assertFalse(log.exists())
+                rustc.write_text('#!/bin/sh\nexit 3\n')
+                with self.assertRaises(subprocess.CalledProcessError): omi.build()
+                self.assertFalse(log.exists())
 
     def test_stale_source_binding_rejected(self):
         self.assertIn('src/trinite/__init__.py', omi.sources())

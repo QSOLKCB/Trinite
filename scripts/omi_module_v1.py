@@ -120,7 +120,7 @@ def identity():
 
 
 def build():
-    version = subprocess.run(['rustc', '--version'], capture_output=True, check=True, timeout=10).stdout
+    version = subprocess.run(['rustc', '--version'], cwd=CRATE, capture_output=True, check=True, timeout=10).stdout
     gate.require(version.startswith(b'rustc 1.90.0 '), 'Rust 1.90.0 required')
     before = sources()
     subprocess.run(['cargo', 'build', '--release', '--offline', '--locked'], cwd=CRATE, check=True, timeout=120)

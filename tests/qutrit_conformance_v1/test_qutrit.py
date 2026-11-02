@@ -3,6 +3,8 @@ from itertools import product
 import json
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 import qutrit_conformance_v1 as q
@@ -90,6 +92,16 @@ class QutritTests(unittest.TestCase):
             with self.assertRaises(ValueError):q.public_only(dict(q.public('0000'),**{extra:0}))
         for text in ('["Q1", "0000","S1","apply",""]\n=', '["Q1","0000","S0","apply",""]\n='):
             with self.assertRaises(ValueError):q.decode_prompt(text)
+
+    def test_build_probes_pinned_crate_directory(self):
+        def command(argv, **kwargs):
+            self.assertEqual(kwargs.get('cwd'), q.CRATE)
+            return subprocess.CompletedProcess(argv, 0, b'rustc 1.90.0 (fixture)\n' if argv[0]=='rustc' else b'', b'')
+        original = q.RECORD.read_bytes()
+        with tempfile.TemporaryDirectory() as temp, patch.object(q, 'RECORD', Path(temp)/'build.json'), patch.object(q.subprocess, 'run', side_effect=command) as run:
+            q.build()
+        self.assertEqual(q.RECORD.read_bytes(), original)
+        self.assertEqual([call.args[0][0] for call in run.call_args_list], ['rustc', 'cargo'])
 
     def test_binding_and_infrastructure_are_not_negative_labels(self):
         self.assertIn('src/trinite/__init__.py',q.sources())
