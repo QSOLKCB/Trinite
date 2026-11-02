@@ -1,0 +1,26 @@
+name: OMI module v1
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  omi-module-v1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Explicit Rust baseline
+        run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt --component clippy && rustup default 1.90.0
+      - name: Offline build and exhaustive Rust conformance
+        run: |
+          python3 scripts/run_omi_module_v1.py build
+          cd external/omi-v1
+          cargo test --offline --locked
+          cargo fmt --check
+          cargo clippy --offline --locked -- -D warnings
+      - name: Native admission, public boundary and token ledger
+        run: PYTHONPATH=src:scripts python3 -B -m unittest discover -s tests/omi_v1 -v

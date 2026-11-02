@@ -199,3 +199,18 @@ This supersedes only the pending generator/admission portion above. Its fully
 public engineering splits are not fresh unseen evidence; no model or optimizer
 runs. It does not implement the later prediction-commitment controller or controlled
 fresh frozen comparison, nor advance the learning, scaling or release gates.
+
+## Approved external arithmetic sequence — 2 November 2026
+
+1. [OMI external module, source-specific admission and actual token ledger](OMI-MODULE-V1.md): dependency-free Rust arithmetic, independent exhaustive oracle,
+   whole-orbit engineering splits, public JSON only. No training/controller.
+2. Separate QEC evidence adapter: consume pinned already-built QEC public evidence,
+   preserve its scientific scope; do not rebuild QEC or pass hidden state to learners.
+3. Separate bounded controller: explicit per-call/context/total compute limits,
+   invalid/EOS/budget stops and matched single-pass/equal-compute controls.
+
+Merge/review gates remain separate; no auto-merge. Only after baseline readiness,
+source-bound fresh freeze and explicit exact-run approval may training follow.
+Do not rebuild PR125 diagnostics, erase retained 8/8 versus7/8 outcomes, or claim
+quantization/looping is an established remedy. Whole-orbit split conformance and
+93.75% period-majority baseline are engineering facts, not model gains.
