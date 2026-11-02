@@ -464,3 +464,12 @@ decoder/sensor modules, external QEC certificates and historical evidence remain
 unchanged. Implemented software is not training, held-out gains, hardware evidence
 or authorization for the later controller or a scientific run. Training still
 requires a reviewed green producer, new exact freeze and explicit approval.
+
+## Bounded external controller — engineering increment
+
+The [controller/policy interface](BOUNDED-CONTROLLER-V1.md) follows OMI and
+qutrit conformance admission: public-only iterative OMI state, explicit budgets,
+strict EOS, no retries and separate post-episode evaluation. Qutrit remains
+one-shot small public conformance. No checkpoint adapter, training or learning
+gain is claimed; future scientific execution requires a fresh exact freeze and
+owner approval. Historical negative evidence and numerical bridges are unchanged.
