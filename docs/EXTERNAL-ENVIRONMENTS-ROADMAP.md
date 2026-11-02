@@ -214,3 +214,15 @@ source-bound fresh freeze and explicit exact-run approval may training follow.
 Do not rebuild PR125 diagnostics, erase retained 8/8 versus7/8 outcomes, or claim
 quantization/looping is an established remedy. Whole-orbit split conformance and
 93.75% period-majority baseline are engineering facts, not model gains.
+
+
+## Local qutrit conformance adapter — 2 November 2026
+
+[Qutrit conformance v1](QUTRIT-CONFORMANCE-V1.md) adds a separate dependency-free
+Rust SUM/SWAP runner and strict Python admission/token ledger, after OMI and before
+the prospective bounded controller. It uses public two-qutrit mathematical operands,
+independent finite-field checks and structural engineering splits. Existing QEC
+decoder/sensor modules, external QEC certificates and historical evidence remain
+unchanged. Implemented software is not training, held-out gains, hardware evidence
+or authorization for the later controller or a scientific run. Training still
+requires a reviewed green producer, new exact freeze and explicit approval.
