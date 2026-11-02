@@ -1,0 +1,8 @@
+ARCH OMI reference: Brian Thorne.
+Rust arithmetic is adapted from the independently implemented QSOLKCB/VANILLAJS
+finite-word experiment at 9d228aed9791dccac6e62c9dbc55738cc26ac679,
+experiments/arch-omi/index.js (Apache-2.0).
+Changes: Rust u16 arithmetic, strict bounded JSON API, separate public observation
+and privileged outcome, inverse/horizon/period tasks and exhaustive conformance.
+The JSON parser is reused from QSOLKCB/Trinite context-symbol-relation-v1 under MPL-2.0.
+No upstream assets, corpus, or claim of endorsement is included.

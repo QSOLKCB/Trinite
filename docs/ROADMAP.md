@@ -999,3 +999,11 @@ heldout scores or baseline improvement are claimed. Original frozen protocols,
 queue-v1's negative result and queue-v2's unrun status are unchanged. The
 post-run read-only checkpoint audit does not replace the failed lifecycle gate
 or authorize a retry/resume. No research/release gate advances.
+
+## Approved OMI → QEC adapter → bounded controller sequence
+
+The [2 November external sequence](EXTERNAL-ENVIRONMENTS-ROADMAP.md#approved-external-arithmetic-sequence--2-november-2026)
+starts with the [OMI arithmetic/admission/token ledger](OMI-MODULE-V1.md).
+Keep the QEC evidence adapter and bounded controller in separate subsequent PRs.
+Existing diagnostics and historical outcomes remain unchanged. Module building
+is not training authorization: fresh exact freeze and approval remain required.

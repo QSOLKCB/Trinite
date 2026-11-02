@@ -444,3 +444,11 @@ not import training, load checkpoints, implement cache attention or change the
 historical CPU ledger. The standard-library CLI imports no numerical backend;
 the separate native adapter requires one explicitly supplied eval/no-grad model.
 See [memory accounting](MEMORY-TRAFFIC.md) for scope and counting conventions.
+
+## OMI engineering admission
+
+`external/omi-v1` owns exact finite-word arithmetic with separate public observation
+and privileged result operations. `scripts/omi_module_v1.py` provides additive
+whole-orbit admission and native byte-token accounting, reusing existing tokenizer
+and bounded transport. No model, updater, QEC implementation or loop controller.
+See [OMI module contract](OMI-MODULE-V1.md).
