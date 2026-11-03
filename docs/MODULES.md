@@ -452,3 +452,15 @@ and privileged result operations. `scripts/omi_module_v1.py` provides additive
 whole-orbit admission and native byte-token accounting, reusing existing tokenizer
 and bounded transport. No model, updater, QEC implementation or loop controller.
 See [OMI module contract](OMI-MODULE-V1.md).
+
+
+## Local qutrit conformance adapter — 2 November 2026
+
+[Qutrit conformance v1](QUTRIT-CONFORMANCE-V1.md) adds a separate dependency-free
+Rust SUM/SWAP runner and strict Python admission/token ledger, after OMI and before
+the prospective bounded controller. It uses public two-qutrit mathematical operands,
+independent finite-field checks and structural engineering splits. Existing QEC
+decoder/sensor modules, external QEC certificates and historical evidence remain
+unchanged. Implemented software is not training, held-out gains, hardware evidence
+or authorization for the later controller or a scientific run. Training still
+requires a reviewed green producer, new exact freeze and explicit approval.
