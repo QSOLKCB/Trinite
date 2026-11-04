@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 """Synthetic, standard-library-only negative and numerical evidence controls."""
 import hashlib
+import copy
 import json
 import math
 import os
@@ -161,7 +162,7 @@ class CustodyReview(unittest.TestCase):
 
 
 class HostileEvidenceRegressions(unittest.TestCase):
-    """Executed minimal, synthetic reproductions of seven reviewed defects."""
+    """Executed minimal, synthetic reproductions of the reviewed defects."""
 
     def test_matching_gold_and_greedy_prefixes_require_exact_fp32_bytes(self):
         z0 = core.VECTOR.pack(*([0.0] * core.VOCAB))
@@ -257,6 +258,70 @@ class HostileEvidenceRegressions(unittest.TestCase):
             core.verified_loss({'train_loss_hex': initial},
                                dict(valid,initial_train_loss_hex=(-5.).hex(),validation=[]),0)
 
+    def test_checkpoint_losses_preserve_initial_and_prior_validation_prefixes(self):
+        initial = 5.5
+        values = (initial, 1.25, 1.0, 0.8, 0.6)
+        records = []
+        for i, step in enumerate(core.STEPS):
+            meta = {'initial_train_loss_hex': initial.hex(),
+                    'validation': [{'step': s, 'loss_hex': values[j].hex()}
+                                   for j, s in enumerate(core.STEPS) if 0 < s <= step]}
+            # Every standalone checkpoint is valid, including its final loss.
+            self.assertEqual(core.verified_loss({'train_loss_hex': values[i].hex()},
+                                                 meta, step), values[i])
+            records.append({'update': step, 'native_train_loss': values[i],
+                            '_metadata': meta})
+        core.check_loss_trajectory(records)
+
+        # Both attacks can pass verified_loss() on every checkpoint in isolation.
+        for alteration in ('changed_initial', 'rewritten_prior_validation'):
+            tampered = copy.deepcopy(records)
+            if alteration == 'changed_initial':
+                tampered[2]['_metadata']['initial_train_loss_hex'] = (99.).hex()
+            else:
+                tampered[2]['_metadata']['validation'][0]['loss_hex'] = (9.).hex()
+            for r in tampered:
+                core.verified_loss({'train_loss_hex': r['native_train_loss'].hex()},
+                                   r['_metadata'], r['update'])
+            with self.subTest(alteration=alteration), self.assertRaisesRegex(
+                    core.EvidenceError, 'loss trajectory'):
+                core.check_loss_trajectory(tampered)
+
+    def test_native_treatment_and_checkpoint_config_cannot_be_reanchored(self):
+        model = {'schema': 'trinite.model-config.v1', 'dtype': 'float32'}
+        design = {'schema': 'trinite.teacher-fit-001-design.v1'}
+        request = {'model': model, 'design': design, 'model_parameters': 90624,
+                   'lane': 'dense', 'geometry_loss': '0',
+                   'limits': dict(core.FROZEN_LIMITS),
+                   'native_config': core.frozen_native_config(model, 17)}
+        core.check_frozen_treatment(request, 17, model, design)
+        core.check_checkpoint_config({'config': request['native_config']}, request)
+        for key, invalid in (('learning_rate', '1.0'), ('beta1', '0.8'),
+                             ('weight_decay', '0.1'), ('loss', 'other'),
+                             ('max_seconds', 1000), ('selection', 'best-checkpoint')):
+            tampered = copy.deepcopy(request)
+            tampered['native_config'][key] = invalid
+            with self.subTest(field=key), self.assertRaisesRegex(
+                    core.EvidenceError, 'native configuration differs'):
+                core.check_frozen_treatment(tampered, 17, model, design)
+            with self.subTest(field=key), self.assertRaisesRegex(
+                    core.EvidenceError, 'checkpoint native configuration'):
+                core.check_checkpoint_config({'config': tampered['native_config']}, request)
+        for key, value in (('model', {'schema': 'changed'}),
+                           ('design', {'schema': 'changed'}),
+                           ('model_parameters', 100), ('lane', 'other'),
+                           ('geometry_loss', '1')):
+            tampered = dict(request, **{key: value})
+            with self.subTest(field=key), self.assertRaises(core.EvidenceError):
+                core.check_frozen_treatment(tampered, 17, model, design)
+        altered_limits = dict(core.FROZEN_LIMITS, native_seconds=999)
+        with self.assertRaises(core.EvidenceError):
+            core.check_frozen_treatment(dict(request, limits=altered_limits),
+                                        17, model, design)
+        with self.assertRaises(core.EvidenceError):
+            core.check_checkpoint_config({'config': dict(request['native_config'], seed=29)},
+                                         request)
+
     def test_cli_rejects_symlinked_output_parent_into_checkout(self):
         import run_teacher_fit_review as cli
         root = Path(cli.__file__).resolve().parents[1]
@@ -281,6 +346,51 @@ class HostileEvidenceRegressions(unittest.TestCase):
                  mock.patch.object(cli.core, 'review', return_value={'tested': True}):
                 self.assertEqual(cli.main(),0)
             self.assertEqual(destination.read_bytes(),core.canonical({'tested':True}))
+
+    def test_cli_rejects_ancestor_swap_after_resolution_before_descriptor_open(self):
+        import run_teacher_fit_review as cli
+        checkout = Path(cli.__file__).resolve().parents[1]
+        original_open = os.open
+        with tempfile.TemporaryDirectory() as temp:
+            tmp = Path(temp)
+            stage = tmp / 'stage'
+            (stage / 'scripts').mkdir(parents=True)
+            relocated = tmp / 'stage-before-swap'
+            marker = '.fit-review-ancestor-swap-' + tmp.name + '.json'
+            in_checkout = checkout / 'scripts' / marker
+            self.assertFalse(in_checkout.exists())
+            source = tmp / 'source.zip'
+            source.write_bytes(b'synthetic-not-parsed')
+            destination = stage / 'scripts' / marker
+            args = ['review', '--archive', str(source), '--archive-sha256',
+                    core.sha(b'synthetic'), '--out', str(destination)]
+            swapped = [False]
+
+            def swap_then_open(path, flags, mode=0o777, *, dir_fd=None):
+                # Also triggers on the previous implementation's one-shot open
+                # of the full parent: an O_NOFOLLOW on `scripts` is inadequate.
+                if not swapped[0] and os.fspath(path) in ('stage', str(stage / 'scripts')):
+                    stage.rename(relocated)
+                    stage.symlink_to(checkout, target_is_directory=True)
+                    swapped[0] = True
+                if dir_fd is None:
+                    return original_open(path, flags, mode)
+                return original_open(path, flags, mode, dir_fd=dir_fd)
+
+            try:
+                with mock.patch.object(sys, 'argv', args), \
+                     mock.patch.object(cli.core, 'review', return_value={'tested': True}), \
+                     mock.patch('os.open', side_effect=swap_then_open), \
+                     mock.patch('sys.stderr'):
+                    self.assertEqual(cli.main(), 2)
+                self.assertTrue(swapped[0], 'race hook was not exercised')
+                self.assertFalse(in_checkout.exists(), 'created output inside checkout')
+                self.assertFalse((relocated / 'scripts' / marker).exists())
+            finally:
+                # The test never intentionally writes to checkout; avoid leaving
+                # behind a contaminating file if a future regression recurs.
+                if in_checkout.exists():
+                    in_checkout.unlink()
 
     def test_machine_readable_conclusion_uses_verified_endpoints(self):
         for scores, expected, seeds in (
