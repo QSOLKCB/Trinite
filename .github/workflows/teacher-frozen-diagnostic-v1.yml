@@ -1,0 +1,39 @@
+name: TT-003-DIAG-001 frozen teacher diagnostic
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  diagnostic-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # exact pinned v4
+        with:
+          persist-credentials: false
+      - name: All CPU-independent classification/source-bound contracts
+        run: |
+          PYTHONPATH=src:scripts python3 -B -m unittest discover -s tests/teacher_diag_v1 -v
+          PYTHONPATH=src:scripts python3 -B -O -m unittest discover -s tests/teacher_diag_v1 -v
+  diagnostic-forward-canary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # exact pinned v4
+        with:
+          persist-credentials: false
+      - name: Install verified existing CPU lock
+        run: |
+          python3 -m venv "$RUNNER_TEMP/tt003-diag-venv"
+          "$RUNNER_TEMP/tt003-diag-venv/bin/python" -m pip install --no-deps -r requirements.lock
+          "$RUNNER_TEMP/tt003-diag-venv/bin/python" -m pip check
+      - name: Train-only model forward and unchanged tensors; zero updates
+        run: |
+          PYTHONPATH=src:scripts "$RUNNER_TEMP/tt003-diag-venv/bin/python" -B -m unittest discover -s tests/teacher_diag_native -v
