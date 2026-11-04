@@ -1,6 +1,9 @@
 """TT-001 local, standard-library-only admission and custody regressions."""
 import copy
 from pathlib import Path
+import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -118,9 +121,59 @@ class TeacherLabTests(unittest.TestCase):
         self.assertEqual(req["fp32_adamw_state_bytes_lower_bound"],
                          16 * req["parameter_count"])
 
+
+    def test_package_initializer_change_rejected_by_fresh_process(self):
+        """A changed executable initializer must invalidate a frozen packet.
+
+        Use independent interpreter processes and a copied minimal checkout so
+        no tracked source or pre-existing evidence is modified by the test.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            checkout = Path(tmp) / "checkout"
+            plan = core.source_json(core.DEFAULT_PLAN)
+            closure = set(core.SOURCE_CLOSURE) | {
+                core.DEFAULT_PLAN, plan["model_config"], plan["source_catalog"],
+            }
+            for relative in sorted(closure):
+                destination = checkout / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(core.repo_file(relative), destination)
+
+            cli = [sys.executable, "-I", "-B", str(checkout / "scripts/teacher_lab.py")]
+            packet = checkout / "frozen"
+            frozen = subprocess.run(
+                cli + ["freeze", "--out", str(packet)],
+                cwd=checkout, capture_output=True, text=True, timeout=30, check=False,
+            )
+            self.assertEqual(frozen.returncode, 0, frozen.stderr)
+            anchor = parse_json(frozen.stdout.encode("utf-8"))["request_identity"]
+
+            def cold_verify():
+                return subprocess.run(
+                    cli + ["verify", "--run", str(packet), "--identity", anchor],
+                    cwd=checkout, capture_output=True, text=True,
+                    timeout=30, check=False,
+                )
+
+            valid = cold_verify()
+            self.assertEqual(valid.returncode, 0, valid.stderr)
+            self.assertTrue(parse_json(valid.stdout.encode("utf-8"))["verified"])
+
+            initializer = checkout / "src/trinite/__init__.py"
+            original = initializer.read_bytes()
+            initializer.write_bytes(
+                original + b'\n__version__ = "review-regression-change"\n'
+            )
+            tampered = cold_verify()
+            self.assertEqual(tampered.returncode, 2, tampered.stderr)
+            self.assertIn("preflight source or rights mismatch", tampered.stderr)
+            self.assertNotIn('"verified":true', tampered.stdout)
+
     def test_source_revalidation_detects_changed_closure(self):
         req, _, _ = core.request_and_rights()
         self.assertIn("src/trinite/contracts.py",
+                      {item["path"] for item in req["source_closure"]})
+        self.assertIn("src/trinite/__init__.py",
                       {item["path"] for item in req["source_closure"]})
         self.assertIn("docs/DATA.md",
                       {item["path"] for item in req["source_closure"]})

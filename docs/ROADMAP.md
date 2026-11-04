@@ -28,6 +28,10 @@ retained negative/blocked results, not a completed 64-call comparison. The old
 proposed PR #64 number is superseded, not a pending reservation. Qwen/LFM
 remains optional future work, behind native diagnosis; no silent rerun follows.
 
+## Teacher Lab TT-001–TT-004 — separate research track (4 November 2026)
+
+[TT-001 Teacher Lab foundation and TT-003 CUDA preflight roadmap](TEACHER-LAB-V1.md) specify the in-repository offline preflight, immutable first-party source-candidate identities and **separate dataset/weight rights records**. TT-001 does not create a training dataset or run a model. TT-002 must first admit generated formal sources and independent mathematical oracles. **TT-003 is conditional native teacher training** and, for the optional RTX 50-class GPU path, must fail closed without CUDA toolkit/runtime **12.8+**, genuine **sm_120** support, a compatible driver/PyTorch build, actual kernel execution and frozen hardware evidence; no silent CPU fallback. TT-004 distillation remains future work. The existing learning, source/evidence, CPU, licensing and release gates are unchanged; no new target run is authorized by this roadmap.
+
 ## Prospective external JSON environments — 1 November 2026
 
 The [external environment roadmap](EXTERNAL-ENVIRONMENTS-ROADMAP.md) keeps

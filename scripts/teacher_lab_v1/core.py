@@ -26,6 +26,7 @@ SOURCE_CLOSURE = (
     "scripts/teacher_lab_v1/__init__.py",
     "scripts/teacher_lab_v1/core.py",
     "scripts/model_size_policy_v1.py",
+    "src/trinite/__init__.py",
     "src/trinite/contracts.py",
     "docs/DATA.md",
     "docs/MODEL-SIZE-POLICY.md",
