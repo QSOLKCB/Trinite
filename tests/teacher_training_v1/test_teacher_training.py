@@ -118,6 +118,19 @@ class TT003Contracts(unittest.TestCase):
                                   self.dataset, approval, anchor, output)
             self.assertFalse(output.exists())
 
+    def test_weight_rights_are_checkpoint_bound_and_not_implicitly_mpl(self):
+        payload = b"example-engineering-snapshot-bytes"
+        record = numerical.weight_rights_record(self.request, self.request_anchor, payload)
+        self.assertEqual(record["code_license"], "MPL-2.0")
+        self.assertEqual(record["weights_license"], "UNDECIDED")
+        self.assertFalse(record["distribution_authorized"])
+        self.assertEqual(record["dataset_manifest_identity"], self.dataset_anchor)
+        self.assertEqual(record["dataset_rights_identity"],
+                         self.request["dataset_rights_identity"])
+        self.assertEqual(record["weights_checkpoint_identity"], identity(payload))
+        with self.assertRaises(ContractError):
+            numerical.weight_rights_record(self.request, self.request_anchor, b"")
+
     def test_cuda_124_driver_and_arch_rejection(self):
         example = {"cuda_build":"12.8", "driver_api":12080,
                    "gpu_name":"NVIDIA GeForce RTX 5060 Ti",

@@ -18,7 +18,8 @@ REPORT_SCHEMA = "trinite.teacher-train-only-report.v1"
 METADATA_SCHEMA = "trinite.teacher-native-checkpoint.v1"
 MANIFEST_SCHEMA = "trinite.teacher-run-manifest.v1"
 OUTPUTS = ("approval.json", "request.json", "tensors.safetensors",
-           "metadata.json", "report.json", "manifest.json")
+           "metadata.json", "weights-rights.json", "report.json",
+           "manifest.json")
 
 
 def configure():
@@ -185,6 +186,28 @@ def restore(packet: Path, request: dict, anchor: str, raw_tensor: bytes, raw_met
     return state
 
 
+def weight_rights_record(request: dict, request_anchor: str, tensors: bytes) -> dict:
+    """Explicit rights of newly produced weights, distinct from source and data."""
+    from trinite.contracts import require_identity
+    require_identity(request_anchor)
+    if type(tensors) is not bytes or not tensors:
+        raise ContractError("weight rights require an actual checkpoint payload")
+    return {
+        "schema": "trinite.teacher-native-weights-rights.v1",
+        "status": "CHECKPOINT_CREATED_RIGHTS_UNDECIDED",
+        "code_license": "MPL-2.0",
+        "weights_license": "UNDECIDED",
+        "distribution_authorized": False,
+        "dataset_source": "TT-002_ADMITTED_FORMAL_ONLY",
+        "dataset_rights_identity": request["dataset_rights_identity"],
+        "dataset_manifest_identity": request["dataset_manifest_identity"],
+        "training_request_identity": request_anchor,
+        "weights_checkpoint_identity": identity(tensors),
+        "model_parameters": request["model_parameters"],
+        "review": "independent rights/distribution decision required",
+    }
+
+
 def _write(directory: Path, name: str, raw: bytes):
     with (directory / name).open("xb") as stream:
         stream.write(raw); stream.flush(); os.fsync(stream.fileno())
@@ -234,6 +257,8 @@ def run(request_dir: Path, request_anchor: str, dataset: Path,
         state = restore(dataset, request, request_anchor, tensors, metadata)
         if model_identity(state.model) != before:
             raise ContractError("safe-restored teacher differs from completed run")
+        _write(output, "weights-rights.json", json_bytes(
+            weight_rights_record(request, request_anchor, tensors)))
         report = {
             "schema": REPORT_SCHEMA, "status": "COMPLETED_TRAIN_ONLY",
             "request_identity": request_anchor,
@@ -318,6 +343,9 @@ def verify_run(output: Path, external_manifest: str, dataset: Path,
                        request, request_anchor)
     configure()
     raw_tensor = spec._member(output, "tensors.safetensors", 32 * 1024 * 1024)
+    recorded_rights = parse_json(spec._member(output, "weights-rights.json"), canonical=True)
+    if recorded_rights != weight_rights_record(request, request_anchor, raw_tensor):
+        raise ContractError("native weights rights/lineage mismatch")
     raw_meta = spec._member(output, "metadata.json")
     state = restore(dataset, request, request_anchor, raw_tensor, raw_meta)
     report = parse_json(spec._member(output, "report.json"), canonical=True)
