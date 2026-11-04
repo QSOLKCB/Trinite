@@ -1,0 +1,28 @@
+name: TT-003-FIT-001 design-only contracts
+on:
+  pull_request:
+    paths:
+      - 'scripts/teacher_fit_v1/**'
+      - 'tests/teacher_fit_v1/**'
+      - 'configs/teacher/tt003-fit-001-v1.json'
+      - 'docs/TEACHER-LAB-FIT-001.md'
+      - '.github/workflows/teacher-fit-design.yml'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  panel-design:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned v4
+        with:
+          persist-credentials: false
+      - name: Offline Python-only design/selection checks
+        run: |
+          PYTHONPATH=scripts python3 -B -m unittest discover -s tests/teacher_fit_v1 -v
+          PYTHONPATH=scripts python3 -B -O -m unittest discover -s tests/teacher_fit_v1 -v
+      - name: Assert no target trainer entrypoint is in the design increment
+        run: |
+          test ! -f scripts/run_teacher_fit.py
