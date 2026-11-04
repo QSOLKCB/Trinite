@@ -1,0 +1,1 @@
+{"data_admitted":false,"lane":"dense","model_config":"configs/reference.json","objective":"explore exact GF(3) composition without training","parameter_budget":2000000,"role":"teacher","schema":"trinite.teacher-lab-plan.v1","source_catalog":"configs/teacher/source-candidates-v1.json","training_authorized":false}

@@ -1,0 +1,261 @@
+"""TT-001 teacher preflight and source-bound, non-training artifacts.
+
+No model construction, optimizer, dataset admission, or network access.
+"""
+from __future__ import annotations
+
+import os
+from pathlib import Path, PurePosixPath
+import re
+
+from trinite.contracts import (
+    ContractError, ModelConfig, exact_keys, identity, json_bytes, parse_json,
+)
+from model_size_policy_v1 import preflight_parameter_count
+
+ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_PLAN = "configs/teacher/gf3-preflight-v1.json"
+SCHEMA = "trinite.teacher-lab.v1"
+PLAN_SCHEMA = "trinite.teacher-lab-plan.v1"
+CATALOG_SCHEMA = "trinite.teacher-lab-candidates.v1"
+MAX_INPUT = 1_048_576
+CURRENT_CONSTRUCTOR_LIMIT = 5_000_000
+CURRENT_RUN_LIMIT = 2_000_000
+SOURCE_CLOSURE = (
+    "scripts/teacher_lab.py",
+    "scripts/teacher_lab_v1/__init__.py",
+    "scripts/teacher_lab_v1/core.py",
+    "scripts/model_size_policy_v1.py",
+    "src/trinite/contracts.py",
+    "docs/DATA.md",
+    "docs/MODEL-SIZE-POLICY.md",
+    "docs/PROVENANCE.md",
+    "AGENTS.md",
+    "LICENSE",
+)
+SHA40 = re.compile(r"[0-9a-f]{40}\Z")
+SOURCE_ID = re.compile(r"[a-z][a-z0-9-]{1,39}\Z")
+
+
+def repo_file(relative: str) -> Path:
+    """Read only a canonical, symlink-free repository-relative regular file."""
+    if type(relative) is not str or not relative or "\\" in relative:
+        raise ContractError("invalid repository path")
+    parts = relative.split("/")
+    if (relative.startswith("/") or any(p in ("", ".", "..") for p in parts)
+            or PurePosixPath(relative).as_posix() != relative):
+        raise ContractError("repository paths must be canonical and relative")
+    path = ROOT
+    for part in parts:
+        path = path / part
+        if path.is_symlink():
+            raise ContractError("source path contains symlink")
+    if not path.is_file() or path.stat().st_size > MAX_INPUT:
+        raise ContractError("source file missing, nonregular, or too large")
+    return path
+
+
+def source_bytes(relative: str) -> bytes:
+    path = repo_file(relative)
+    with path.open("rb") as fh:
+        raw = fh.read(MAX_INPUT + 1)
+    if len(raw) > MAX_INPUT:
+        raise ContractError("oversized source")
+    return raw
+
+
+def source_json(relative: str) -> dict:
+    value = parse_json(source_bytes(relative))
+    if type(value) is not dict:
+        raise ContractError("expected JSON object")
+    return value
+
+
+def validate_catalog(value: object) -> dict:
+    exact_keys(value, {"schema", "sources"}, "teacher source catalog")
+    if value["schema"] != CATALOG_SCHEMA:
+        raise ContractError("wrong source catalog schema")
+    sources = value["sources"]
+    if type(sources) is not list or not 1 <= len(sources) <= 16:
+        raise ContractError("source candidate count must be 1..16")
+    seen = set()
+    for item in sources:
+        exact_keys(item, {"id", "repository", "revision", "code_license",
+                          "role", "rights_status", "scope", "limits"}, "candidate")
+        sid = item["id"]
+        if type(sid) is not str or SOURCE_ID.fullmatch(sid) is None or sid in seen:
+            raise ContractError("invalid or duplicate candidate ID")
+        seen.add(sid)
+        if (type(item["repository"]) is not str or
+                not item["repository"].startswith("QSOLKCB/") or
+                not re.fullmatch(r"QSOLKCB/[A-Za-z0-9_.-]+", item["repository"])):
+            raise ContractError("only explicit QSOLKCB source candidates")
+        if type(item["revision"]) is not str or SHA40.fullmatch(item["revision"]) is None:
+            raise ContractError("candidate requires immutable revision")
+        if item["code_license"] not in ("MPL-2.0", "Apache-2.0", "MIT"):
+            raise ContractError("candidate code license requires review")
+        if item["role"] not in ("formal-task-candidate", "optimization-method-only"):
+            raise ContractError("unexpected source role")
+        if item["rights_status"] != "REVIEW_REQUIRED":
+            raise ContractError("TT-001 never admits a source automatically")
+        for field in ("scope", "limits"):
+            if type(item[field]) is not str or not 8 <= len(item[field]) <= 512:
+                raise ContractError("source scope and limits must be explicit")
+    return value
+
+
+def validate_plan(plan: object) -> dict:
+    exact_keys(plan, {"schema", "role", "lane", "model_config", "parameter_budget",
+                      "source_catalog", "objective", "training_authorized",
+                      "data_admitted"}, "teacher plan")
+    if plan["schema"] != PLAN_SCHEMA or plan["role"] != "teacher":
+        raise ContractError("not a TT-001 teacher plan")
+    if plan["lane"] != "dense":
+        raise ContractError("TT-001 supports only dense preflight")
+    if plan["training_authorized"] is not False or plan["data_admitted"] is not False:
+        raise ContractError("TT-001 does not authorize training or data admission")
+    if (type(plan["parameter_budget"]) is not int or
+            not 1 <= plan["parameter_budget"] <= CURRENT_RUN_LIMIT):
+        raise ContractError("parameter budget exceeds current native run limit")
+    if type(plan["objective"]) is not str or not 8 <= len(plan["objective"]) <= 128:
+        raise ContractError("missing bounded objective")
+    repo_file(plan["model_config"])
+    repo_file(plan["source_catalog"])
+    return plan
+
+
+def inspect(plan_path: str = DEFAULT_PLAN) -> tuple[dict, dict, dict]:
+    plan = validate_plan(source_json(plan_path))
+    config = ModelConfig.from_dict(source_json(plan["model_config"]))
+    catalog = validate_catalog(source_json(plan["source_catalog"]))
+    count = preflight_parameter_count(config.parameter_count)
+    if count > CURRENT_CONSTRUCTOR_LIMIT or count > plan["parameter_budget"]:
+        raise ContractError("model exceeds existing constructor or requested run budget")
+    return plan, config.to_dict(), catalog
+
+
+def rights_records(plan: dict, catalog: dict) -> tuple[dict, dict]:
+    data = {
+        "schema": "trinite.teacher-lab-dataset-rights.v1",
+        "status": "NOT_CREATED_NOT_ADMITTED",
+        "scope": "source candidates only; no training examples, labels or corpora admitted",
+        "candidate_ids": [item["id"] for item in catalog["sources"]],
+        "rights_review": "REQUIRED_BEFORE_TRAINING",
+        "generator_revision": "NOT_ASSIGNED",
+        "dataset_identity": "NOT_CREATED",
+    }
+    weights = {
+        "schema": "trinite.teacher-lab-weight-rights.v1",
+        "status": "NOT_CREATED",
+        "rights_review": "REQUIRED_BEFORE_DISTRIBUTION",
+        "code_license": "MPL-2.0",
+        "weights_license": "UNDECIDED",
+        "model_checkpoint_identity": "NOT_CREATED",
+        "data_lineage": "NOT_CREATED",
+    }
+    return data, weights
+
+
+def request_and_rights(plan_path: str = DEFAULT_PLAN) -> tuple[dict, dict, dict]:
+    plan, config, catalog = inspect(plan_path)
+    count = ModelConfig.from_dict(config).parameter_count
+    data, weights = rights_records(plan, catalog)
+    paths = sorted(set(SOURCE_CLOSURE) |
+                   {plan_path, plan["model_config"], plan["source_catalog"]})
+    sources = [{"path": p, "identity": identity(source_bytes(p))} for p in paths]
+    request = {
+        "schema": SCHEMA,
+        "status": "PREFLIGHT_ONLY",
+        "plan_path": plan_path,
+        "role": "teacher",
+        "lane": "dense",
+        "parameter_count": count,
+        "parameter_budget": plan["parameter_budget"],
+        "fp32_weight_bytes_lower_bound": count * 4,
+        "fp32_adamw_state_bytes_lower_bound": count * 16,
+        "memory_estimate_limitations": "excludes activations, temporary buffers and overhead",
+        "model_identity": identity(json_bytes(config)),
+        "catalog_identity": identity(json_bytes(catalog)),
+        "source_closure": sources,
+        "dataset_rights_identity": identity(json_bytes(data)),
+        "weight_rights_identity": identity(json_bytes(weights)),
+        "training_authorized": False,
+        "data_admitted": False,
+        "heldout_scored": False,
+        "optimizer_updates": 0,
+        "evidence_ready": False,
+    }
+    return request, data, weights
+
+
+def freeze(destination: Path, plan_path: str = DEFAULT_PLAN) -> str:
+    """Create a new, never-overwritten preflight packet; no model operations."""
+    request, data, weights = request_and_rights(plan_path)
+    destination = Path(destination)
+    if destination.is_symlink() or destination.exists():
+        raise ContractError("preflight destination already exists")
+    destination.mkdir(mode=0o700)
+    for name, obj in (
+        ("dataset-rights.json", data),
+        ("weights-rights.json", weights),
+        ("request.json", request),
+    ):
+        with (destination / name).open("xb") as fh:
+            fh.write(json_bytes(obj))
+            fh.flush()
+            os.fsync(fh.fileno())
+    return identity(json_bytes(request))
+
+
+def verify(directory: Path, externally_retained_identity: str) -> dict:
+    """Cold, read-only check against an identity supplied outside the packet."""
+    from trinite.contracts import require_identity
+    require_identity(externally_retained_identity)
+    directory = Path(directory)
+    if directory.is_symlink() or not directory.is_dir():
+        raise ContractError("invalid packet directory")
+    observed = {}
+    for name in ("dataset-rights.json", "weights-rights.json", "request.json"):
+        p = directory / name
+        if p.is_symlink() or not p.is_file() or p.stat().st_size > MAX_INPUT:
+            raise ContractError("invalid packet member")
+        raw = p.read_bytes()
+        observed[name] = parse_json(raw, canonical=True)
+    request = observed["request.json"]
+    if identity(json_bytes(request)) != externally_retained_identity:
+        raise ContractError("external request identity mismatch")
+    expected_request, data, weights = request_and_rights(request["plan_path"])
+    if (request != expected_request or
+            observed["dataset-rights.json"] != data or
+            observed["weights-rights.json"] != weights):
+        raise ContractError("preflight source or rights mismatch")
+    if set(p.name for p in directory.iterdir()) != {
+            "request.json", "dataset-rights.json", "weights-rights.json"}:
+        raise ContractError("unexpected packet member")
+    return {"verified": True, "scope": "preflight-only",
+            "training_authorized": False, "heldout_scored": False,
+            "evidence_ready": False}
+
+
+def preview_formal(plan_path: str = DEFAULT_PLAN) -> dict:
+    """Original finite GF(3) smoke facts, never an admitted training split."""
+    _, _, catalog = inspect(plan_path)
+    ids = {item["id"] for item in catalog["sources"]}
+    if "qec-v1772" not in ids:
+        raise ContractError("GF(3) reference source missing")
+    examples = []
+    for a in (-1, 0, 1):
+        for b in (-1, 0, 1):
+            # Two separately spelled, exact finite-field calculations.
+            answer = ((a + b + 1) % 3) - 1
+            residue = ((a % 3) + (b % 3)) % 3
+            independent = {0: 0, 1: 1, 2: -1}[residue]
+            if answer != independent:
+                raise ContractError("GF(3) independent arithmetic mismatch")
+            examples.append({"family": f"gf3-pair-{a}-{b}", "a": a, "b": b,
+                             "sum": answer, "source_id": "qec-v1772"})
+    return {"schema": "trinite.teacher-lab-formal-preview.v1",
+            "status": "NOT_ADMITTED_PUBLIC_ENGINEERING_ONLY",
+            "rights": "REVIEW_REQUIRED",
+            "split": "NONE",
+            "examples": examples}
