@@ -1,0 +1,40 @@
+name: TT-003-FIT-001 execution contracts
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Recorded evidence and authority contracts, normal and optimized
+        run: |
+          PYTHONPATH=src:scripts python3 -B -m unittest discover -s tests/teacher_fit_v1 -v
+          PYTHONPATH=src:scripts python3 -B -O -m unittest discover -s tests/teacher_fit_v1 -v
+  synthetic-native-canary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Exact existing CPU dependency lock
+        run: |
+          python3 -m venv "$RUNNER_TEMP/fit-cpu"
+          "$RUNNER_TEMP/fit-cpu/bin/python" -m pip install --no-deps -r requirements.lock
+          "$RUNNER_TEMP/fit-cpu/bin/python" -m pip check
+      - name: One synthetic update per mode, diagnostics and closed restore
+        run: |
+          PYTHONPATH=src:scripts "$RUNNER_TEMP/fit-cpu/bin/python" -B -m unittest discover -s tests/teacher_fit_native -v
+          PYTHONPATH=src:scripts "$RUNNER_TEMP/fit-cpu/bin/python" -B -O -m unittest discover -s tests/teacher_fit_native -v
