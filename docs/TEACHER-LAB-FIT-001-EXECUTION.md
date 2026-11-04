@@ -109,7 +109,8 @@ process outcome. CI target dispatch is prohibited. No GPU path exists.
 The independent supervisor begins its 900-second wall deadline before admission,
 launches one process group, and kills/reaps it on timeout or interruption. It
 records the original child return code separately from its own exit status;
-an unresolved termination blocks the next run. There is no automatic retry.
+Linux process-group inspection also rejects a reaped leader with surviving
+descendants. An unresolved termination blocks the next run. There is no automatic retry.
 An 8-GiB address-space ceiling, 16-MiB per-file ceiling and 128-MiB retained run
 inventory ceiling are additional declared operational bounds. These are not
 performance claims or RSS estimates. Logs and failed/partial directories remain.
@@ -144,6 +145,9 @@ identities. Native training losses are observations retained in the update
 journal; checkpoint loss is cross-checked against its native evaluation record.
 This does not claim recomputation of historical optimizer updates from logits.
 Raw tensor custody is separate from semantic restoration.
+For interrupted unsealed diagnostics, every complete retained metric line is
+recomputed against its prefix and FP32 vector. Torn JSON tails and unmatched
+partial vector bytes remain retained without invented numerical claims.
 
 `replay` accepts the same arguments and performs closed native model/AdamW
 restoration plus exact-byte forward replay at every retained complete checkpoint,

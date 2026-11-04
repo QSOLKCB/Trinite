@@ -57,6 +57,13 @@ class SupervisorContracts(unittest.TestCase):
             io.record(out/'supervisor.json',{'process_resolved':False,'child_returncode':None})
             with self.assertRaises(ContractError):supervisor.previous_resolved({'seed':29,'experiment_directory':str(root)})
 
+    def test_reaped_leader_does_not_certify_surviving_group(self):
+        p=FakeProcess(KeyboardInterrupt());p.returncode=0
+        clock=iter([0.,6.])
+        with patch.object(supervisor,'group_stopped',return_value=False),patch.object(os,'killpg') as kill, \
+                patch.object(supervisor.time,'monotonic',side_effect=lambda:next(clock)):
+            self.assertFalse(supervisor.resolve_group(p));kill.assert_called_once()
+
     def test_missing_approval_never_creates_output_or_process(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);request={'seed':17,'output_directory':str(root/'seed-17')}

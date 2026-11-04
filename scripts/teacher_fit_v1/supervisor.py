@@ -12,7 +12,7 @@ from trinite.contracts import ContractError, identity, json_bytes
 from . import custody as io, spec
 
 
-def previous_resolved(request):
+def previous_resolved(request, grants=None):
     seeds=(17,29,43)
     root=Path(request['experiment_directory'])
     for seed in seeds[:seeds.index(request['seed'])]:
@@ -25,6 +25,35 @@ def previous_resolved(request):
         manifest=io.verify_seal(out,anchor)
         if manifest.get('seed')!=seed or manifest.get('status')!=status['status']:
             raise ContractError('preceding attempt custody mismatch')
+        if grants is not None and manifest.get('request_identity')!=grants[str(seed)]['request_identity']:
+            raise ContractError('preceding attempt belongs to a different frozen request')
+
+
+def group_stopped(pgid):
+    """Linux process-group observation: a reaped leader alone is insufficient."""
+    for path in Path('/proc').iterdir():
+        if not path.name.isdigit():continue
+        try:
+            fields=(path/'stat').read_text().rsplit(') ',1)[1].split()
+            belongs=int(fields[2])==pgid
+        except FileNotFoundError:
+            continue  # A process that exited during enumeration.
+        except (OSError,IndexError,ValueError):
+            return False
+        if belongs and fields[0] not in ('Z','X'):
+            return False
+    return True
+
+
+def resolve_group(proc):
+    if group_stopped(proc.pid):return True
+    try:os.killpg(proc.pid,signal.SIGKILL)
+    except ProcessLookupError:pass
+    deadline=time.monotonic()+5
+    while time.monotonic()<deadline:
+        if group_stopped(proc.pid):return True
+        time.sleep(.05)
+    return False
 
 
 def dispatch(request_path, request_anchor, dataset, approval_path, approval_anchor,
@@ -37,7 +66,7 @@ def dispatch(request_path, request_anchor, dataset, approval_path, approval_anch
     grants,records=spec.approval_set(approvals_path,approvals_anchor,request,dataset)
     if grants[str(request['seed'])]['identity']!=approval_anchor:
         raise ContractError('current approval differs from the three-approval inventory')
-    previous_resolved(request)
+    previous_resolved(request,grants)
     copies=[]
     for name,path,anchor in (('request.json',request_path,request_anchor),
                             ('approval.json',approval_path,approval_anchor)):
@@ -105,6 +134,12 @@ def dispatch(request_path, request_anchor, dataset, approval_path, approval_anch
             except (ProcessLookupError,subprocess.TimeoutExpired):
                 resolved=proc.poll() is not None
     child_code=None if proc is None else proc.returncode
+    if proc is not None:
+        try:
+            resolved=resolved and resolve_group(proc)
+        except BaseException as exc:
+            resolved=False
+            parent_error={'type':type(exc).__name__,'message':str(exc)[:2000]}
     completed=(out/'completed.json').is_file()
     status=('COMPLETED' if resolved and child_code==0 and completed and time.monotonic()-start<=900 and not
             (timed_out or interrupted or parent_error) else 'FAILED')

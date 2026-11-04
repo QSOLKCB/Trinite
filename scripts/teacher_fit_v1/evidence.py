@@ -57,6 +57,61 @@ def jsonl(path):
     return [parse_json(line,canonical=True) for line in io.read(path).splitlines(keepends=True)]
 
 
+def partial_jsonl(path):
+    if not Path(path).exists():return [],b''
+    raw=io.read(path);cut=raw.rfind(b'\n')+1
+    return [parse_json(line,canonical=True) for line in raw[:cut].splitlines(keepends=True)],raw[cut:]
+
+
+def partial_checkpoint(request, folder):
+    """Recalculate every completed metric line; preserve, never repair, torn tails."""
+    from teacher_logit_v1 import arithmetic as ar
+    folder=Path(folder)
+    if {p.name for p in folder.iterdir()}-CHECKPOINT_FILES:
+        raise ContractError('unexpected partial checkpoint artifact')
+    index,index_tail=partial_jsonl(folder/'index.jsonl')
+    measures,metric_tail=partial_jsonl(folder/'metrics.jsonl')
+    vectors=io.read(folder/'logits.f32le') if (folder/'logits.f32le').exists() else b''
+    predictions,prediction_tail=partial_jsonl(folder/'prediction-progress.jsonl')
+    if len(measures)>len(index) or len(vectors)<len(measures)*ar.VECTOR.size:
+        raise ContractError('partial metric has no retained prefix/vector')
+    # Producer streams index, vector, metric in that exact order. A kill may
+    # leave one unmatched observation; it cannot explain arbitrary surplus.
+    if len(index)>len(measures)+1 or len(vectors)>(len(measures)+1)*ar.VECTOR.size:
+        raise ContractError('partial stream inventory cannot arise from declared producer')
+    row_index=0;probe='gold';position=0;generated=[];finished=[]
+    for i,(rec,given) in enumerate(zip(index,measures)):
+        if row_index>=len(request['panel']):raise ContractError('extra partial observation')
+        row=request['panel'][row_index];gold=[*row['answer'].encode('ascii'),257]
+        prefix=[256,*row['prompt'].encode('ascii')]+(gold[:position] if probe=='gold' else generated)
+        expected=metrics.entry(row,probe,position,prefix,i*ar.VECTOR.size)
+        if rec!=expected:raise ContractError('partial diagnostic prefix/order mismatch')
+        measure=ar.metrics(ar.unpack(vectors[i*ar.VECTOR.size:(i+1)*ar.VECTOR.size]),rec['target'])
+        if measure!=given:raise ContractError('partial numerical record mismatch')
+        position+=1
+        if probe=='gold' and position==len(gold):probe='greedy';position=0
+        elif probe=='greedy':
+            generated.append(measure['argmax'])
+            if generated[-1]==257 or position==5:
+                finished.append({'id':row['id'],'tokens':generated})
+                row_index+=1;probe='gold';position=0;generated=[]
+    if predictions!=finished[:len(predictions)] or len(predictions)>len(finished):
+        raise ContractError('partial prediction differs from complete retained argmax observations')
+    # If aggregation finished before a later IO failure, verify it as well.
+    if (folder/'summary.json').exists():
+        if len(finished)!=len(request['panel']) or len(index)!=len(measures):
+            raise ContractError('partial aggregate lacks exact complete observations')
+        calculated=metrics.summarize(request['panel'],finished,index,measures)
+        if io.read(folder/'summary.json')!=json_bytes(calculated):raise ContractError('partial aggregate mismatch')
+    if (folder/'predictions.json').exists() and io.load(folder/'predictions.json')!=finished:
+        raise ContractError('partial complete-output record differs from observations')
+    return {'step_directory':folder.name,'metrics_recomputed':len(measures),
+        'completed_predictions':len(predictions),'index_tail_bytes':len(index_tail),
+        'metric_tail_bytes':len(metric_tail),'prediction_tail_bytes':len(prediction_tail),
+        'unmatched_vector_bytes':len(vectors)-len(measures)*ar.VECTOR.size,
+        'checkpoint_complete':False}
+
+
 def checkpoint(request, anchor, folder, checkpoint_anchor, step):
     folder=Path(folder)
     manifest=io.verify_seal(folder,checkpoint_anchor)
@@ -115,10 +170,13 @@ def verify(folder, manifest_anchor, request_anchor, dataset):
     if (folder/'environment.json').exists() and io.load(folder/'environment.json')!=request['environment']:
         raise ContractError('observed numerical environment mismatch')
     records=[]
+    partials=[]
     for step in spec.STEPS:
         cp=folder/f'step-{step:03d}'
         if (cp/'manifest.json').exists():
             records.append(checkpoint(request,request_anchor,cp,identity(io.read(cp/'manifest.json')),step))
+        elif cp.exists():
+            partials.append(partial_checkpoint(request,cp))
     if [r['step'] for r in records]!=list(spec.STEPS[:len(records)]):
         raise ContractError('checkpoint schedule has a gap')
     initial={r['metadata']['initialization_identity'] for r in records}
@@ -196,9 +254,8 @@ def verify(folder, manifest_anchor, request_anchor, dataset):
         'partial_journal_tail_identity':identity(tail) if tail else None,
         'failure':failure,'reported_completed_updates':completed_updates,'reported_target_tokens':consumed_targets,
         'consumption_scope':'native completed-update receipt; hard-kill unjournaled progress may be unknown',
-        'partial_checkpoints':[s for s in spec.STEPS if (folder/f'step-{s:03d}').exists()
-                               and not (folder/f'step-{s:03d}'/'manifest.json').exists()],
-        'partial_scope':'unsealed partial diagnostics have byte custody only; no complete-checkpoint claim',
+        'partial_checkpoints':partials,
+        'partial_scope':'complete partial metric records recomputed; torn/unmatched bytes retained without numerical claims',
         'tensor_scope':'raw file identities; semantic model/AdamW restoration checked by native replay',
         'heldout_scored':False}
 

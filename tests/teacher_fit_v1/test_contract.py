@@ -194,6 +194,21 @@ class Contracts(unittest.TestCase):
         bad[offset:offset+ar.VECTOR.size]=ar.pack(z)
         with self.assertRaises(ContractError):metrics.recalculate(self.panel,predictions,index,bytes(bad))
 
+    def test_partial_numeric_records_recomputed_with_torn_tails_preserved(self):
+        index,raw,measures,predictions=self.observations()
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            io.write(folder/'index.jsonl',b''.join(json_bytes(v) for v in index[:3])+b'{')
+            io.write(folder/'metrics.jsonl',b''.join(json_bytes(v) for v in measures[:2])+b'{')
+            io.write(folder/'logits.f32le',raw[:2*ar.VECTOR.size+8])
+            before=io.inventory(folder)
+            r=evidence.partial_checkpoint(self.request(),folder)
+            self.assertEqual(r['metrics_recomputed'],2);self.assertEqual(r['unmatched_vector_bytes'],8)
+            self.assertEqual(r['index_tail_bytes'],1);self.assertEqual(io.inventory(folder),before)
+            measures[0]['target_rank']+=1
+            (folder/'metrics.jsonl').write_bytes(b''.join(json_bytes(v) for v in measures[:2]))
+            with self.assertRaises(ContractError):evidence.partial_checkpoint(self.request(),folder)
+
     def test_numerical_extremes_and_true_full_vocab_odds(self):
         for value in (-3e38,-735.,-730.,0.,730.,735.,3e38):
             z=[0.]*259;z[257]=value;z=ar.unpack(ar.pack(ar.unpack(ar.VECTOR.pack(*z))))
