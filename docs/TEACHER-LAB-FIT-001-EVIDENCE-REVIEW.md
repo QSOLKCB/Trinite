@@ -130,6 +130,47 @@ run against the externally anchored original FIT-001 ZIP remains a separate
 read-only engineering observation; the ZIP and derived output are not included
 in this PR or CI.
 
+## Further exact-head hostile review: three additional P2 corrections
+
+Review of the seven-fix head (`5f6e7fd55c9212f664e4c691cee904746d1c66f2`)
+found three additional, independently reproduced correctness defects. These
+follow-up fixes are again **review-only** and leave every historical source,
+frozen request, owner authorisation, checkpoint and private archive unchanged.
+
+1. **Ancestor race on the output directory:** `O_NOFOLLOW` on the final
+   directory does not protect against an earlier path component changing
+   into a symlink after `.resolve()` completes. The CLI now opens every
+   component of the checked canonical absolute parent relative to a retained
+   directory FD starting from `/`, using `O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC`
+   at each step. It checks device/inode and the Linux `/proc/self/fd` target
+   before creating the output by exclusive no-follow `openat`. A deterministic
+   test swaps `stage` for a symlink to the checkout before the vulnerable
+   open and requires rejection without a checkout write. This rules out
+   symlink-following substitutions; it is not a general-purpose defence
+   against a privileged adversary relocating an open directory afterward.
+2. **Validation-loss cross-checkpoint continuity:** Verifying each checkpoint
+   only against its own final validation record permits a re-anchored packet
+   to rewrite earlier losses in later checkpoint metadata. Every checkpoint
+   now requires the same step-zero initial loss and an exact validation
+   prefix built from the earlier independently checked checkpoint losses.
+   Synthetic tests separately alter the initial value and an earlier
+   validation entry while keeping each local checkpoint self-consistent;
+   both are rejected by the cross-series checker.
+3. **Frozen native treatment binding:** Request model/design are checked
+   against the original archived and frozen-source-bound configuration
+   files. The complete native training configuration is compared against an
+   independent, full-field mirror of `spec.native_config`, and the complete
+   resource limits against the frozen contract. Every checkpoint metadata
+   configuration must match its exact frozen request. Synthetic tests mutate
+   learning rate, optimiser betas, weight decay, loss, deadlines, model,
+   design and checkpoint configuration and require rejection. These
+   checks validate recorded configuration, not physical updater execution.
+
+The complete review-only contract suite now contains **19** synthetic-only
+tests and is exercised under normal and optimized Python. Owner-local audit
+of the unchanged, externally anchored 1,512-member archive is performed
+separately and excluded from the public repository and CI.
+
 ## Interpreting the results
 
 - **Complete exact answers** require the raw 259-way greedy sequence to
