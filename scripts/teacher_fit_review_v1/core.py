@@ -7,6 +7,7 @@ loads native checkpoints, evaluates heldouts, or updates an optimizer.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from itertools import product
 import hashlib
 import json
 import math
@@ -34,6 +35,12 @@ FROZEN_SOURCE_ID = 'sha256:2ed6c4bc5cc2aa1aaef47c789882ac88ab6bcdc2b2634e8da0255
 FROZEN_DATASET_ID = 'sha256:b90287c3549e2a877b4e23325b51f234f3e54eab3a48c0227f34c5f18d065687'
 FROZEN_RIGHTS_ID = 'sha256:0d8f5b28ebbb2f308d2c17f5c16275e11c3479ea2d606393f5aff997a0ebfee5'
 FROZEN_SOURCE_COUNT = 1279
+# Independent deterministic reconstruction of the reviewed FIT-001 selector.
+# Never load or execute the archived producer's Python source.
+FAMILIES = ('S1', 'S2', 'W')
+WORDS = tuple(''.join(t) for t in product('012', repeat=4))
+WORD_DOMAIN = b'trinite.teacher-fit-001.word.v1\x00'
+ROW_DOMAIN = b'trinite.teacher-fit-001.row.v1\x00'
 FROZEN_LIMITS = {
     'native_seconds': 600, 'outer_seconds': 900, 'updates': 256,
     'target_tokens': 4096, 'batch_size': 4,
@@ -290,6 +297,122 @@ def frozen_native_config(model: dict, seed: int) -> dict:
     }
 
 
+def frozen_panel_schedule(train: list[dict]) -> tuple[list[dict], dict]:
+    """Independent reconstruction of the *entire* frozen FIT-001 selection.
+
+    Source rows come from the archived TRAIN packet, not the request's panel.
+    Selection ranks are domain-separated SHA-256 over ASCII text, with
+    lexicographic tie-breaking. No archived Python is imported or executed.
+    """
+    need(type(train) is list and len(train) == 972,
+         'FIT-001 selector requires exactly 972 TRAIN records')
+    rows, ids = {}, set()
+    for row in train:
+        need(type(row) is dict and type(row.get('id')) is str and
+             SHA_RE.fullmatch(row['id']) is not None and row['id'] not in ids and
+             row.get('split') == 'train' and row.get('family') in FAMILIES and
+             type(row.get('observation')) is dict,
+             'FIT-001 TRAIN selector has invalid/duplicate source row')
+        obs = row['observation']
+        family, word, task = row['family'], obs.get('word'), obs.get('task')
+        need(obs.get('circuit') == family and word in WORDS and
+             task in ('apply', 'inverse', 'check'),
+             'FIT-001 TRAIN selector has invalid structural observation')
+        answer, tokens = row.get('answer'), row.get('supervised_tokens')
+        if task == 'check':
+            need(answer in ('0', '1') and type(tokens) is int and tokens == 2,
+                 'FIT-001 TRAIN selector has invalid scalar target')
+            view = answer
+        else:
+            need(type(answer) is str and len(answer) == 4 and
+                 set(answer) <= set('012') and type(tokens) is int and tokens == 5,
+                 'FIT-001 TRAIN selector has invalid vector target')
+            view = ''
+        key = (family, word, task, view)
+        need(key not in rows, 'duplicate FIT-001 TRAIN structural task')
+        ids.add(row['id'])
+        rows[key] = row
+    keys = {(family, word, task, view)
+            for family in FAMILIES for word in WORDS
+            for task, view in (('apply', ''), ('inverse', ''),
+                               ('check', '0'), ('check', '1'))}
+    need(set(rows) == keys, 'FIT-001 TRAIN structural inventory incomplete')
+
+    def rank(domain: bytes, value: str) -> tuple[bytes, str]:
+        return hashlib.sha256(domain + value.encode('ascii')).digest(), value
+
+    words = sorted(WORDS, key=lambda word: rank(WORD_DOMAIN, word))[:6]
+    chosen = [rows[family, word, task, view]
+              for family in FAMILIES for word in words
+              for task, view in (('apply', ''), ('inverse', ''),
+                                 ('check', '0'), ('check', '1'))]
+    ordered = sorted(chosen, key=lambda row: rank(ROW_DOMAIN, row['id']))
+    scheduled = [ordered[i % 72] for i in range(1024)]
+    targets = sum(row['supervised_tokens'] for row in scheduled)
+    need(len(ordered) == 72 and targets == 3590,
+         'independent FIT-001 target budget differs')
+    selection = {
+        'schema': 'trinite.teacher-fit-001-panel.v1',
+        'selected_words': words,
+        'panel_ids': [row['id'] for row in ordered],
+        'visit_ids': [row['id'] for row in scheduled],
+        'scheduled_target_tokens': targets,
+        'seeds': list(SEEDS),
+        'optimizer_updates_per_seed': 256,
+        'batch_size': 4,
+        'heldout_scored': False,
+        'training_authorized': False,
+    }
+    return ordered, selection
+
+
+def check_frozen_selection(request: dict, panel: list[dict],
+                           selection: dict) -> list[str]:
+    """Reject re-anchored changes in panel ordering, visits, or metadata."""
+    need(canonical(request.get('panel')) == canonical(panel) and
+         canonical(request.get('selection')) == canonical(selection) and
+         request.get('panel_identity') == sha(canonical(panel)) and
+         request.get('schedule_identity') == sha(canonical(selection['visit_ids'])),
+         'frozen selector panel, ranking or visit schedule differs')
+    return selection['visit_ids']
+
+
+def canonical_native_time(raw: str) -> float:
+    """A finite, nonnegative, canonical binary64 elapsed-second record."""
+    need(type(raw) is str, 'invalid checkpoint native time')
+    try:
+        value = float.fromhex(raw)
+    except (ValueError, OverflowError):
+        raise EvidenceError('invalid checkpoint native time') from None
+    need(math.isfinite(value) and value >= 0 and value.hex() == raw and
+         math.copysign(1.0, value) > 0,
+         'invalid checkpoint native time')
+    return value
+
+
+def check_native_time_trajectory(series: list[dict], journal: list[dict],
+                                 completed: dict) -> None:
+    """Cross-bind checkpoint times to the updater journal and completion."""
+    need(len(series) == len(STEPS) and
+         [r['update'] for r in series] == list(STEPS) and len(journal) == 256,
+         'incomplete native elapsed-time trajectory')
+    previous = 0.
+    for row in series:
+        step = row['update']
+        actual_hex = row['_metadata']['native_elapsed_hex']
+        elapsed = canonical_native_time(actual_hex)
+        expected_hex = '0x0.0p+0' if step == 0 else journal[step - 1]['native_elapsed_hex']
+        need(actual_hex == expected_hex and previous <= elapsed <= FROZEN_LIMITS['native_seconds'],
+             'checkpoint native time differs from journal, decreases or exceeds budget')
+        previous = elapsed
+    final_hex = completed.get('native_elapsed_hex')
+    final_time = canonical_native_time(final_hex)
+    need(final_hex == series[-1]['_metadata']['native_elapsed_hex'] ==
+         journal[-1]['native_elapsed_hex'] and
+         final_time <= FROZEN_LIMITS['native_seconds'],
+         'completion native time differs from final checkpoint/journal')
+
+
 def check_frozen_treatment(request: dict, seed: int,
                            model: dict, design: dict) -> None:
     """Bind request treatment to independently frozen, source-hashed inputs."""
@@ -307,6 +430,36 @@ def check_checkpoint_config(metadata: dict, request: dict) -> None:
     need(type(metadata) is dict and
          metadata.get('config') == request['native_config'],
          'checkpoint native configuration differs from frozen request')
+
+
+def check_retained_environment(observed: dict, request: dict) -> None:
+    """Recorded runtime must match the environment approved in this request.
+
+    This tests self-consistency, not the actual hardware or producer identity.
+    """
+    need(type(observed) is dict and
+         canonical(observed) == canonical(request['environment']),
+         'retained execution environment differs from frozen CPU FP32 request')
+
+
+def check_completed_receipt(completed: dict) -> None:
+    """Reject any completion receipt that contradicts the TRAIN-only scope."""
+    need(type(completed) is dict and
+         completed.get('optimizer_updates') == 256 and
+         completed.get('target_tokens') == 3590 and
+         completed.get('optimizer_replayed') is False and
+         completed.get('heldout_scored') is False,
+         'completion receipt conflicts with frozen TRAIN-only treatment')
+
+
+def check_observer_state(observation: dict, metadata: dict) -> None:
+    """Observer's before/after must be those of this checkpoint, not a proxy."""
+    need(type(metadata) is dict and type(observation) is dict and
+         observation == {'before': metadata['identities'],
+                         'after': metadata['identities'],
+                         'optimizer_updates': 0,
+                         'rng_unchanged': True, 'state_unchanged': True},
+         'checkpoint observer state does not match retained model/optimizer')
 
 
 def verified_loss(evaluation: dict, metadata: dict, step: int) -> float:
@@ -608,10 +761,7 @@ def checkpoint(archive: zipfile.ZipFile, seed: int, step: int,
          metadata['cursor'] == step * 4 and metadata['request_identity'] == request['_anchor'],
          'checkpoint metadata mismatch')
     observation = jdoc(archive, prefix + 'observation.json')
-    need(observation['before'] == observation['after'] and
-         observation['optimizer_updates'] == 0 and
-         observation['rng_unchanged'] is True and observation['state_unchanged'] is True,
-         'checkpoint diagnostic mutated native state (recorded contract)')
+    check_observer_state(observation, metadata)
     predictions = jdoc(archive, prefix + 'predictions.json')
     observed_score = score(panel, predictions)
     index = jlines(archive, prefix + 'index.jsonl')
@@ -695,6 +845,7 @@ def review(archive_path: Path, archive_identity: str) -> dict:
         need(len(train) == 972 and all(r['split'] == 'train' for r in train)
              and len({r['id'] for r in train}) == 972, 'invalid full TRAIN inventory')
         by_id = {r['id']: r for r in train}
+        expected_panel, expected_selection = frozen_panel_schedule(train)
         # These source files are included in the separately pinned complete
         # source closure. Model JSON predates the canonical sorted encoding.
         fixed_design = jdoc(archive, 'source/configs/teacher/tt003-fit-001-v1.json')
@@ -722,7 +873,8 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                  'frozen request rights identity differs')
             request['_anchor'] = request_hash
             requests[seed] = request
-            panel = request['panel']
+            scheduled = check_frozen_selection(request, expected_panel, expected_selection)
+            panel = expected_panel
             need(len(panel) == 72 and len({r['id'] for r in panel}) == 72 and
                  all(r == by_id.get(r['id']) for r in panel),
                  'panel differs from original TT-002 TRAIN data')
@@ -734,11 +886,8 @@ def review(archive_path: Path, archive_identity: str) -> dict:
             need(controls == request['baselines'] and
                  all(value['groups']['all']['exact'] == 18 for value in controls.values()),
                  'original fixed control baseline disagreement')
-            scheduled = request['selection']['visit_ids']
-            need(scheduled == [panel[i % 72]['id'] for i in range(1024)] and
-                 sum(len(by_id[r]['answer']) + 1 for r in scheduled) == 3590 and
-                 request['schedule_identity'] == sha(canonical(scheduled)),
-                 'frozen visits, schedule identity or target budget mismatch')
+            need(sum(len(by_id[r]['answer']) + 1 for r in scheduled) == 3590,
+                 'independent FIT-001 scheduled target budget mismatch')
             check_frozen_treatment(request, seed, fixed_model, fixed_design)
             attempt_manifest = jdoc(archive, base + 'manifest.json')
             local_anchor = jdoc(archive, f'anchors/seed-{seed}.json')['manifest_identity']
@@ -748,6 +897,8 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                  attempt_manifest['request_identity'] == request_hash,
                  'attempt manifest / external anchor mismatch')
             members_check(hashes, base, attempt_manifest['members'], ('manifest.json',))
+            retained_environment = jdoc(archive, base + 'environment.json')
+            check_retained_environment(retained_environment, request)
             grant = jdoc(archive, base + 'approval.json')
             validate_approval(grant, request, request_hash,
                               attempt_manifest['approval_identity'],
@@ -759,11 +910,9 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                  supervisor['process_resolved'] is True and
                  supervisor['timed_out'] is False and
                  supervisor['interrupted'] is False and
-                 float.fromhex(supervisor['elapsed_seconds_hex']) <= 900 and
-                 completed['optimizer_updates'] == 256 and
-                 completed['target_tokens'] == 3590 and
-                 completed['optimizer_replayed'] is False,
+                 float.fromhex(supervisor['elapsed_seconds_hex']) <= 900,
                  'unexpected completion or supervisor state')
+            check_completed_receipt(completed)
             initial_ids.add(completed['initialization_identity'])
             need(len(completed['checkpoints']) == len(STEPS),
                  'attempt checkpoint count mismatch')
@@ -786,7 +935,7 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                 cumulative += tokens
                 need(h['target_tokens'] == tokens,
                      'recorded supervised target mismatch')
-                next_elapsed = float.fromhex(event['native_elapsed_hex'])
+                next_elapsed = canonical_native_time(event['native_elapsed_hex'])
                 need(elapsed <= next_elapsed <= 600,
                      'cumulative native time drift or overrun')
                 elapsed = next_elapsed
@@ -798,8 +947,7 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                 m = row['_metadata']
                 need(m['history'] == history[:step] and m['target_tokens'] == sum(
                     h['target_tokens'] for h in history[:step]) and
-                     m['initialization_identity'] == completed['initialization_identity'] and
-                     (previous is None or m['native_elapsed_hex'] is not None),
+                     m['initialization_identity'] == completed['initialization_identity'],
                      'checkpoint trajectory/history mismatch')
                 cp_hash = hashes[f'{base}step-{step:03d}/manifest.json']['identity']
                 need(any(c['step'] == step and c['manifest_identity'] == cp_hash
@@ -808,6 +956,7 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                 previous = row
                 series.append(row)
             check_loss_trajectory(series)
+            check_native_time_trajectory(series, journal, completed)
             results.append(series)
         need(len(initial_ids) == 3, 'initial models are not independently initialized')
         first = requests[SEEDS[0]]
