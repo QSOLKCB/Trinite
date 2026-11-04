@@ -34,6 +34,12 @@ FROZEN_SOURCE_ID = 'sha256:2ed6c4bc5cc2aa1aaef47c789882ac88ab6bcdc2b2634e8da0255
 FROZEN_DATASET_ID = 'sha256:b90287c3549e2a877b4e23325b51f234f3e54eab3a48c0227f34c5f18d065687'
 FROZEN_RIGHTS_ID = 'sha256:0d8f5b28ebbb2f308d2c17f5c16275e11c3479ea2d606393f5aff997a0ebfee5'
 FROZEN_SOURCE_COUNT = 1279
+FROZEN_LIMITS = {
+    'native_seconds': 600, 'outer_seconds': 900, 'updates': 256,
+    'target_tokens': 4096, 'batch_size': 4,
+    'address_space_bytes': 8 * 1024**3, 'file_bytes': 16 * 1024**2,
+    'run_bytes': 128 * 1024**2, 'retries': 0,
+}
 DATASET_FILES = frozenset({
     'dataset-rights.json', 'plan.json', 'privileged-targets.jsonl',
     'test-public.jsonl', 'train.jsonl', 'validation-public.jsonl',
@@ -270,6 +276,39 @@ def validate_approval(grant: dict, request: dict, request_hash: str,
          'complete owner approval contract differs (not proof of authenticity)')
 
 
+def frozen_native_config(model: dict, seed: int) -> dict:
+    """Independent copy of the frozen FIT-001 native treatment (no code imports)."""
+    return {
+        'schema': 'trinite.training-plan.v1', 'model': model, 'seed': seed,
+        'steps': 256, 'batch_size': 4, 'learning_rate': '0.001',
+        'beta1': '0.9', 'beta2': '0.999', 'optimizer_epsilon': '0.00000001',
+        'weight_decay': '0.01', 'gradient_clip': '1', 'accumulation': 1,
+        'schedule': 'constant', 'order': 'seeded-hash-rank-cycle.v1',
+        'loss': 'answer-and-eos-target-mean.v1', 'validation_every': 64,
+        'selection': 'final-step; no early stopping; no test evaluation',
+        'max_seconds': 600, 'max_target_tokens': 4096,
+    }
+
+
+def check_frozen_treatment(request: dict, seed: int,
+                           model: dict, design: dict) -> None:
+    """Bind request treatment to independently frozen, source-hashed inputs."""
+    need(type(request) is dict and request.get('model') == model and
+         request.get('design') == design and
+         request.get('model_parameters') == 90624 and
+         request.get('lane') == 'dense' and
+         request.get('geometry_loss') == '0' and
+         request.get('limits') == FROZEN_LIMITS and
+         request.get('native_config') == frozen_native_config(model, seed),
+         'native configuration differs from frozen FIT-001 treatment')
+
+
+def check_checkpoint_config(metadata: dict, request: dict) -> None:
+    need(type(metadata) is dict and
+         metadata.get('config') == request['native_config'],
+         'checkpoint native configuration differs from frozen request')
+
+
 def verified_loss(evaluation: dict, metadata: dict, step: int) -> float:
     """Finite nonnegative native loss, bound to retained validation history."""
     def number(raw):
@@ -296,6 +335,28 @@ def verified_loss(evaluation: dict, metadata: dict, step: int) -> float:
     need(evaluation['train_loss_hex'] == expected,
          'native checkpoint loss differs from retained validation/initial loss')
     return value
+
+
+def check_loss_trajectory(series: list[dict]) -> None:
+    """All checkpoints must share the same initial loss and validation prefix.
+
+    Checking only each checkpoint's terminal loss allows prior validation
+    values to be silently rewritten in later checkpoints of a re-anchored ZIP.
+    """
+    need(len(series) == len(STEPS) and
+         [r['update'] for r in series] == list(STEPS),
+         'incomplete checkpoint loss trajectory')
+    initial = series[0]['_metadata']['initial_train_loss_hex']
+    prior_validation = []
+    for row in series:
+        metadata = row['_metadata']
+        expected = prior_validation + ([{'step': row['update'],
+                                          'loss_hex': row['native_train_loss'].hex()}]
+                                       if row['update'] else [])
+        need(metadata['initial_train_loss_hex'] == initial and
+             metadata['validation'] == expected,
+             'checkpoint initial/validation loss trajectory contradicts prior checkpoints')
+        prior_validation = expected
 
 
 def fit_conclusion(final: list[dict]) -> tuple[list[int], str]:
@@ -542,6 +603,7 @@ def checkpoint(archive: zipfile.ZipFile, seed: int, step: int,
          'checkpoint source/request/step mismatch')
     members_check(hashes, prefix, manifest['members'], ('manifest.json',))
     metadata = jdoc(archive, prefix + 'metadata.json')
+    check_checkpoint_config(metadata, request)
     need(metadata['step'] == step and metadata['seed'] == seed and
          metadata['cursor'] == step * 4 and metadata['request_identity'] == request['_anchor'],
          'checkpoint metadata mismatch')
@@ -633,6 +695,12 @@ def review(archive_path: Path, archive_identity: str) -> dict:
         need(len(train) == 972 and all(r['split'] == 'train' for r in train)
              and len({r['id'] for r in train}) == 972, 'invalid full TRAIN inventory')
         by_id = {r['id']: r for r in train}
+        # These source files are included in the separately pinned complete
+        # source closure. Model JSON predates the canonical sorted encoding.
+        fixed_design = jdoc(archive, 'source/configs/teacher/tt003-fit-001-v1.json')
+        fixed_model = json.loads(archive.read('source/configs/teacher/gf3-teacher-90k-v1.json'))
+        need(type(fixed_model) is dict and fixed_model.get('schema') == 'trinite.model-config.v1',
+             'missing frozen teacher model configuration')
         for member in dataset_manifest['source_closure']:
             path = 'source/' + member['path']
             need(path in hashes and hashes[path]['identity'] == member['identity'],
@@ -671,12 +739,7 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                  sum(len(by_id[r]['answer']) + 1 for r in scheduled) == 3590 and
                  request['schedule_identity'] == sha(canonical(scheduled)),
                  'frozen visits, schedule identity or target budget mismatch')
-            need(request['limits']['updates'] == 256 and
-                 request['limits']['batch_size'] == 4 and
-                 request['limits']['retries'] == 0 and
-                 request['limits']['target_tokens'] == 4096 and
-                 request['native_config']['seed'] == seed,
-                 'experimental treatment/limits differ')
+            check_frozen_treatment(request, seed, fixed_model, fixed_design)
             attempt_manifest = jdoc(archive, base + 'manifest.json')
             local_anchor = jdoc(archive, f'anchors/seed-{seed}.json')['manifest_identity']
             need(local_anchor == hashes[base + 'manifest.json']['identity'] and
@@ -744,6 +807,7 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                      'completed checkpoint digest differs')
                 previous = row
                 series.append(row)
+            check_loss_trajectory(series)
             results.append(series)
         need(len(initial_ids) == 3, 'initial models are not independently initialized')
         first = requests[SEEDS[0]]

@@ -10,6 +10,34 @@ import zipfile
 from teacher_fit_review_v1 import core
 
 
+def open_output_directory(parent: pathlib.Path) -> int:
+    """Walk the canonical absolute parent from / without following ancestors.
+
+    O_NOFOLLOW on a single final component is insufficient: an attacker can
+    replace an earlier directory with a symlink between resolve() and open().
+    Every component is opened relative to the preceding directory descriptor.
+    Confirm that the resulting handle still names the checked parent.
+    """
+    if not parent.is_absolute() or '..' in parent.parts:
+        raise core.EvidenceError('noncanonical output parent')
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    expected = parent.stat()
+    fd = os.open('/', flags)
+    try:
+        for component in parent.parts[1:]:
+            following = os.open(component, flags, dir_fd=fd)
+            os.close(fd)
+            fd = following
+        actual = os.fstat(fd)
+        if (actual.st_dev != expected.st_dev or actual.st_ino != expected.st_ino or
+                os.readlink(f'/proc/self/fd/{fd}') != str(parent)):
+            raise core.EvidenceError('output parent changed during descriptor traversal')
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', required=True, type=pathlib.Path)
@@ -37,7 +65,7 @@ def main():
                      target == args.sidecar.resolve(strict=True)) or
                     target.exists() or target.is_symlink()):
                 raise core.EvidenceError('unsafe/out-of-scope output destination')
-            directory = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            directory = open_output_directory(parent)
             try:
                 flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
                 descriptor = os.open(target.name, flags, 0o600, dir_fd=directory)
