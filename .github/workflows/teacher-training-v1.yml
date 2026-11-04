@@ -1,0 +1,45 @@
+name: TT-003 Teacher training contracts
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  offline-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned v4
+        with:
+          persist-credentials: false
+      - name: Offline contracts (normal and optimized)
+        run: |
+          PYTHONPATH=src:scripts python3 -B -m unittest discover -s tests/teacher_training_v1 -v
+          PYTHONPATH=src:scripts python3 -B -O -m unittest discover -s tests/teacher_training_v1 -v
+      - name: Read-only teacher plan
+        run: python3 scripts/teacher_training.py inspect
+  native-one-step:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned v4
+        with:
+          persist-credentials: false
+      - name: Install exact pinned native CPU lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/tt003-cpu"
+          "$RUNNER_TEMP/tt003-cpu/bin/python" -m pip install --no-deps -r requirements.lock
+          "$RUNNER_TEMP/tt003-cpu/bin/python" -m pip check
+      - name: One optimizer update and safe tensor restore (engineering only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src:scripts "$RUNNER_TEMP/tt003-cpu/bin/python" -B -m unittest discover -s tests/teacher_training_native -v

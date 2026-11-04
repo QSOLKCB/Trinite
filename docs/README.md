@@ -14,6 +14,7 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | [MODULES.md](MODULES.md) | Responsibilities, interfaces, and permitted dependencies |
 | [TECH-STACK.md](TECH-STACK.md) | Language, dependencies, alternatives, and source references |
 | [DATA.md](DATA.md) | Admissible data, lineage, curation, and split policy |
+| [TEACHER-LAB-TT-003.md](TEACHER-LAB-TT-003.md) | Versioned tiny native teacher producer, owner-local approval, CPU evidence and RTX 50 preflight |
 | [TEACHER-LAB-TT-002.md](TEACHER-LAB-TT-002.md) | Source-bound GF(3) formal teacher curriculum; rights, splits and independent oracle, no training |
 | [TRAINING.md](TRAINING.md) | Quantizer, training procedure, reproducibility, and workflow plan |
 | [RESEARCH.md](RESEARCH.md) | Geometric reasoning, controls, comparisons, and evidence limits |
