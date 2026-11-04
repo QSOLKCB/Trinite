@@ -1,0 +1,27 @@
+name: Teacher Dataset TT-002 GF3
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  teacher-dataset-v1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned v4
+        with:
+          persist-credentials: false
+      - name: New offline GF3 contracts, normal and optimized
+        run: |
+          PYTHONPATH=src:scripts python3 -B -m unittest discover -s tests/teacher_dataset_v1 -v
+          PYTHONPATH=src:scripts python3 -B -O -m unittest discover -s tests/teacher_dataset_v1 -v
+      - name: Cold prepare and external-identity verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/teacher_dataset.py inspect
+          python3 scripts/teacher_dataset.py prepare --out "$RUNNER_TEMP/tt002-packet" > "$RUNNER_TEMP/tt002-freeze-receipt.json"
+          identity="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["manifest_identity"])' < "$RUNNER_TEMP/tt002-freeze-receipt.json")"
+          python3 scripts/teacher_dataset.py verify --packet "$RUNNER_TEMP/tt002-packet" --identity "$identity"

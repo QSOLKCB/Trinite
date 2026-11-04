@@ -32,6 +32,10 @@ remains optional future work, behind native diagnosis; no silent rerun follows.
 
 [TT-001 Teacher Lab foundation and TT-003 CUDA preflight roadmap](TEACHER-LAB-V1.md) specify the in-repository offline preflight, immutable first-party source-candidate identities and **separate dataset/weight rights records**. TT-001 does not create a training dataset or run a model. TT-002 must first admit generated formal sources and independent mathematical oracles. **TT-003 is conditional native teacher training** and, for the optional RTX 50-class GPU path, must fail closed without CUDA toolkit/runtime **12.8+**, genuine **sm_120** support, a compatible driver/PyTorch build, actual kernel execution and frozen hardware evidence; no silent CPU fallback. TT-004 distillation remains future work. The existing learning, source/evidence, CPU, licensing and release gates are unchanged; no new target run is authorized by this roadmap.
 
+## TT-002 — QEC GF(3) teacher curriculum (4 November 2026)
+
+[TT-002's source-specific admission](TEACHER-LAB-TT-002.md) adds original QEC-derived GF(3) formal examples with independent nine-ket oracle checks, training-only labels, public development observations, separate privileged targets, exact rights records and cold source-bound replay. All seven circuit families remain engineering-exposed; neither fresh model generalization nor training authority follows. TT-003 remains separately gated, including the prospective CUDA 12.8+/sm_120 preflight for RTX 50-class GPU training.
+
 ## Prospective external JSON environments — 1 November 2026
 
 The [external environment roadmap](EXTERNAL-ENVIRONMENTS-ROADMAP.md) keeps
