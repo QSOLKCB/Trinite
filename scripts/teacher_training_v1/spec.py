@@ -65,7 +65,8 @@ def settings() -> tuple[dict, ModelConfig]:
 def _member(folder: Path, name: str, size: int = MAX_FILE) -> bytes:
     if type(name) is not str or name not in ("request.json", "approval.json",
                                              "manifest.json", "metadata.json",
-                                             "report.json", "tensors.safetensors"):
+                                             "report.json", "weights-rights.json",
+                                             "tensors.safetensors"):
         raise ContractError("unknown bounded teacher artifact")
     folder = Path(folder)
     if folder.is_symlink() or not folder.is_dir():
