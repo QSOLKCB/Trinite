@@ -69,7 +69,7 @@ Select exactly six distinct `observation.word` values from the 81 possible
 four-trit words. Sort the entire validated 81-word TRAIN inventory by the
 ascending SHA-256 digest of the ASCII bytes:
 
-`b"trinite.teacher-fit-001.word.v1\\0" + word.encode("ascii")`
+`b"trinite.teacher-fit-001.word.v1\0" + word.encode("ascii")`
 
 Break any digest ties lexicographically by the word itself, then choose the
 first six. This is **data-only precommitment**: no model scores, losses,
@@ -88,7 +88,7 @@ position, rather than assuming uniformity.
 Use **one identical, seed-independent training order** for all runs:
 sort the 72 admitted row IDs by SHA-256 of
 
-`b"trinite.teacher-fit-001.row.v1\\0" + row_id.encode("ascii")`
+`b"trinite.teacher-fit-001.row.v1\0" + row_id.encode("ascii")`
 
 and break collisions by row ID. Visit the list cyclically in batches of four.
 All three runs execute the same first 1,024 scheduled visits; freeze a full
