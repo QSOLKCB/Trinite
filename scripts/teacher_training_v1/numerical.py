@@ -195,14 +195,23 @@ def run(request_dir: Path, request_anchor: str, dataset: Path,
     """Explicit owner-approved CPU execution; never callable from PR CI."""
     request = spec.verify_request(request_dir, request_anchor, dataset)
     # Preserve the exact request identity as a separate value, not self-reported.
-    spec.load_approval(approval_path, approval_anchor, request, request_anchor)
+    approved = spec.load_approval(approval_path, approval_anchor, request, request_anchor)
+    # Verify the exact bytes again at the copy boundary, not just at intake.
+    # A same-host approval/request swap after validation must fail before output.
+    request_raw = spec._member(request_dir, "request.json")
+    approval_raw = Path(approval_path).read_bytes()
+    if (identity(request_raw) != request_anchor
+            or parse_json(request_raw, canonical=True) != request
+            or identity(approval_raw) != approval_anchor
+            or parse_json(approval_raw, canonical=True) != approved):
+        raise ContractError("request or approval changed after validation")
     output = Path(output)
     if output.exists() or output.is_symlink() or not output.parent.is_dir():
         raise ContractError("teacher output must be new under an existing parent")
     output.mkdir(mode=0o700)
     # Preserve the run's intended inputs before importing/loading model tensors.
-    _write(output, "request.json", spec._member(request_dir, "request.json"))
-    _write(output, "approval.json", Path(approval_path).read_bytes())
+    _write(output, "request.json", request_raw)
+    _write(output, "approval.json", approval_raw)
     state = None
     start = time.monotonic()
     try:

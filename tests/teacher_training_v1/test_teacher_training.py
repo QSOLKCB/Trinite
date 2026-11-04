@@ -6,7 +6,7 @@ from unittest import mock
 
 from trinite.contracts import ContractError, identity, json_bytes
 from teacher_dataset_v1 import core as tt002
-from teacher_training_v1 import spec, cuda_preflight
+from teacher_training_v1 import spec, cuda_preflight, numerical
 
 
 class TT003Contracts(unittest.TestCase):
@@ -90,6 +90,33 @@ class TT003Contracts(unittest.TestCase):
             with self.assertRaises(ContractError):
                 spec.load_approval(path, identity(path.read_bytes()),
                                    self.request, self.request_anchor)
+
+
+    def test_owner_approval_swap_after_validation_fails_before_model_loading(self):
+        approved = {
+            "schema": spec.APPROVAL_SCHEMA,
+            "request_identity": self.request_anchor,
+            "dataset_manifest_identity": self.dataset_anchor,
+            "owner": "QSOLKCB",
+            "scope": "one-explicit-owner-local-cpu-teacher-experiment",
+            "approved_updates": 32,
+            "training_authorized": True,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            approval = Path(tmp) / "approval.json"
+            output = Path(tmp) / "run"
+            approval.write_bytes(json_bytes(approved))
+            anchor = identity(approval.read_bytes())
+            true_loader = spec.load_approval
+            def swapped(path, sha, request, request_anchor):
+                checked = true_loader(path, sha, request, request_anchor)
+                path.write_bytes(b'{"substituted":true}\n')
+                return checked
+            with mock.patch.object(spec, "load_approval", side_effect=swapped):
+                with self.assertRaises(ContractError):
+                    numerical.run(self.request_folder, self.request_anchor,
+                                  self.dataset, approval, anchor, output)
+            self.assertFalse(output.exists())
 
     def test_cuda_124_driver_and_arch_rejection(self):
         example = {"cuda_build":"12.8", "driver_api":12080,
