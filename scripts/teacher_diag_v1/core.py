@@ -26,6 +26,15 @@ MANIFEST_SCHEMA = "trinite.teacher-frozen-diagnostic-manifest.v1"
 MAX_BYTES = 4 * 1024 * 1024
 MAX_TENSOR_BYTES = 32 * 1024 * 1024
 ROW_COUNT = 972
+PIN = {
+    "dataset_manifest_identity": "sha256:b90287c3549e2a877b4e23325b51f234f3e54eab3a48c0227f34c5f18d065687",
+    "teacher_request_identity": "sha256:72e9342f769c957c0d8c690d528bebb7fa3500cb96c7168e8d20aa32123fcd44",
+    "teacher_run_manifest_identity": "sha256:a74aec8d610a678e2e2fee0c32ece11dd1e1fcc8fa53d8e8da6db40d3ef73004",
+    "teacher_tensor_identity": "sha256:ec0e42658818fb9fb1712f11117eebc3c5adf101aa668e335ab788b5e2f6a551",
+    "teacher_metadata_identity": "sha256:04f81e0855949b349e6c50ce0aff5b386c0a95a02fcbf75e7008a96111605948",
+    "teacher_model_identity": "sha256:54282d9dfbf9b2e88469e11e84048013dd3d031844b3cf6513009888c7ec3628",
+    "initial_model_identity": "sha256:62d2f48f4d3f3d6398ea32a7c8eb0d207f66a97a4ebf3c26ddff2ca196ebc9fa",
+}
 REQUEST_FILES = ("request.json",)
 RESULT_FILES = ("request.json", "predictions.jsonl", "summary.json", "manifest.json")
 CLOSURE = (
@@ -62,20 +71,18 @@ def plan() -> dict:
             or data["optimizer_updates"] != 0
             or data["heldout_scored"] is not False):
         raise ContractError("diagnostic version, scope or authority changed")
-    for k in ("dataset_manifest_identity", "teacher_request_identity",
-              "teacher_run_manifest_identity", "teacher_tensor_identity",
-              "teacher_metadata_identity", "teacher_model_identity",
-              "initial_model_identity"):
+    for k, expected in PIN.items():
         require_identity(data[k])
+        if data[k] != expected:
+            raise ContractError("historical TT-003-EVIDENCE-001 anchor changed")
     return data
 
 
 def read_member(directory: Path, name: str, cap: int = MAX_BYTES) -> bytes:
-    if name not in (set(teacher_spec._member.__code__.co_consts) if False else
-                    {"request.json", "manifest.json", "metadata.json",
-                     "tensors.safetensors", "report.json", "weights-rights.json",
-                     "approval.json", "train.jsonl", "predictions.jsonl",
-                     "summary.json"}):
+    if name not in {"request.json", "manifest.json", "metadata.json",
+                    "tensors.safetensors", "report.json", "weights-rights.json",
+                    "approval.json", "train.jsonl", "predictions.jsonl",
+                    "summary.json"}:
         raise ContractError("unsupported diagnostic artifact")
     path = Path(directory)
     if path.is_symlink() or not path.is_dir():
@@ -125,11 +132,10 @@ def historical_inputs(dataset: Path, run: Path) -> tuple[dict, dict, dict, dict]
             or manifest.get("heldout_scored") is not False
             or manifest.get("optimizer_updates") != 32):
         raise ContractError("original teacher manifest is not completed train-only")
-    check_members(run, tuple(teacher_spec.__dict__.get("_never", ())
-                              or ("approval.json", "request.json",
-                                  "tensors.safetensors", "metadata.json",
-                                  "weights-rights.json", "report.json",
-                                  "manifest.json")))
+    check_members(run, ("approval.json", "request.json",
+                        "tensors.safetensors", "metadata.json",
+                        "weights-rights.json", "report.json",
+                        "manifest.json"))
     actual = []
     for name in ("approval.json", "request.json", "tensors.safetensors",
                  "metadata.json", "weights-rights.json", "report.json"):
