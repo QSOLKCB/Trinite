@@ -2,10 +2,12 @@
 
 
 > **v2 compatibility note:** This guidance is activated only through new
-> directory-scoped `AGENTS.md` files under `scripts/`, `src/trinite/`,
-> `tests/`, `docs/`, and `.github/`. It does not change the root
+> directory-scoped `AGENTS.md` files under `scripts/`, `tests/`,
+> `docs/`, and `.github/`. It does not change the root
 > `AGENTS.md`, so the byte identities of historical source closures remain
-> unchanged. New agent instructions are prospective and procedural only;
+> unchanged. The native `src/` tree rejects `.md` members in its historical complete-source
+> inventory, so no scoped `AGENTS.md` is introduced there. Root-level instructions
+> continue to govern work under `src/`. New agent instructions are prospective and procedural only;
 > historical fixtures are not regenerated. In an actual run, new source inputs
 > must be frozen and reviewed on their exact commit.
 
