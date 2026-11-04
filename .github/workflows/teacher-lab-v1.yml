@@ -27,6 +27,7 @@ jobs:
           python3 scripts/teacher_lab.py inspect
           python3 scripts/teacher_lab.py preflight > "$RUNNER_TEMP/teacher-lab-preflight.json"
           python3 scripts/teacher_lab.py preview-formal > "$RUNNER_TEMP/teacher-lab-preview.json"
-          python3 scripts/teacher_lab.py freeze --out "$RUNNER_TEMP/teacher-lab-freeze"
-          digest="sha256:$(sha256sum "$RUNNER_TEMP/teacher-lab-freeze/request.json" | cut -d' ' -f1)"
+          python3 scripts/teacher_lab.py freeze --out "$RUNNER_TEMP/teacher-lab-freeze" > "$RUNNER_TEMP/teacher-lab-freeze-receipt.json"
+          # Retain freeze's emitted commitment independently of the packet being verified.
+          digest="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["request_identity"])' < "$RUNNER_TEMP/teacher-lab-freeze-receipt.json")"
           python3 scripts/teacher_lab.py verify --run "$RUNNER_TEMP/teacher-lab-freeze" --identity "$digest"

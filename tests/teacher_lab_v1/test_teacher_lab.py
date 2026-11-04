@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 from trinite.contracts import ContractError, identity, json_bytes, parse_json
 from teacher_lab_v1 import core
@@ -76,8 +77,10 @@ class TeacherLabTests(unittest.TestCase):
         self.assertEqual(obj["split"], "NONE")
         self.assertIn("NOT_ADMITTED", obj["status"])
         self.assertEqual(len({v["family"] for v in obj["examples"]}), 9)
+        residues = {0: 0, 1: 1, 2: -1}
         for e in obj["examples"]:
-            self.assertEqual((e["sum"] - e["a"] - e["b"]) % 3, 0)
+            self.assertIn(e["sum"], (-1, 0, 1))
+            self.assertEqual(e["sum"], residues[(e["a"] + e["b"]) % 3])
 
     def test_fresh_freeze_and_independent_verify(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -169,11 +172,90 @@ class TeacherLabTests(unittest.TestCase):
             self.assertIn("preflight source or rights mismatch", tampered.stderr)
             self.assertNotIn('"verified":true', tampered.stdout)
 
+
+    def test_protocol_document_change_rejected_by_fresh_process(self):
+        """Review-boundary edits invalidate an older packet, in a cold process."""
+        with tempfile.TemporaryDirectory() as tmp:
+            checkout = Path(tmp) / "checkout"
+            plan = core.source_json(core.DEFAULT_PLAN)
+            closure = set(core.SOURCE_CLOSURE) | {
+                core.DEFAULT_PLAN, plan["model_config"], plan["source_catalog"],
+            }
+            for relative in sorted(closure):
+                destination = checkout / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(core.repo_file(relative), destination)
+            cli = [sys.executable, "-I", "-B", str(checkout / "scripts/teacher_lab.py")]
+            packet = checkout / "frozen"
+            frozen = subprocess.run(
+                cli + ["freeze", "--out", str(packet)],
+                cwd=checkout, capture_output=True, text=True, timeout=30, check=False,
+            )
+            self.assertEqual(frozen.returncode, 0, frozen.stderr)
+            anchor = parse_json(frozen.stdout.encode("utf-8"))["request_identity"]
+            verify_cli = cli + ["verify", "--run", str(packet), "--identity", anchor]
+            before = subprocess.run(verify_cli, cwd=checkout, capture_output=True,
+                                    text=True, timeout=30, check=False)
+            self.assertEqual(before.returncode, 0, before.stderr)
+            document = checkout / "docs/TEACHER-LAB-V1.md"
+            document.write_bytes(document.read_bytes() + b"\nProtocol boundary changed.\n")
+            after = subprocess.run(verify_cli, cwd=checkout, capture_output=True,
+                                   text=True, timeout=30, check=False)
+            self.assertEqual(after.returncode, 2, after.stderr)
+            self.assertIn("preflight source or rights mismatch", after.stderr)
+
+    def test_failed_freeze_does_not_publish_incomplete_packet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            packet = Path(tmp) / "frozen"
+            with mock.patch.object(core.os, "fsync", side_effect=OSError("injected fsync failure")):
+                with self.assertRaises(OSError):
+                    core.freeze(packet)
+            self.assertFalse(packet.exists())
+            self.assertEqual(list(Path(tmp).iterdir()), [])
+            anchor = core.freeze(packet)
+            self.assertTrue(core.verify(packet, anchor)["verified"])
+
+    def test_native_model_and_training_limits_are_source_inspected(self):
+        self.assertEqual(core.native_limits(), (5_000_000, 2_000_000))
+        self.assertIn("src/trinite/model.py", core.SOURCE_CLOSURE)
+        self.assertIn("src/trinite/training.py", core.SOURCE_CLOSURE)
+        current = core.source_json(core.DEFAULT_PLAN)
+        with mock.patch.object(core, "native_limits", return_value=(1_000_000, 2_000_000)):
+            with self.assertRaises(ContractError):
+                core.inspect()
+        with mock.patch.object(core, "native_limits", return_value=(5_000_000, 1_000_000)):
+            with self.assertRaises(ContractError):
+                core.validate_plan(current)
+
+    def test_bounded_directory_scan_rejects_unexpected_entry_early(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            packet = Path(tmp) / "frozen"
+            anchor = core.freeze(packet)
+            class NeverConsumeTail:
+                def __init__(self):
+                    self.count = 0
+                def __enter__(self):
+                    return self
+                def __exit__(self, *args):
+                    return False
+                def __iter__(self):
+                    return self
+                def __next__(self):
+                    self.count += 1
+                    if self.count == 1:
+                        return type("Entry", (), {"name": "unexpected"})()
+                    raise AssertionError("unbounded directory enumeration")
+            with mock.patch.object(core.os, "scandir", return_value=NeverConsumeTail()):
+                with self.assertRaises(ContractError):
+                    core.verify(packet, anchor)
+
     def test_source_revalidation_detects_changed_closure(self):
         req, _, _ = core.request_and_rights()
         self.assertIn("src/trinite/contracts.py",
                       {item["path"] for item in req["source_closure"]})
         self.assertIn("src/trinite/__init__.py",
+                      {item["path"] for item in req["source_closure"]})
+        self.assertIn("docs/TEACHER-LAB-V1.md",
                       {item["path"] for item in req["source_closure"]})
         self.assertIn("docs/DATA.md",
                       {item["path"] for item in req["source_closure"]})

@@ -4,9 +4,12 @@ No model construction, optimizer, dataset admission, or network access.
 """
 from __future__ import annotations
 
+import ast
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
+import tempfile
 
 from trinite.contracts import (
     ContractError, ModelConfig, exact_keys, identity, json_bytes, parse_json,
@@ -19,8 +22,6 @@ SCHEMA = "trinite.teacher-lab.v1"
 PLAN_SCHEMA = "trinite.teacher-lab-plan.v1"
 CATALOG_SCHEMA = "trinite.teacher-lab-candidates.v1"
 MAX_INPUT = 1_048_576
-CURRENT_CONSTRUCTOR_LIMIT = 5_000_000
-CURRENT_RUN_LIMIT = 2_000_000
 SOURCE_CLOSURE = (
     "scripts/teacher_lab.py",
     "scripts/teacher_lab_v1/__init__.py",
@@ -28,6 +29,9 @@ SOURCE_CLOSURE = (
     "scripts/model_size_policy_v1.py",
     "src/trinite/__init__.py",
     "src/trinite/contracts.py",
+    "src/trinite/model.py",
+    "src/trinite/training.py",
+    "docs/TEACHER-LAB-V1.md",
     "docs/DATA.md",
     "docs/MODEL-SIZE-POLICY.md",
     "docs/PROVENANCE.md",
@@ -105,6 +109,76 @@ def validate_catalog(value: object) -> dict:
     return value
 
 
+
+
+def _method(tree: ast.Module, owner: str, name: str) -> ast.FunctionDef:
+    """Locate one explicitly named native method without importing Torch."""
+    cls = [node for node in tree.body
+           if isinstance(node, ast.ClassDef) and node.name == owner]
+    if len(cls) != 1:
+        raise ContractError(f"native {owner} definition missing or ambiguous")
+    methods = [node for node in cls[0].body
+               if isinstance(node, ast.FunctionDef) and node.name == name]
+    if len(methods) != 1:
+        raise ContractError(f"native {owner}.{name} not uniquely defined")
+    return methods[0]
+
+
+def native_limits() -> tuple[int, int]:
+    """Conservative source-inspected native constructor and RunConfig caps.
+
+    Parse the actual current native code; do not import model.py/training.py
+    because TT-001 remains standard-library-only and allocation-free. Fail
+    closed when the defining guard shape changes pending explicit review.
+    This source inspection is not a proof of arbitrary Python equivalence.
+    """
+    try:
+        model = ast.parse(source_bytes("src/trinite/model.py"))
+        training = ast.parse(source_bytes("src/trinite/training.py"))
+    except (SyntaxError, UnicodeError, ValueError) as exc:
+        raise ContractError("invalid native model or training source") from exc
+
+    maximums = [
+        stmt.value.value
+        for stmt in model.body
+        if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1
+        and isinstance(stmt.targets[0], ast.Name)
+        and stmt.targets[0].id == "MAX_PARAMETERS"
+        and isinstance(stmt.value, ast.Constant)
+    ]
+    if len(maximums) != 1 or type(maximums[0]) is not int or maximums[0] < 1:
+        raise ContractError("native constructor parameter maximum changed shape")
+    constructor = _method(model, "Decoder", "__init__")
+    guards = [
+        node for node in ast.walk(constructor)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        and node.func.id == "integer" and len(node.args) == 4
+        and isinstance(node.args[0], ast.Name)
+        and node.args[0].id == "parameter_budget"
+        and isinstance(node.args[3], ast.Name)
+        and node.args[3].id == "MAX_PARAMETERS"
+    ]
+    if len(guards) != 1 or not any(
+        isinstance(node, ast.Compare)
+        and ast.unparse(node) == "config.parameter_count > parameter_budget"
+        for node in ast.walk(constructor)
+    ):
+        raise ContractError("native constructor budget validation changed shape")
+
+    run = _method(training, "RunConfig", "__post_init__")
+    limits = [
+        node.comparators[0].value
+        for node in ast.walk(run)
+        if isinstance(node, ast.Compare) and len(node.ops) == 1
+        and isinstance(node.ops[0], ast.Gt)
+        and ast.unparse(node.left) == "self.model.parameter_count"
+        and len(node.comparators) == 1
+        and isinstance(node.comparators[0], ast.Constant)
+    ]
+    if len(limits) != 1 or type(limits[0]) is not int or limits[0] < 1:
+        raise ContractError("native training parameter limit changed shape")
+    return maximums[0], limits[0]
+
 def validate_plan(plan: object) -> dict:
     exact_keys(plan, {"schema", "role", "lane", "model_config", "parameter_budget",
                       "source_catalog", "objective", "training_authorized",
@@ -115,8 +189,10 @@ def validate_plan(plan: object) -> dict:
         raise ContractError("TT-001 supports only dense preflight")
     if plan["training_authorized"] is not False or plan["data_admitted"] is not False:
         raise ContractError("TT-001 does not authorize training or data admission")
-    if (type(plan["parameter_budget"]) is not int or
-            not 1 <= plan["parameter_budget"] <= CURRENT_RUN_LIMIT):
+    if type(plan["parameter_budget"]) is not int or plan["parameter_budget"] < 1:
+        raise ContractError("parameter budget must be a positive integer")
+    constructor_limit, run_limit = native_limits()
+    if plan["parameter_budget"] > min(constructor_limit, run_limit):
         raise ContractError("parameter budget exceeds current native run limit")
     if type(plan["objective"]) is not str or not 8 <= len(plan["objective"]) <= 128:
         raise ContractError("missing bounded objective")
@@ -130,7 +206,8 @@ def inspect(plan_path: str = DEFAULT_PLAN) -> tuple[dict, dict, dict]:
     config = ModelConfig.from_dict(source_json(plan["model_config"]))
     catalog = validate_catalog(source_json(plan["source_catalog"]))
     count = preflight_parameter_count(config.parameter_count)
-    if count > CURRENT_CONSTRUCTOR_LIMIT or count > plan["parameter_budget"]:
+    constructor_limit, run_limit = native_limits()
+    if count > constructor_limit or count > run_limit or count > plan["parameter_budget"]:
         raise ContractError("model exceeds existing constructor or requested run budget")
     return plan, config.to_dict(), catalog
 
@@ -195,16 +272,27 @@ def freeze(destination: Path, plan_path: str = DEFAULT_PLAN) -> str:
     destination = Path(destination)
     if destination.is_symlink() or destination.exists():
         raise ContractError("preflight destination already exists")
-    destination.mkdir(mode=0o700)
-    for name, obj in (
-        ("dataset-rights.json", data),
-        ("weights-rights.json", weights),
-        ("request.json", request),
-    ):
-        with (destination / name).open("xb") as fh:
-            fh.write(json_bytes(obj))
-            fh.flush()
-            os.fsync(fh.fileno())
+    # Do not expose a partially written packet at the requested destination.
+    # Staging lives in the same parent filesystem for atomic directory rename.
+    stage = Path(tempfile.mkdtemp(prefix=f".{destination.name}.staging-", dir=destination.parent))
+    try:
+        for name, obj in (
+            ("dataset-rights.json", data),
+            ("weights-rights.json", weights),
+            ("request.json", request),
+        ):
+            with (stage / name).open("xb") as fh:
+                fh.write(json_bytes(obj))
+                fh.flush()
+                os.fsync(fh.fileno())
+        if destination.is_symlink() or destination.exists():
+            raise ContractError("preflight destination already exists")
+        # No hostile concurrent parent-directory mutator is in TT-001's threat model.
+        os.rename(stage, destination)
+    finally:
+        # On any write, fsync, or rename failure, only our private stage is removed.
+        if stage.exists():
+            shutil.rmtree(stage)
     return identity(json_bytes(request))
 
 
@@ -215,6 +303,15 @@ def verify(directory: Path, externally_retained_identity: str) -> dict:
     directory = Path(directory)
     if directory.is_symlink() or not directory.is_dir():
         raise ContractError("invalid packet directory")
+    expected_names = {"request.json", "dataset-rights.json", "weights-rights.json"}
+    seen = set()
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            if entry.name not in expected_names or entry.name in seen:
+                raise ContractError("unexpected packet member")
+            seen.add(entry.name)
+    if seen != expected_names:
+        raise ContractError("missing packet member")
     observed = {}
     for name in ("dataset-rights.json", "weights-rights.json", "request.json"):
         p = directory / name
@@ -230,9 +327,6 @@ def verify(directory: Path, externally_retained_identity: str) -> dict:
             observed["dataset-rights.json"] != data or
             observed["weights-rights.json"] != weights):
         raise ContractError("preflight source or rights mismatch")
-    if set(p.name for p in directory.iterdir()) != {
-            "request.json", "dataset-rights.json", "weights-rights.json"}:
-        raise ContractError("unexpected packet member")
     return {"verified": True, "scope": "preflight-only",
             "training_authorized": False, "heldout_scored": False,
             "evidence_ready": False}
