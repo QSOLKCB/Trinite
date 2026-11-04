@@ -219,9 +219,24 @@ def build_request(dataset: Path, run: Path) -> dict:
     }
 
 
+def require_safe_output(candidate: Path, *inputs: Path) -> Path:
+    """Never create diagnostic output inside original data/run or Git checkout.
+
+    Trusted-host path resolution, not protection against a hostile concurrent
+    symlink mutator. Reject before any output mkdir/write.
+    """
+    candidate = Path(candidate)
+    resolved = candidate.resolve(strict=False)
+    for protected in (*inputs, lab.ROOT):
+        root = Path(protected).resolve(strict=True)
+        if resolved == root or root in resolved.parents:
+            raise ContractError("diagnostic output overlaps protected source/evidence")
+    return candidate
+
+
 def freeze(destination: Path, dataset: Path, run: Path) -> str:
     req = build_request(dataset, run)
-    destination = Path(destination)
+    destination = require_safe_output(destination, dataset, run)
     if destination.exists() or destination.is_symlink() or not destination.parent.is_dir():
         raise ContractError("fresh diagnostic request directory required")
     stage = Path(tempfile.mkdtemp(prefix=".tt003diag-request-", dir=destination.parent))

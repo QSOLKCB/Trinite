@@ -35,6 +35,23 @@ class OriginalCheckpointGuards(unittest.TestCase):
             with self.assertRaises(ContractError):
                 core.read_member(folder, "request.json")
 
+    def test_new_output_cannot_overlap_original_evidence_or_checkout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dataset, run, request = root / "data", root / "run", root / "request"
+            for folder in (dataset, run, request):
+                folder.mkdir()
+            before = {folder.name: list(folder.iterdir())
+                      for folder in (dataset, run, request)}
+            for candidate in (dataset / "new-result", run / "new-result",
+                              request / "new-result",
+                              core.lab.ROOT / "diag-should-not-exist"):
+                with self.subTest(candidate=str(candidate)):
+                    with self.assertRaises(ContractError):
+                        core.require_safe_output(candidate, request, dataset, run)
+            self.assertEqual(before, {folder.name: list(folder.iterdir())
+                                      for folder in (dataset, run, request)})
+
     def test_unknown_member_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ContractError):

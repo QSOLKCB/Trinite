@@ -112,7 +112,7 @@ def summary_for(rows: list[dict], request: dict) -> dict:
 def run(frozen_dir: Path, anchor: str, dataset: Path, teacher_run: Path, output: Path) -> dict:
     request = core.verify_request(frozen_dir, anchor, dataset, teacher_run)
     # Never overwrite an original packet or previous experiment.
-    output = Path(output)
+    output = core.require_safe_output(output, frozen_dir, dataset, teacher_run)
     if output.exists() or output.is_symlink() or not output.parent.is_dir():
         raise ContractError("diagnostic output directory must be fresh")
     output.mkdir(mode=0o700)
