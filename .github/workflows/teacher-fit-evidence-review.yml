@@ -1,0 +1,25 @@
+name: TT-003-FIT-001 independent evidence review (synthetic only)
+on:
+  pull_request:
+    paths:
+      - 'scripts/teacher_fit_review_v1/**'
+      - 'scripts/run_teacher_fit_review.py'
+      - 'tests/teacher_fit_review_v1/**'
+      - 'docs/TEACHER-LAB-FIT-001-EVIDENCE-REVIEW.md'
+      - '.github/workflows/teacher-fit-evidence-review.yml'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  evidence-review-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned v4
+        with:
+          persist-credentials: false
+      - name: Standard library only, no target evidence or model execution
+        run: |
+          PYTHONPATH=scripts python3 -B -m unittest discover -s tests/teacher_fit_review_v1 -v
+          PYTHONPATH=scripts python3 -B -O -m unittest discover -s tests/teacher_fit_review_v1 -v
