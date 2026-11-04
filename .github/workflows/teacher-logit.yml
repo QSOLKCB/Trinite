@@ -1,0 +1,21 @@
+name: Teacher logit v2 contracts
+on:
+  pull_request:
+    paths:
+      - 'scripts/teacher_logit_v1/**'
+      - 'scripts/run_teacher_logit.py'
+      - 'tests/teacher_logit_v1/**'
+      - 'configs/teacher/tt003-logit-001-v2.json'
+      - 'docs/TEACHER-LOGIT-001-V2.md'
+      - '.github/workflows/teacher-logit.yml'
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --require-hashes --no-deps -r requirements.lock
+      - run: PYTHONPATH=src:scripts python -B -m unittest discover -s tests/teacher_logit_v1 -v
+      - run: PYTHONPATH=src:scripts python -B -O -m unittest discover -s tests/teacher_logit_v1 -v
