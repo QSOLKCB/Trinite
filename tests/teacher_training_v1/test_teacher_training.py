@@ -44,6 +44,9 @@ class TT003Contracts(unittest.TestCase):
         paths = {item["path"] for item in self.request["source_closure"]}
         for required in ("src/trinite/model.py", "src/trinite/training.py",
                          "src/trinite/comparison_checkpoint.py",
+                         "src/trinite/comparison_data.py",
+                         "src/trinite/qec_source.py",
+                         "src/trinite/qec-pin.json",
                          "scripts/teacher_training_v1/numerical.py",
                          "scripts/teacher_training_v1/cuda_preflight.py",
                          "docs/TEACHER-LAB-TT-003.md", "requirements.lock"):

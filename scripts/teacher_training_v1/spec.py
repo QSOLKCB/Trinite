@@ -29,6 +29,8 @@ CLOSURE = (
     "src/trinite/inspection.py", "src/trinite/training.py",
     "src/trinite/comparison_checkpoint.py",
     "src/trinite/comparison_training.py",
+    "src/trinite/comparison_data.py", "src/trinite/qec_source.py",
+    "src/trinite/qec-pin.json", "src/trinite/comparison-protocol.json",
     "src/trinite/data.py", "requirements.lock",
     "docs/TEACHER-LAB-TT-003.md", "docs/INVARIANTS.md",
     "docs/DATA.md", "docs/PROVENANCE.md", "AGENTS.md", "LICENSE",
