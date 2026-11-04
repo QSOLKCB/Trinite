@@ -392,6 +392,128 @@ class HostileEvidenceRegressions(unittest.TestCase):
                 if in_checkout.exists():
                     in_checkout.unlink()
 
+    def test_frozen_selector_reconstructs_original_panel_and_visit_order(self):
+        # Complete independent 3 * 81 * 4 synthetic TRAIN panel; salt 8 yields
+        # exactly 3,590 scheduled answer+EOS tokens without private input bytes.
+        from itertools import product
+        rows = []
+        for family in core.FAMILIES:
+            for chars in product('012', repeat=4):
+                word = ''.join(chars)
+                for task, view in (('apply', ''), ('inverse', ''),
+                                   ('check', '0'), ('check', '1')):
+                    row_id = core.sha(f'{family}|{word}|{task}|{view}|8'.encode())
+                    answer = view if task == 'check' else word
+                    rows.append({'id': row_id, 'split': 'train', 'family': family,
+                                 'observation': {'word': word, 'task': task,
+                                                 'circuit': family, 'candidate': ''},
+                                 'answer': answer,
+                                 'supervised_tokens': len(answer) + 1})
+        expected_panel, expected_selection = core.frozen_panel_schedule(rows)
+        self.assertEqual(expected_selection['selected_words'],
+                         ['2112', '2002', '1122', '2122', '2022', '0100'])
+        self.assertEqual(len(expected_panel), 72)
+        self.assertEqual(expected_selection['scheduled_target_tokens'], 3590)
+        self.assertEqual(core.frozen_panel_schedule(rows[::-1]),
+                         (expected_panel, expected_selection))
+        request = {'panel': expected_panel, 'selection': expected_selection,
+                   'panel_identity': core.sha(core.canonical(expected_panel)),
+                   'schedule_identity': core.sha(core.canonical(expected_selection['visit_ids']))}
+        self.assertEqual(core.check_frozen_selection(request, expected_panel, expected_selection),
+                         expected_selection['visit_ids'])
+        # Two independently valid 5-token vector rows are swapped; the re-anchored
+        # panel, visits, schedule checksum, and target budget remain internally
+        # consistent, but the independent selector detects changed update order.
+        tampered = copy.deepcopy(request)
+        i, j = [i for i, row in enumerate(expected_panel)
+                if row['observation']['task'] == 'apply'][:2]
+        tampered['panel'][i], tampered['panel'][j] = tampered['panel'][j], tampered['panel'][i]
+        tsel = tampered['selection']
+        tsel['panel_ids'] = [r['id'] for r in tampered['panel']]
+        tsel['visit_ids'] = [tampered['panel'][n % 72]['id'] for n in range(1024)]
+        self.assertEqual(sum(len(next(r for r in tampered['panel'] if r['id'] == row_id)['answer']) + 1
+                             for row_id in tsel['visit_ids']), 3590)
+        tampered['panel_identity'] = core.sha(core.canonical(tampered['panel']))
+        tampered['schedule_identity'] = core.sha(core.canonical(tsel['visit_ids']))
+        with self.assertRaisesRegex(core.EvidenceError, 'frozen selector panel'):
+            core.check_frozen_selection(tampered, expected_panel, expected_selection)
+        altered_words = copy.deepcopy(request)
+        altered_words['selection']['selected_words'].reverse()
+        with self.assertRaisesRegex(core.EvidenceError, 'frozen selector panel'):
+            core.check_frozen_selection(altered_words, expected_panel, expected_selection)
+        with self.assertRaisesRegex(core.EvidenceError, 'invalid/duplicate source row'):
+            core.frozen_panel_schedule(rows[:-1] + [rows[0]])
+
+    def test_checkpoint_native_times_match_journal_bounds_and_completion(self):
+        journal = [{'native_elapsed_hex': (i / 100).hex()} for i in range(1, 257)]
+        series = [{'update': step, '_metadata': {
+            'native_elapsed_hex': (0. if step == 0 else step / 100).hex()}}
+                  for step in core.STEPS]
+        completed = {'native_elapsed_hex': (2.56).hex()}
+        core.check_native_time_trajectory(series, journal, completed)
+        for value in ((1000.).hex(), (0.5).hex(), (1.5).hex(),
+                      '0x1p+0', 'nan', 'inf', (-0.).hex()):
+            broken = copy.deepcopy(series)
+            broken[2]['_metadata']['native_elapsed_hex'] = value
+            with self.subTest(value=value), self.assertRaises(core.EvidenceError):
+                core.check_native_time_trajectory(broken, journal, completed)
+        for final in ((2.55).hex(), (601.).hex(), 'nan'):
+            with self.subTest(final=final), self.assertRaises(core.EvidenceError):
+                core.check_native_time_trajectory(series, journal,
+                                                  {'native_elapsed_hex': final})
+        with self.assertRaises(core.EvidenceError):
+            core.check_native_time_trajectory(series,
+                journal[:-1] + [{'native_elapsed_hex': (3.00).hex()}], completed)
+
+    def test_recorded_environment_must_match_frozen_approved_cpu_fp32(self):
+        request = {'environment': {'runtime': {'device': 'cpu', 'dtype': 'float32'},
+                                   'members': [{'path': 'pinned', 'sha256': core.sha(b'x')}]}}
+        original = copy.deepcopy(request['environment'])
+        core.check_retained_environment(original, request)
+        for invalid in ({'device': 'cuda', 'dtype': 'float16'},
+                        {'device': 'cpu', 'dtype': 'float16'}):
+            observed = copy.deepcopy(original)
+            observed['runtime'] = invalid
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(
+                    core.EvidenceError, 'retained execution environment'):
+                core.check_retained_environment(observed, request)
+        shortened = copy.deepcopy(original)
+        shortened['members'] = []
+        with self.assertRaises(core.EvidenceError):
+            core.check_retained_environment(shortened, request)
+
+    def test_completed_receipt_rejects_heldout_scoring(self):
+        completed = {'optimizer_updates': 256, 'target_tokens': 3590,
+                     'optimizer_replayed': False, 'heldout_scored': False}
+        core.check_completed_receipt(completed)
+        for field, value in (('heldout_scored', True), ('heldout_scored', None),
+                             ('optimizer_replayed', True), ('optimizer_updates', 255),
+                             ('target_tokens', 3591)):
+            with self.subTest(field=field, value=value), self.assertRaisesRegex(
+                    core.EvidenceError, 'TRAIN-only'):
+                core.check_completed_receipt(dict(completed, **{field: value}))
+        with self.assertRaises(core.EvidenceError):
+            core.check_completed_receipt({k:v for k,v in completed.items()
+                                          if k != 'heldout_scored'})
+
+    def test_observer_identities_are_exactly_bound_to_checkpoint_model(self):
+        metadata = {'identities': {'model': core.sha(b'original'),
+                                   'optimizer': core.sha(b'optimizer')}}
+        observation = {'before': copy.deepcopy(metadata['identities']),
+                       'after': copy.deepcopy(metadata['identities']),
+                       'optimizer_updates': 0, 'rng_unchanged': True,
+                       'state_unchanged': True}
+        core.check_observer_state(observation, metadata)
+        foreign = copy.deepcopy(observation)
+        foreign['before']['model'] = core.sha(b'different-model')
+        foreign['after']['model'] = core.sha(b'different-model')
+        with self.assertRaisesRegex(core.EvidenceError, 'observer state'):
+            core.check_observer_state(foreign, metadata)
+        for field, value in (('optimizer_updates', 1), ('rng_unchanged', False),
+                             ('state_unchanged', False)):
+            with self.subTest(field=field), self.assertRaises(core.EvidenceError):
+                core.check_observer_state(dict(observation, **{field: value}), metadata)
+
     def test_machine_readable_conclusion_uses_verified_endpoints(self):
         for scores, expected, seeds in (
             ((23,18,23),'NONE_OF_THREE_SEEDS_FIT_72_OF_72',[]),
