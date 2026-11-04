@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 """Synthetic contracts; no historical checkpoint is used by this suite."""
 import math
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -50,6 +51,44 @@ class Arithmetic(unittest.TestCase):
         self.assertEqual(float.fromhex(m['target_probability_hex']),0)
         self.assertEqual(float.fromhex(m['target_log_probability_hex']),-20000.)
         self.assertTrue(math.isfinite(float.fromhex(m['eos_rest_log_odds_hex'])))
+    def test_subnormal_probability_ratio_does_not_reject_valid_fp32(self):
+        # Positive subnormals are nonzero but do not retain enough relative
+        # precision after exp() for a 1e-12 logarithmic ratio cross-check.
+        # The full 259-score vector remains valid, and log-space odds survive.
+        for score in (-735.0, -730.0, 730.0, 735.0):
+            with self.subTest(eos_logit=score):
+                logits = [0.0] * ar.VOCAB
+                logits[ar.EOS] = score
+                self.assertEqual(ar.unpack(ar.pack(logits)), logits)
+                result = ar.metrics(logits, ar.EOS)
+                odds = float.fromhex(result['eos_rest_log_odds_hex'])
+                self.assertAlmostEqual(odds, score - math.log(258), places=12)
+                self.assertTrue(math.isfinite(float.fromhex(
+                    result['full_eos_log_probability_hex'])))
+                self.assertIsNone(result['eos_rest_probability_check_hex'])
+                probability = float.fromhex(result['full_eos_probability_hex'])
+                if score < 0:
+                    self.assertGreater(probability, 0.0)
+                    self.assertLess(probability, sys.float_info.min)
+                else:
+                    self.assertEqual(probability, 1.0)
+                    rest_probability = 258 * math.exp(-score)
+                    self.assertGreater(rest_probability, 0.0)
+                    self.assertLess(rest_probability, sys.float_info.min)
+
+    def test_normal_probability_ratio_check_is_still_enforced(self):
+        for score in (-700.0, 0.0, 700.0):
+            with self.subTest(eos_logit=score):
+                logits = [0.0] * ar.VOCAB
+                logits[ar.EOS] = score
+                result = ar.metrics(logits, ar.EOS)
+                independent = result['eos_rest_probability_check_hex']
+                self.assertIsNotNone(independent)
+                self.assertTrue(math.isclose(
+                    float.fromhex(independent),
+                    float.fromhex(result['eos_rest_log_odds_hex']),
+                    rel_tol=ar.TOL, abs_tol=ar.TOL))
+
     def test_fp32_roundtrip_and_bad_vectors(self):
         z=[i*.125 for i in range(259)];self.assertEqual(ar.unpack(ar.pack(z)),z)
         self.assertEqual(ar.pack([-0.0]+[0.0]*258)[:4],b'\x00\x00\x00\x80')
