@@ -1,0 +1,1 @@
+{"schema":"trinite.teacher-gf3-plan.v1","qec_revision":"27bbc798c4e38138ca5b0fff70b15c3271a1917d","donor_revision":"a48048c1097f4d1b37a55eca9a1796a823f0c124","source_catalog":"configs/teacher/source-candidates-v1.json","split_policy":"primitives-before-compositions.v1","training_authorized":false,"data_scope":"original-commissioned-gf3-only"}
