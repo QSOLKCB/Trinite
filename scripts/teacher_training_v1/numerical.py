@@ -273,7 +273,7 @@ def verify_run(output: Path, external_manifest: str, dataset: Path,
     """Read-only native safe restore and train-only diagnosis, not optimizer replay."""
     from trinite.contracts import require_identity
     require_identity(external_manifest)
-    request = spec.verify_request(output, request_anchor, dataset) if False else None
+    require_identity(request_anchor)
     # The saved request is anchored, but the run directory contains more members
     # than the single-file frozen request; use strict identity + regeneration.
     raw_request = spec._member(output, "request.json")
@@ -305,7 +305,6 @@ def verify_run(output: Path, external_manifest: str, dataset: Path,
         observed.append({"name": name, "identity": identity(raw), "bytes": len(raw)})
     if observed != manifest["members"]:
         raise ContractError("teacher run file identities differ")
-    approval_raw = spec._member(output, "approval.json")
     spec.load_approval(output / "approval.json", manifest["approval_identity"],
                        request, request_anchor)
     configure()
@@ -318,10 +317,15 @@ def verify_run(output: Path, external_manifest: str, dataset: Path,
             or report.get("approval_identity") != manifest["approval_identity"]
             or report.get("optimizer_updates") != state.step
             or report.get("target_tokens") != state.target_tokens
+            or report.get("status") != "COMPLETED_TRAIN_ONLY"
             or report.get("model_identity") != _metadata(state, request, request_anchor)["final_model_identity"]
+            or report.get("initial_train_loss_hex") != state.initial_train_loss
+            or report.get("weights_license") != "UNDECIDED"
+            or report.get("target_tokens") != request["scheduled_target_tokens"]
             or report.get("train_only_predictions") != predict_train_only(state.model, dataset, 8)
             or report.get("final_train_loss_hex") != __import__("trinite.training", fromlist=["evaluate"]).evaluate(
                 state.model, state.data["validation"], 4)
+            or report.get("optimizer_updates") != request["plan"]["steps"]
             or report.get("heldout_scored") is not False
             or report.get("gpu_used") is not False
             or report.get("learning_claim") is not False):

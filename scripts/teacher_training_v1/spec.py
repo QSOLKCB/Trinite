@@ -79,8 +79,10 @@ def _member(folder: Path, name: str, size: int = MAX_FILE) -> bytes:
     return raw
 
 
-def load_approval(path: Path, anchor: str, request: dict) -> dict:
+def load_approval(path: Path, anchor: str, request: dict,
+                  request_anchor: str) -> dict:
     require_identity(anchor)
+    require_identity(request_anchor)
     path = Path(path)
     meta = path.lstat()
     if not stat.S_ISREG(meta.st_mode) or meta.st_nlink != 1 or meta.st_size > 4096:
@@ -91,7 +93,7 @@ def load_approval(path: Path, anchor: str, request: dict) -> dict:
     value = parse_json(raw, canonical=True)
     expected = {
         "schema": APPROVAL_SCHEMA,
-        "request_identity": request["request_identity"],
+        "request_identity": request_anchor,
         "dataset_manifest_identity": request["dataset_manifest_identity"],
         "owner": "QSOLKCB",
         "scope": "one-explicit-owner-local-cpu-teacher-experiment",
@@ -146,8 +148,7 @@ def request_for(dataset: Path, external_dataset_anchor: str) -> dict:
         "role": "teacher", "backend": p["backend"], "lane": "dense",
         "model": model.to_dict(), "model_parameters": model.parameter_count,
         "plan": p, "dataset_manifest_identity": external_dataset_anchor,
-        "dataset_rights_identity": identity(tt002.rights()[0] and
-                                            json_bytes(tt002.rights()[0])),
+        "dataset_rights_identity": identity(json_bytes(tt002.rights()[0])),
         "dataset_train_identity": identity((Path(dataset) / "train.jsonl").read_bytes()),
         "scheduled_visits": len(visits), "scheduled_target_tokens": total,
         "train_schedule_identity": identity(json_bytes([r["identity"] for r in visits])),
@@ -186,8 +187,12 @@ def verify_request(folder: Path, external: str, dataset: Path) -> dict:
     expected = request_for(dataset, observed["dataset_manifest_identity"])
     if observed != expected:
         raise ContractError("TT-003 request source/dataset/schedule mismatch")
+    names = set()
     with os.scandir(folder) as entries:
-        names = {entry.name for entry in entries}
+        for entry in entries:
+            if entry.name != "request.json" or entry.name in names:
+                raise ContractError("request directory has unexpected contents")
+            names.add(entry.name)
     if names != {"request.json"}:
         raise ContractError("request directory has unexpected contents")
     return observed
