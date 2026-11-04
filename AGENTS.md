@@ -128,3 +128,37 @@ blocked until their own gates are demonstrated. Open a reviewable PR by default;
 a direct-main edit requires the user's explicit scope. Merging, tagging and
 releases require the user's corresponding task. Report CI for the exact published
 commit, distinguishing passed, failed, pending and unrun checks.
+
+## QSOL-IBAE-inspired authority and evidence rules (procedural only)
+
+Read [the agent governance contract](docs/AGENT-IBAE-GOVERNANCE.md)
+before planning any experiment, interpreting an interruption or
+promoting an observed result into a claim. This adapts selected
+QSOL-IBAE distinctions; it does **not** execute or certify the
+QSOL-IBAE Python/Rust native runtime.
+
+- Preserve `governance != orchestration != execution != evidence`.
+  Agent proposals, source edits, CI, data labels, receipts and
+  benchmark results never create owner authorization.
+- Label findings `OBSERVED`, `DERIVED`, `PROPOSED` or
+  `UNKNOWN`. Keep `FROZEN`, `OWNER_AUTHORIZED`,
+  `EXECUTED`, `VERIFIED_RECORDED` and
+  `VERIFIED_NATIVE_REPLAY` distinct. A synthetic control
+  is not a native target run or generalisation result.
+- For an action with external effects, trainable updates,
+  paid resources, uploads, merges, releases or publication,
+  require an explicit exact-scope owner authorization at
+  execution time. Review/merge/CI success cannot silently
+  expand that scope. Preserve rejected operations and failures.
+- Freeze source, inputs, rights, numerical/backend settings,
+  scheduled work, bounded resources and failure policy before
+  running. No silent retries, target substitutions, hidden
+  reruns, budget increases or source-identity resealing.
+- On interruption choose exactly one supported recovery status:
+  `CONTINUE_EXISTING`, `RECONSTRUCT_FRESH`,
+  `REQUEST_APPROVAL` or `STOP_UNVERIFIABLE`. An old
+  receipt/summary cannot recreate a live execution capability.
+- Treat **this file as source-identity-bearing**: after it changes,
+  preserve historical results under their exact old checkout
+  and re-freeze future evidence on the new reviewed revision.
+  Never modify old source closures or their provenance in place.
