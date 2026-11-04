@@ -171,6 +171,46 @@ tests and is exercised under normal and optimized Python. Owner-local audit
 of the unchanged, externally anchored 1,512-member archive is performed
 separately and excluded from the public repository and CI.
 
+## Third exact-head hostile review: five additional P2 corrections
+
+Review of the three-fix head (`71193986c1966c1c4f80d9762b434cc453e700ad`)
+identified five further independently reproduced fail-open cases. The offline
+reviewer now enforces the following **read-only recorded-evidence contracts**:
+
+1. **Independently reconstructed selector and schedule.** The complete 972
+   original TRAIN rows are structurally inventoried by family, four-trit word,
+   task, check label and unique SHA-256 row identity. The exact six selected
+   words are recomputed using the frozen word-domain SHA-256 rank, followed by
+   the original row-domain SHA-256 rank and the full cyclic 1,024-visit ledger.
+   The complete selected panel, panel metadata, selection record and SHA-256
+   identities must equal this independent calculation. Re-anchoring a packet
+   with two swapped equal-length vector examples cannot change the treatment.
+   No archived producer Python is imported or executed by the reviewer.
+2. **Checkpoint native-time trajectory.** Every retained time is canonical,
+   finite, nonnegative binary64 hexadecimal. Step zero must report zero;
+   later metadata times must agree exactly with their corresponding cumulative
+   update-journal observations, remain ordered and within the frozen 600-second
+   native limit. The completion native time must equal the final checkpoint
+   and journal time; an over-budget or retrograde intermediate value fails.
+3. **Retained numerical environment.** The complete archived
+   `attempts/seed-N/environment.json` must match the exact CPU FP32 environment
+   bound by that seed's frozen request/approval. This is a consistency check on
+   captured records, not hardware attestation.
+4. **Completion exposure declaration.** A completed attempt may not set
+   `heldout_scored=true` (or omit the field) while claiming exposed TRAIN-only
+   evidence. The flag must be explicitly `false` alongside exactly 256 updates,
+   3,590 targets and `optimizer_replayed=false`.
+5. **Observer/checkpoint model identity binding.** Both diagnostic observer
+   identities must equal the checkpoint metadata's exact model/optimizer
+   identity record, not just each other. The canonical diagnostic observation
+   still requires zero updates, unchanged RNG and unchanged state.
+
+Five additional synthetic negative/positive tests exercise these contracts,
+for **24 tests in normal and optimized Python**. Review of the original
+externally SHA-256-anchored 1,512-member archive is an additional local-only
+read-only check. Source, approved requests, model weights, execution evidence,
+prior findings and historical custody remain immutable.
+
 ## Interpreting the results
 
 - **Complete exact answers** require the raw 259-way greedy sequence to
