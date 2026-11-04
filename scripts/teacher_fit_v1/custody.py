@@ -36,7 +36,19 @@ def write(path, raw):
 
 
 def record(path, value):
-    write(path, json_bytes(value))
+    # Publish only complete fsynced canonical JSON. A killed writer leaves a
+    # named pending artifact for failure custody, never a false completed seal.
+    path=Path(path)
+    pending=path.with_name('.pending-'+path.name)
+    if path.exists() or path.is_symlink():
+        raise ContractError('immutable record already exists')
+    write(pending,json_bytes(value))
+    if path.exists() or path.is_symlink():
+        raise ContractError('immutable record destination appeared')
+    os.rename(pending,path)
+    fd=os.open(path.parent,os.O_RDONLY | os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
 
 
 def load(path):

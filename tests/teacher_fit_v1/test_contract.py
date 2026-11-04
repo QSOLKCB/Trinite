@@ -209,6 +209,59 @@ class Contracts(unittest.TestCase):
             (folder/'metrics.jsonl').write_bytes(b''.join(json_bytes(v) for v in measures[:2]))
             with self.assertRaises(ContractError):evidence.partial_checkpoint(self.request(),folder)
 
+    def test_interrupted_checkpoint_seal_remains_partial_and_preserved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            def interrupted_write(path,raw):
+                Path(path).write_bytes(raw[:5]);raise KeyboardInterrupt()
+            with patch.object(io,'write',side_effect=interrupted_write),self.assertRaises(KeyboardInterrupt):
+                io.seal(folder,{'schema':'synthetic-only'})
+            self.assertFalse((folder/'manifest.json').exists())
+            pending=io.read(folder/'.pending-manifest.json')
+            self.assertEqual(len(pending),5)
+            result=evidence.partial_checkpoint(self.request(),folder)
+            self.assertFalse(result['checkpoint_complete'])
+            self.assertEqual(result['pending_json_artifacts'],['.pending-manifest.json'])
+            self.assertEqual(io.read(folder/'.pending-manifest.json'),pending)
+
+    def test_handoff_rejects_changed_heldout_or_extra_dataset_members(self):
+        from teacher_fit_v1.synthesis import dataset_members
+        dataset_members(self.dataset,self.anchor)
+        for change in ('privileged-targets.jsonl','extra.json'):
+            with self.subTest(change=change),tempfile.TemporaryDirectory() as tmp:
+                d=Path(tmp)
+                for p in self.dataset.iterdir():(d/p.name).write_bytes(p.read_bytes())
+                (d/change).write_bytes(b'{}\n')
+                # TRAIN ingress deliberately remains separate from full packaging verification.
+                self.assertEqual(len(spec.train_packet(d,self.anchor)[0]),972)
+                with self.assertRaises(ContractError):dataset_members(d,self.anchor)
+
+    def test_no_checkpoint_cannot_claim_native_replay(self):
+        with patch.object(evidence,'verify',return_value={'checkpoints':[]}):
+            result=evidence.replay(None,'sha256:'+'a'*64,'sha256:'+'b'*64,None)
+        self.assertFalse(result['native_forward_replayed']);self.assertFalse(result['optimizer_replayed'])
+        self.assertEqual(result['status'],'NO_COMPLETE_CHECKPOINTS')
+
+    def test_failed_run_does_not_erase_a_retained_endpoint_observation(self):
+        from teacher_fit_v1.synthesis import render
+        targets={}
+        for row in self.panel:
+            prompt=[256,*row['prompt'].encode('ascii')];gold=[*row['answer'].encode('ascii'),257]
+            for i,token in enumerate(gold):targets[tuple(prompt+gold[:i])]=token
+        def oracle_double(prefix):
+            z=[0.]*259;z[targets[tuple(prefix)]]=10.;return ar.pack(z)
+        index,raw,measures,predictions=metrics.observe(self.panel,oracle_double)
+        summary=metrics.summarize(self.panel,predictions,index,measures)
+        self.assertTrue(summary['exact_fit'])
+        result={'seed':17,'status':'FAILED','checkpoints':[{'step':256,'summary':summary,
+            'evaluation':{'train_loss_hex':1.0.hex()}}],
+            'supervisor':{'child_returncode':-9},'journal_updates':256,'journal_target_tokens':3590,
+            'manifest_identity':'sha256:'+'a'*64,'reported_completed_updates':None,
+            'reported_target_tokens':None,'failure':{'type':'synthetic bookkeeping interruption'}}
+        text=render([result]).decode()
+        self.assertIn('FAILED; 72/72 endpoint observed',text)
+        self.assertIn('Optimizer update replay: not performed',text)
+
     def test_numerical_extremes_and_true_full_vocab_odds(self):
         for value in (-3e38,-735.,-730.,0.,730.,735.,3e38):
             z=[0.]*259;z[257]=value;z=ar.unpack(ar.pack(ar.unpack(ar.VECTOR.pack(*z))))

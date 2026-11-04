@@ -8,6 +8,16 @@ from trinite.contracts import ContractError, identity, json_bytes, parse_json
 from . import custody as io, evidence, spec
 
 
+def dataset_members(dataset, anchor):
+    # Full-packet admission is deliberately outside the TRAIN-only worker.
+    from teacher_dataset_v1 import core as data
+    data.verify(Path(dataset),anchor)
+    manifest=io.anchored(Path(dataset)/'manifest.json',anchor)
+    expected={'dataset/'+m['name']:m['identity'] for m in manifest['files']}
+    expected['dataset/manifest.json']=anchor
+    return [('dataset/'+name,Path(dataset)/name) for name in data.MEMBERS],expected
+
+
 def render(results):
     lines=['# TT-003-FIT-001-TRIPLE-SYNTHESIS', '',
         'DERIVED from the three source-bound attempt inventories and independently recalculated recorded evidence.',
@@ -42,9 +52,11 @@ def render(results):
     lines.extend(['','## Complete attempt inventory',''])
     for r in results:
         final=next((c for c in r['checkpoints'] if c['step']==256),None)
-        endpoint='exact fit' if final and final['summary']['exact_fit'] and r['status']=='COMPLETED' else 'not an exact fit'
+        endpoint=('endpoint unavailable' if final is None else
+                  '72/72 endpoint observed' if final['summary']['exact_fit'] else 'not an exact fit')
         lines.append(f"- Seed {r['seed']}: {r['status']}; {endpoint}. Child exit status {r['supervisor']['child_returncode']}; recorded verification passed for the stated scope. Journal records {r['journal_updates']} updates and {r['journal_target_tokens']} supervised targets. Manifest `{r['manifest_identity']}`.")
         lines.append(f"  Reported completed updates: {r['reported_completed_updates']}; supervised targets: {r['reported_target_tokens']}. A null count is unknown, not zero.")
+        lines.append(f"  Native forward replay: `{r.get('forward_replay', {'status':'NOT_PERFORMED','native_forward_replayed':False})}`. Optimizer update replay: not performed.")
         if r['failure'] is not None:
             lines.append(f"  Failure receipt: `{r['failure']}`. A hard kill can leave later consumption unknown; journal counts are not an invented final total.")
     lines.extend(['','Full output histograms, circuit scores, all four residue positions, per-update loss/gradient history, all token scores and exact hexadecimal aggregates are retained in the adjacent synthesis JSON and original evidence.',
@@ -90,6 +102,19 @@ def combine(experiment, dataset, request_anchors, out):
     initials=[r['checkpoints'][0]['metadata']['initialization_identity'] for r in results if r['checkpoints']]
     if len(set(initials))!=len(initials):
         raise ContractError('distinct seeds inherited identical initialization')
+    # Retain failed replay receipts too; missing replay is explicitly unperformed.
+    for r in results:
+        p=root/f"seed-{r['seed']}-forward-replay.json"
+        if p.exists():
+            receipt=io.load(p)
+            if (receipt.get('manifest_identity')!=r['manifest_identity']
+                    or receipt.get('request_identity')!=r['request_identity']
+                    or (receipt.get('verified') is True and receipt.get('steps_replayed')!=[c['step'] for c in r['checkpoints']])):
+                raise ContractError('forward receipt does not bind this attempt')
+            r['forward_replay']=receipt
+            inputs.append(('replay/'+p.name,p))
+        else:
+            r['forward_replay']={'status':'NOT_PERFORMED','native_forward_replayed':False}
     out=io.fresh(out)
     io.record(out/'synthesis.json',{'schema':spec.SCHEMA+'.triple-synthesis','attempts':results,
         'optimizer_replayed':False,'heldout_scored':False})
@@ -97,23 +122,16 @@ def combine(experiment, dataset, request_anchors, out):
     io.record(out/'request-anchors.json',request_anchors)
     for name in ('synthesis.json','TT-003-FIT-001-TRIPLE-SYNTHESIS.md','request-anchors.json'):
         inputs.append((name,out/name))
-    for p in sorted(Path(dataset).iterdir()):
-        inputs.append(('dataset/'+p.name,p))
+    dataset_inputs,dataset_identities=dataset_members(dataset,requests[0]['dataset_manifest_identity'])
+    inputs.extend(dataset_inputs)
     for member in requests[0]['source']['members']:
         p=spec.ROOT/member['path']
         if identity(io.read(p))!=member['identity']:
             raise ContractError('source changed before packaging')
         inputs.append(('source/'+member['path'],p))
-    # Optional replay receipts remain explicitly separate and must bind the run.
-    for r in results:
-        p=root/f"seed-{r['seed']}-forward-replay.json"
-        if p.exists():
-            receipt=io.load(p)
-            if (receipt.get('manifest_identity')!=r['manifest_identity'] or receipt.get('request_identity')!=r['request_identity']
-                    or receipt.get('steps_replayed')!=[c['step'] for c in r['checkpoints']]):
-                raise ContractError('forward receipt does not bind this attempt')
-            inputs.append(('replay/'+p.name,p))
     expected={name:identity(io.read(path)) for name,path in inputs}
+    if any(expected[name]!=anchor for name,anchor in dataset_identities.items()):
+        raise ContractError('dataset changed after full packet verification')
     if len(expected)!=len(inputs):
         raise ContractError('duplicate combined evidence destination')
     archive=out/'TT-003-FIT-001-COMBINED.zip'

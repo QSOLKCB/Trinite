@@ -10,6 +10,7 @@ from . import custody as io, metrics, spec
 CHECKPOINT_FILES = {'tensors.safetensors','metadata.json','predictions.json','index.jsonl',
     'logits.f32le','metrics.jsonl','summary.json','evaluation.json','weights-rights.json',
     'observation.json','prediction-progress.jsonl','manifest.json'}
+PENDING_CHECKPOINT_FILES={'.pending-'+n for n in CHECKPOINT_FILES if n.endswith('.json')}
 
 
 def hex_number(value):
@@ -67,7 +68,7 @@ def partial_checkpoint(request, folder):
     """Recalculate every completed metric line; preserve, never repair, torn tails."""
     from teacher_logit_v1 import arithmetic as ar
     folder=Path(folder)
-    if {p.name for p in folder.iterdir()}-CHECKPOINT_FILES:
+    if {p.name for p in folder.iterdir()}-(CHECKPOINT_FILES | PENDING_CHECKPOINT_FILES):
         raise ContractError('unexpected partial checkpoint artifact')
     index,index_tail=partial_jsonl(folder/'index.jsonl')
     measures,metric_tail=partial_jsonl(folder/'metrics.jsonl')
@@ -109,6 +110,7 @@ def partial_checkpoint(request, folder):
         'completed_predictions':len(predictions),'index_tail_bytes':len(index_tail),
         'metric_tail_bytes':len(metric_tail),'prediction_tail_bytes':len(prediction_tail),
         'unmatched_vector_bytes':len(vectors)-len(measures)*ar.VECTOR.size,
+        'pending_json_artifacts':sorted(p.name for p in folder.iterdir() if p.name in PENDING_CHECKPOINT_FILES),
         'checkpoint_complete':False}
 
 
@@ -239,6 +241,8 @@ def verify(folder, manifest_anchor, request_anchor, dataset):
     allowed={'request.json','approval.json','approval-set.json','started.json','process.json','stdout.log','stderr.log',
         'environment.json','progress.jsonl','completed.json','failure.json','supervisor.json','manifest.json'}
     allowed|={f'step-{s:03d}' for s in spec.STEPS}
+    if status['status']=='FAILED':
+        allowed|={'.pending-'+n for n in allowed if n.endswith('.json')}
     if {p.name for p in folder.iterdir()}-allowed:
         raise ContractError('unexpected attempt artifacts')
     failure=io.load(folder/'failure.json') if (folder/'failure.json').exists() else None
@@ -263,6 +267,11 @@ def verify(folder, manifest_anchor, request_anchor, dataset):
 def replay(folder, manifest_anchor, request_anchor, dataset):
     deadline=time.monotonic()+900
     outcome=verify(folder,manifest_anchor,request_anchor,dataset)
+    if not outcome['checkpoints']:
+        return {'schema':spec.SCHEMA+'.forward-replay','verified':True,
+            'manifest_identity':manifest_anchor,'request_identity':request_anchor,
+            'steps_replayed':[],'native_forward_replayed':False,'optimizer_replayed':False,
+            'status':'NO_COMPLETE_CHECKPOINTS','scope':'recorded failure verified; no native replay performed'}
     folder=Path(folder);request=io.load(folder/'request.json')
     from . import native
     from teacher_logit_v1.native import forward_vector

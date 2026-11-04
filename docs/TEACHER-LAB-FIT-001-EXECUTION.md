@@ -167,7 +167,9 @@ archive verification receipt. Original attempts, data, approvals and complete
 source closure remain private. Optional separately produced per-seed native
 replay receipts are retained alongside the recorded verification.
 
-A failed/incomplete attempt cannot become an exact fit. No seed is omitted or
+A failed/incomplete attempt cannot become a completed run. A retained 72/72
+endpoint observation is still reported if a later bookkeeping failure occurs;
+the observation never erases the failed process status. No seed is omitted or
 chosen as preferred, and unavailable checkpoints remain unavailable. Unknown
 consumption after a hard kill is not invented from the last completed checkpoint.
 The complete attempt journal and original failure/status records are authoritative
