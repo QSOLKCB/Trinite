@@ -2,6 +2,7 @@
 """Standard-library binary64 analysis of unmodified binary32 observations."""
 import math
 import struct
+import sys
 from trinite.contracts import ContractError
 
 VOCAB = 259
@@ -62,10 +63,14 @@ def metrics(values, target):
     odds = (z[EOS]-rm)-rlse
     if not math.isclose(logistic(odds), p[EOS], abs_tol=TOL, rel_tol=TOL):
         raise ContractError('EOS/rest consistency failed')
-    # Independent probability sum check where binary64 is not saturated.
+    # Independent probability-ratio check only when both represented masses
+    # are normal binary64 values. Positive subnormals have lost relative
+    # precision during exp(); their logarithms are not a reliable cross-check
+    # of the stable log-space odds. Never alter the original probabilities,
+    # tolerances, or log-space metrics to accommodate that representation loss.
     rest_p = math.fsum(v for i, v in enumerate(p) if i != EOS)
     odds_check = None
-    if p[EOS] > 0 and rest_p > 0:
+    if p[EOS] >= sys.float_info.min and rest_p >= sys.float_info.min:
         odds_check = math.log(p[EOS])-math.log(rest_p)
         if not math.isclose(odds, odds_check, abs_tol=TOL, rel_tol=TOL):
             raise ContractError('EOS/rest probability-ratio inconsistency')

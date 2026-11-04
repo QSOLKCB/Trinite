@@ -19,6 +19,7 @@ PLAN = 'configs/teacher/tt003-logit-001-v2.json'
 CLOSURE = ('scripts/run_teacher_logit.py', 'scripts/teacher_logit_v1/__init__.py',
            'scripts/teacher_logit_v1/arithmetic.py', 'scripts/teacher_logit_v1/core.py',
            'scripts/teacher_logit_v1/native.py', PLAN, 'docs/TEACHER-LOGIT-001-V2.md',
+           'docs/TEACHER-LOGIT-FIX-001.md',
            'tests/teacher_logit_v1/test_contract.py', '.github/workflows/teacher-logit.yml')
 RESULT_FILES = ('request.json', 'index.jsonl', 'logits.f32le', 'metrics.jsonl',
                 'summary.json', 'execution.json', 'manifest.json')
