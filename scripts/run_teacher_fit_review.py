@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 """Read-only TT-003-FIT-001 evidence review. Outputs aggregates, never weights."""
 import argparse
+import os
 import pathlib
 import sys
 import zipfile
@@ -24,15 +25,26 @@ def main():
         result = core.review(args.archive, anchor)
         raw = core.canonical(result)
         if args.out is not None:
-            target = args.out.absolute()
+            # Resolve all parent aliases *before* verifying checkout exclusion.
+            # Open via the verified directory descriptor to avoid alias swaps
+            # between policy check and file creation.
+            parent = args.out.parent.resolve(strict=True)
+            target = parent / args.out.name
             root = pathlib.Path(__file__).resolve().parents[1]
-            if (target == args.archive.absolute() or
-                    target.is_relative_to(root) or
-                    (args.sidecar is not None and target == args.sidecar.absolute()) or
-                    target.is_symlink() or not target.parent.is_dir()):
+            if (target.is_relative_to(root) or
+                    target == args.archive.resolve(strict=True) or
+                    (args.sidecar is not None and
+                     target == args.sidecar.resolve(strict=True)) or
+                    target.exists() or target.is_symlink()):
                 raise core.EvidenceError('unsafe/out-of-scope output destination')
-            with target.open('xb') as out:
-                out.write(raw)
+            directory = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+                descriptor = os.open(target.name, flags, 0o600, dir_fd=directory)
+                with os.fdopen(descriptor, 'wb') as out:
+                    out.write(raw)
+            finally:
+                os.close(directory)
         else:
             sys.stdout.buffer.write(raw)
         return 0

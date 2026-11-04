@@ -85,6 +85,51 @@ nonzero-residue correctness, EOS counts, correct-example transitions and
 intersection of final correct vectors across seeds. It does not select a best
 run or replace missing/failed evidence with a synthesized success.
 
+
+## Hostile-review correctness fixes (P1/P2, seven findings)
+
+Seven independently reported, executed adversarial reproductions exposed
+failure modes in the original offline-only verifier. This additive correction
+changes only the **review tool**, not historical FIT-001 requests, optimiser
+updates, producer source, approved outputs or archive bytes:
+
+1. Every repeated token prefix in each checkpoint (including gold/greedy and
+   cross-row repeats, as well as later identical continuations) now requires
+   exactly matching 259-element FP32 vector **bytes**. Internally consistent
+   but mutually contradictory re-anchored observations are rejected.
+2. The fixed historical source inventory is bound to the independently held
+   source commit/closure digest and **1,279** required file entries, including
+   required model/trainer/AGENTS files. TT-002 dataset admission requires all
+   seven known member filenames, its precommitted manifest/rights digests,
+   and the complete 19-file source closure with matching source identities.
+   These are externally retained frozen data commitments; they do **not**
+   establish authorship or authenticate a model.
+3. Each recorded approval must **exactly equal** the canonical schema and
+   all twelve fields from the frozen request's source, owner/scope, request,
+   environment, dataset, schedule, output directory and limits. This is
+   structural evidence checking, not owner signature verification.
+4. Checkpoint train loss must be canonical hexadecimal, finite and
+   nonnegative, with an exact match to the preserved step-zero initial loss
+   or last scheduled native validation loss. The retained validation history
+   must contain the expected steps in order.
+5. The CLI resolves the destination's parent path before checking the
+   checkout boundary, then creates the file with a trusted directory file
+   descriptor and exclusive no-follow semantics. Symlinked parent aliases
+   cannot divert private derived output into the checkout.
+6. Machine-readable final fit conclusion and fitted-seed inventory are
+   derived from verified 256-update exact counts, never hard-coded to the
+   historical failure outcome.
+7. Archive bytes are copied to an unlinked bounded temporary snapshot during
+   SHA-256 verification, and the ZIP reader inspects **that same snapshot**.
+   A replaced pathname or in-place change after capture cannot redirect
+   the verified byte stream. The snapshot is private and removed on close.
+
+CI exercises seven additional **synthetic-only** executed negative and
+positive tests (16 total), in ordinary and optimized Python. An owner-local
+run against the externally anchored original FIT-001 ZIP remains a separate
+read-only engineering observation; the ZIP and derived output are not included
+in this PR or CI.
+
 ## Interpreting the results
 
 - **Complete exact answers** require the raw 259-way greedy sequence to

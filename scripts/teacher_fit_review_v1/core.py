@@ -16,6 +16,7 @@ import stat
 import struct
 import sys
 import zipfile
+import tempfile
 
 SEEDS = (17, 29, 43)
 STEPS = (0, 64, 128, 192, 256)
@@ -26,6 +27,37 @@ MAX_ENTRIES = 2_000
 MAX_UNCOMPRESSED = 256 * 1024 * 1024
 MAX_MEMBER = 16 * 1024 * 1024
 TOL = 1e-12
+# Independently retained source/data commitments from the frozen owner handoff.
+# These bind this *fixed historical experiment*, not the authenticity of its owner.
+FROZEN_SOURCE_COMMIT = '308a0b73b210a691efbed8f71db5b92eb4d96262'
+FROZEN_SOURCE_ID = 'sha256:2ed6c4bc5cc2aa1aaef47c789882ac88ab6bcdc2b2634e8da0255b8ecc28288d'
+FROZEN_DATASET_ID = 'sha256:b90287c3549e2a877b4e23325b51f234f3e54eab3a48c0227f34c5f18d065687'
+FROZEN_RIGHTS_ID = 'sha256:0d8f5b28ebbb2f308d2c17f5c16275e11c3479ea2d606393f5aff997a0ebfee5'
+FROZEN_SOURCE_COUNT = 1279
+DATASET_FILES = frozenset({
+    'dataset-rights.json', 'plan.json', 'privileged-targets.jsonl',
+    'test-public.jsonl', 'train.jsonl', 'validation-public.jsonl',
+    'weights-rights.json',
+})
+TT002_SOURCE_FILES = frozenset({
+    'AGENTS.md', 'LICENSE', 'configs/teacher/gf3-dataset-v1.json',
+    'configs/teacher/source-candidates-v1.json', 'docs/DATA.md',
+    'docs/QUTRIT-CONFORMANCE-V1.md', 'docs/TEACHER-LAB-TT-002.md',
+    'docs/TEACHER-LAB-V1.md', 'scripts/model_size_policy_v1.py',
+    'scripts/queue_evaluation_v1.py', 'scripts/qutrit_conformance_v1.py',
+    'scripts/teacher_dataset.py', 'scripts/teacher_dataset_v1/__init__.py',
+    'scripts/teacher_dataset_v1/core.py', 'scripts/teacher_lab_v1/__init__.py',
+    'scripts/teacher_lab_v1/core.py', 'src/trinite/__init__.py',
+    'src/trinite/contracts.py', 'src/trinite/tokenizer.py',
+})
+REQUIRED_SOURCE_FILES = frozenset({
+    'AGENTS.md', 'scripts/AGENTS.md', 'scripts/teacher_fit_v1/AGENTS.md',
+    'docs/AGENT-IBAE-GOVERNANCE.md', 'docs/TEACHER-LAB-FIT-001-EXECUTION.md',
+    'scripts/teacher_fit_v1/spec.py', 'scripts/teacher_fit_v1/evidence.py',
+    'scripts/teacher_fit_v1/native.py', 'scripts/run_teacher_fit.py',
+    'configs/teacher/tt003-fit-001-v1.json',
+})
+MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 SHA_RE = re.compile(r'sha256:[0-9a-f]{64}\Z')
 
 
@@ -66,13 +98,40 @@ def parse_anchor(raw: bytes) -> str:
     return 'sha256:' + match.group(1)
 
 
+class AnchoredZip(zipfile.ZipFile):
+    """Own the private snapshot so hash and ZIP inspection use identical bytes."""
+
+    def __init__(self, snapshot):
+        self._snapshot = snapshot
+        super().__init__(snapshot, mode='r')
+
+    def close(self):
+        try:
+            super().close()
+        finally:
+            self._snapshot.close()
+
+
 def safe_archive(path: Path, expected_identity: str) -> tuple[zipfile.ZipFile, dict]:
     need(type(expected_identity) is str and SHA_RE.fullmatch(expected_identity) is not None,
          'exact externally supplied archive SHA-256 required')
-    need(anchored_hash(path) == expected_identity, 'archive SHA-256 differs from external anchor')
-    archive = zipfile.ZipFile(path)
-    names, hashes, total = set(), {}, 0
+    # A private, unlinked temporary file is the inspected object. Path replacement
+    # or in-place archive modification after snapshot creation cannot redirect it.
+    snapshot = tempfile.TemporaryFile(mode='w+b')
+    archive = None
     try:
+        h, length = hashlib.sha256(), 0
+        with Path(path).open('rb') as original:
+            while chunk := original.read(1024 * 1024):
+                length += len(chunk)
+                need(length <= MAX_ARCHIVE_BYTES, 'archive compressed byte budget exceeded')
+                snapshot.write(chunk)
+                h.update(chunk)
+        need('sha256:' + h.hexdigest() == expected_identity,
+             'archive SHA-256 differs from external anchor')
+        snapshot.seek(0)
+        archive = AnchoredZip(snapshot)
+        names, hashes, total = set(), {}, 0
         infos = archive.infolist()
         need(1 <= len(infos) <= MAX_ENTRIES, 'archive member count outside bound')
         for info in infos:
@@ -88,13 +147,15 @@ def safe_archive(path: Path, expected_identity: str) -> tuple[zipfile.ZipFile, d
                  'oversized ZIP member')
             total += info.file_size
             need(total <= MAX_UNCOMPRESSED, 'oversized decompressed archive')
-            # Reading verifies ZIP CRC in addition to independently hashing bytes.
             raw = archive.read(info)
             need(len(raw) == info.file_size, 'ZIP member length mismatch')
             hashes[name] = {'identity': sha(raw), 'bytes': len(raw)}
             names.add(name)
     except BaseException:
-        archive.close()
+        if archive is not None:
+            archive.close()
+        else:
+            snapshot.close()
         raise
     return archive, hashes
 
@@ -139,6 +200,129 @@ def members_check(hashes: dict, prefix: str, recorded: list[dict],
     for key in extra:
         actual.pop(key, None)
     need(actual == expected, 'inventory/hash mismatch at ' + prefix)
+
+
+
+def fixed_inventories(source: dict, dataset_manifest: dict, hashes: dict) -> None:
+    """Validate mandatory provenance coverage *before* hash consistency.
+
+    Frozen identities are external handoff facts, not producer authentication.
+    A re-anchored ZIP must not choose its own incomplete source/dataset scope.
+    """
+    need(type(source) is dict and set(source) == {'commit', 'members'} and
+         source['commit'] == FROZEN_SOURCE_COMMIT and
+         type(source['members']) is list and
+         len(source['members']) == FROZEN_SOURCE_COUNT and
+         sha(canonical(source)) == FROZEN_SOURCE_ID,
+         'incomplete or changed frozen source closure')
+    source_members = source['members']
+    need(all(type(m) is dict and set(m) == {'path', 'identity'} and
+             type(m['path']) is str and type(m['identity']) is str and
+             SHA_RE.fullmatch(m['identity']) for m in source_members),
+         'malformed frozen source inventory')
+    source_names = {m['path'] for m in source_members}
+    need(len(source_names) == FROZEN_SOURCE_COUNT and
+         REQUIRED_SOURCE_FILES <= source_names and
+         TT002_SOURCE_FILES <= source_names,
+         'missing required source inventory members')
+    need(type(dataset_manifest) is dict and
+         dataset_manifest.get('schema') == 'trinite.teacher-gf3-dataset.v1' and
+         type(dataset_manifest.get('files')) is list and
+         len(dataset_manifest['files']) == len(DATASET_FILES),
+         'incomplete TT-002 dataset member inventory')
+    ds_files = dataset_manifest['files']
+    need(all(type(m) is dict and set(m) == {'name', 'identity', 'bytes'} and
+             type(m['name']) is str for m in ds_files) and
+         {m['name'] for m in ds_files} == DATASET_FILES,
+         'missing required dataset rights, train, heldout or plan member')
+    need(hashes.get('dataset/manifest.json', {}).get('identity') == FROZEN_DATASET_ID and
+         hashes.get('dataset/dataset-rights.json', {}).get('identity') == FROZEN_RIGHTS_ID,
+         'dataset/rights differ from independent frozen identities')
+    closure = dataset_manifest.get('source_closure')
+    need(type(closure) is list and len(closure) == len(TT002_SOURCE_FILES) and
+         all(type(m) is dict and set(m) == {'path', 'identity'} and
+             type(m['path']) is str for m in closure) and
+         {m['path'] for m in closure} == TT002_SOURCE_FILES,
+         'TT-002 source closure inventory incomplete')
+    by_source = {m['path']: m['identity'] for m in source_members}
+    need(all(by_source.get(m['path']) == m['identity'] for m in closure),
+         'TT-002 source closure not bound to frozen source inventory')
+
+
+def approval_expected(request: dict, request_hash: str) -> dict:
+    """Standalone exact mirror of original FIT spec.approval_expected."""
+    return {'schema': 'trinite.teacher-fit-001.v1.owner-approval',
+            'owner': 'QSOLKCB', 'scope': 'one-owner-local-native-cpu-fit-attempt',
+            'request_identity': request_hash,
+            'source_commit': request['source']['commit'],
+            'seed': request['seed'],
+            'dataset_manifest_identity': request['dataset_manifest_identity'],
+            'schedule_identity': request['schedule_identity'],
+            'environment_identity': sha(canonical(request['environment'])),
+            'output_directory': request['output_directory'],
+            'limits': request['limits'], 'training_authorized': True}
+
+
+def validate_approval(grant: dict, request: dict, request_hash: str,
+                      manifest_approval_identity: str, actual_identity: str) -> None:
+    need(type(grant) is dict and grant == approval_expected(request, request_hash) and
+         manifest_approval_identity == actual_identity,
+         'complete owner approval contract differs (not proof of authenticity)')
+
+
+def verified_loss(evaluation: dict, metadata: dict, step: int) -> float:
+    """Finite nonnegative native loss, bound to retained validation history."""
+    def number(raw):
+        need(type(raw) is str, 'invalid nonnegative native loss encoding')
+        try:
+            val = float.fromhex(raw)
+        except (ValueError, OverflowError):
+            raise EvidenceError('invalid nonnegative native loss encoding') from None
+        need(math.isfinite(val) and val >= 0 and val.hex() == raw,
+             'invalid nonnegative native loss')
+        return val
+
+    value = number(evaluation.get('train_loss_hex'))
+    initial = metadata.get('initial_train_loss_hex')
+    number(initial)
+    history = metadata.get('validation')
+    need(type(history) is list and len(history) == step // 64 and
+         all(type(v) is dict and set(v) == {'step', 'loss_hex'} and
+             v['step'] == (i + 1) * 64 for i, v in enumerate(history)),
+         'native validation loss inventory mismatch')
+    for v in history:
+        number(v['loss_hex'])
+    expected = initial if step == 0 else history[-1]['loss_hex']
+    need(evaluation['train_loss_hex'] == expected,
+         'native checkpoint loss differs from retained validation/initial loss')
+    return value
+
+
+def fit_conclusion(final: list[dict]) -> tuple[list[int], str]:
+    fitted = [r['seed'] for r in final if r['exact'] == 72]
+    need(len(final) == len(SEEDS) and {r['seed'] for r in final} == set(SEEDS),
+         'incomplete endpoint inventory')
+    if not fitted:
+        conclusion = 'NONE_OF_THREE_SEEDS_FIT_72_OF_72'
+    elif len(fitted) == len(SEEDS):
+        conclusion = 'ALL_THREE_SEEDS_FIT_72_OF_72'
+    else:
+        conclusion = 'SOME_OF_THREE_SEEDS_FIT_72_OF_72'
+    return fitted, conclusion
+
+
+def check_prefix_vectors(index: list[dict], raw: bytes) -> None:
+    """Identical checkpoint+prefix must have exactly identical FP32 bytes.
+
+    Checks cross-probe and cross-row cases, including matching continuations.
+    """
+    seen = {}
+    for i, rec in enumerate(index):
+        prefix = tuple(rec['prefix_tokens'])
+        vector = raw[i*VECTOR.size:(i+1)*VECTOR.size]
+        previous = seen.setdefault(prefix, vector)
+        need(previous == vector,
+             'inconsistent FP32 logits for identical checkpoint prefix at record ' + str(i))
 
 
 def panel_task(row: dict) -> str:
@@ -384,13 +568,15 @@ def checkpoint(archive: zipfile.ZipFile, seed: int, step: int,
     need(index == expect_index, 'prefix/target inventory mismatch')
     need(len(raw) == len(index) * VECTOR.size == len(metrics) * VECTOR.size,
          'FP32 full-vocabulary payload length mismatch')
+    check_prefix_vectors(index, raw)
     checked = []
+    by_prediction = {p['id']: p for p in predictions}
     for i, (rec, observed) in enumerate(zip(index, metrics)):
         logits = VECTOR.unpack_from(raw, i * VECTOR.size)
         expected = probs(logits, rec['target'])
         need(metric_equal(observed, expected), 'derived token metric disagrees at record ' + str(i))
         if rec['probe'] == 'greedy':
-            pred = next(p for p in predictions if p['id'] == rec['row_id'])
+            pred = by_prediction[rec['row_id']]
             need(expected['argmax'] == pred['tokens'][rec['position']],
                  'reported generated token is not full-vocabulary argmax')
         checked.append(expected)
@@ -399,6 +585,7 @@ def checkpoint(archive: zipfile.ZipFile, seed: int, step: int,
     evaluation = jdoc(archive, prefix + 'evaluation.json')
     need(evaluation['heldout_scored'] is False and evaluation['geometry_loss'] == '0',
          'unsupported evaluation scope')
+    native_loss = verified_loss(evaluation, metadata, step)
     exact_rows = [row for row, pred in zip(panel, predictions)
                   if classify(pred['tokens'], row)['exact']]
     exact_vec = {(row['observation']['word'], row['family'],
@@ -411,7 +598,7 @@ def checkpoint(archive: zipfile.ZipFile, seed: int, step: int,
         'premature_eos': observed_score['groups']['all']['premature_eos'],
         'distinct_outputs': observed_score['groups']['all']['distinct_outputs'],
         'gold_target_nll': float.fromhex(saved['gold_prefix']['all']['mean_target_nll_hex']),
-        'native_train_loss': float.fromhex(evaluation['train_loss_hex']),
+        'native_train_loss': native_loss,
         'greedy_nonzero_residues': sum(x['correct_nonzero'] for x in observed_score['vector_positions']),
         'gold_nonzero_best_residues': sum(x['correct_nonzero_best_residue'] for x in residues),
         'correct_vector_rows': sorted([list(v) for v in exact_vec]),
@@ -432,6 +619,10 @@ def review(archive_path: Path, archive_identity: str) -> dict:
         need(set(anchors) == {f'seed-{s}.json' for s in SEEDS},
              'missing or extra frozen seed anchor')
         dataset_manifest = jdoc(archive, 'dataset/manifest.json')
+        need(type(dataset_manifest.get('files')) is list and
+             {m.get('name') for m in dataset_manifest['files'] if type(m) is dict} == DATASET_FILES and
+             len(dataset_manifest['files']) == len(DATASET_FILES),
+             'incomplete TT-002 dataset files before hashing')
         members_check(hashes, 'dataset/', dataset_manifest['files'], ('manifest.json',))
         data_manifest_hash = hashes['dataset/manifest.json']['identity']
         need(dataset_manifest['split_counts'] == {'train': 972, 'validation': 648, 'test': 648}
@@ -457,6 +648,10 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                  and request['dataset_manifest_identity'] == data_manifest_hash
                  and request['dataset_train_identity'] == hashes['dataset/train.jsonl']['identity'],
                  'frozen request or dataset identity mismatch')
+            if seed == SEEDS[0]:
+                fixed_inventories(request['source'], dataset_manifest, hashes)
+            need(request['dataset_rights_identity'] == FROZEN_RIGHTS_ID,
+                 'frozen request rights identity differs')
             request['_anchor'] = request_hash
             requests[seed] = request
             panel = request['panel']
@@ -491,14 +686,9 @@ def review(archive_path: Path, archive_identity: str) -> dict:
                  'attempt manifest / external anchor mismatch')
             members_check(hashes, base, attempt_manifest['members'], ('manifest.json',))
             grant = jdoc(archive, base + 'approval.json')
-            need(grant['schema'] == 'trinite.teacher-fit-001.v1.owner-approval' and
-                 grant['request_identity'] == request_hash and
-                 grant['seed'] == seed and
-                 grant['source_commit'] == request['source']['commit'] and
-                 grant['training_authorized'] is True and
-                 grant['limits'] == request['limits'] and
-                 attempt_manifest['approval_identity'] == hashes[base + 'approval.json']['identity'],
-                 'owner approval record binding differs (not proof of authenticity)')
+            validate_approval(grant, request, request_hash,
+                              attempt_manifest['approval_identity'],
+                              hashes[base + 'approval.json']['identity'])
             supervisor = jdoc(archive, base + 'supervisor.json')
             completed = jdoc(archive, base + 'completed.json')
             need(supervisor['status'] == 'COMPLETED' and
@@ -610,6 +800,7 @@ def review(archive_path: Path, archive_identity: str) -> dict:
         final = [series[-1] for series in results]
         vector_sets = [r['_vector_set'] for r in final]
         overlap = vector_sets[0] & vector_sets[2]
+        fit_seeds, conclusion = fit_conclusion(final)
         transitions = []
         for series in results:
             transition = []
@@ -634,7 +825,7 @@ def review(archive_path: Path, archive_identity: str) -> dict:
             'exact_answer_transitions': transitions,
             'final_vector_overlap_17_43_count': len(overlap),
             'final_vector_overlap_17_43': sorted(map(list, overlap)),
-            'conclusion': 'NONE_OF_THREE_SEEDS_FIT_72_OF_72',
+            'fit_seeds': fit_seeds, 'conclusion': conclusion,
         }
     finally:
         archive.close()
