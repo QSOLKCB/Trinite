@@ -149,6 +149,22 @@ new protocol says otherwise; none are already authorised.
 | FIT-002-SCALAR-A | Candidate-sensitive check-task treatment (e.g. controlled label/candidate balancing); no simultaneous EOS rule change | Fresh matched baseline with equal objective measurement and rights | Scalar class bias changes but matched candidate-dependent correctness does not improve |
 | FIT-002-VECTOR-A | Vector-sequence credit assignment or curriculum, with a new fixed schedule/rights packet and unchanged EOS policy | Fresh matched baseline with the **newly declared** matched exposure budget; no backfilled FIT-001 run | Gold-prefix residue scores improve but complete vector outputs remain poor at same EOS/length profile |
 
+**EOS-A assessment denominator:** judge any prospective intervention on the
+**same unconditional 72-row complete-answer endpoint** (and report its 36
+vector examples separately), including examples that previously terminated
+early. Also publish the number of valid-length predictions and accuracy
+*conditional* on valid length. For example, if nine of 18 completed vector
+outputs are correct while 18 others terminate early, unconditional
+accuracy is 9/36. Converting those 18 early terminations into nine
+complete correct outputs and nine complete wrong outputs gives 18/36,
+even though conditional accuracy remains **50%** (9/18 versus 18/36).
+Therefore an unchanged conditional rate alone does **not** falsify the
+termination hypothesis. If EOS improves but unconditional exactness
+does not, that weighs against EOS correction as a **sufficient remedy**
+and motivates checking residual content errors; it does not establish
+that EOS played no role. These values illustrate a synthetic
+counterexample, **not an observed FIT-001 treatment or authorised run**.
+
 These are **candidate research designs**, not advice to train all arms.
 If any candidate changes the schedule, training objective, tokenizer,
 data or source, its source-bound request and baseline form a wholly new
