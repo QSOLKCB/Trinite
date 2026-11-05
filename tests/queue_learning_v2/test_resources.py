@@ -47,12 +47,48 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(r['exit_code'], -signal.SIGKILL)
 
     def test_new_session_orphan_is_killed_and_reaped(self):
-        r = self.run_code('import subprocess,sys;subprocess.Popen([sys.executable,"-c",'
-                          '"import time;time.sleep(9)"], start_new_session=True)')
-        self.assertEqual(r['failure'], 'descendants_after_worker_exit')
-        self.assertEqual(len(r['reaped']), 2)
-        for entry in r['reaped']:
-            self.assertFalse(Path('/proc', str(entry['pid'])).exists())
+        # The former fire-and-forget parent could exit before the supervisor's
+        # first /proc sample. A fast child startup/exit then made this test
+        # nondeterministic: it had not established a *surviving* descendant.
+        # Hold the parent until the supervisor actually sees both live
+        # processes. The child still runs in an independent session.
+        with tempfile.TemporaryDirectory() as d:
+            spawned = Path(d) / 'spawned'
+            release = Path(d) / 'release'
+            code = (
+                'import subprocess,sys,time;from pathlib import Path;'
+                'child=subprocess.Popen([sys.executable,"-c",'
+                '"import time;time.sleep(9)"],start_new_session=True);'
+                f'Path({str(spawned)!r}).write_text(str(child.pid));'
+                f'gate=Path({str(release)!r});'
+                'while not gate.exists():time.sleep(.001)'
+            )
+            original = resources.process_table
+            observed = []
+
+            def sampled():
+                table = original()
+                if spawned.exists() and not release.exists():
+                    try:
+                        child_pid = int(spawned.read_text())
+                    except (OSError, ValueError):
+                        return table
+                    child = table.get(child_pid)
+                    parent = table.get(child['ppid']) if child else None
+                    if (child and child['state'] not in ('Z', 'X') and
+                            parent and parent['state'] not in ('Z', 'X') and
+                            parent['ppid'] == os.getpid()):
+                        observed.append((child_pid, child['ppid']))
+                        release.write_text('observed')
+                return table
+
+            with patch.object(resources, 'process_table', sampled):
+                r = self.run_code(code, seconds=3)
+            self.assertEqual(len(observed), 1, 'orphan spawn was not observed alive')
+            self.assertEqual(r['failure'], 'descendants_after_worker_exit')
+            self.assertEqual(len(r['reaped']), 2)
+            for entry in r['reaped']:
+                self.assertFalse(Path('/proc', str(entry['pid'])).exists())
 
     def test_output_bound(self):
         r = self.run_code('import os;os.write(1,b"x"*2000000)', 3)
