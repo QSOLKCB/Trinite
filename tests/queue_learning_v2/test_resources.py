@@ -56,12 +56,13 @@ class SupervisorTests(unittest.TestCase):
             spawned = Path(d) / 'spawned'
             release = Path(d) / 'release'
             code = (
-                'import subprocess,sys,time;from pathlib import Path;'
+                'import subprocess,sys,time\n'
+                'from pathlib import Path\n'
                 'child=subprocess.Popen([sys.executable,"-c",'
-                '"import time;time.sleep(9)"],start_new_session=True);'
-                f'Path({str(spawned)!r}).write_text(str(child.pid));'
-                f'gate=Path({str(release)!r});'
-                'while not gate.exists():time.sleep(.001)'
+                '"import time;time.sleep(9)"],start_new_session=True)\n'
+                f'Path({str(spawned)!r}).write_text(str(child.pid))\n'
+                f'gate=Path({str(release)!r})\n'
+                'while not gate.exists(): time.sleep(.001)\n'
             )
             original = resources.process_table
             observed = []
