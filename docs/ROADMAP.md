@@ -32,6 +32,24 @@ remains optional future work, behind native diagnosis; no silent rerun follows.
 
 [TT-001 Teacher Lab foundation and TT-003 CUDA preflight roadmap](TEACHER-LAB-V1.md) specify the in-repository offline preflight, immutable first-party source-candidate identities and **separate dataset/weight rights records**. TT-001 does not create a training dataset or run a model. TT-002 must first admit generated formal sources and independent mathematical oracles. **TT-003 is conditional native teacher training** and, for the optional RTX 50-class GPU path, must fail closed without CUDA toolkit/runtime **12.8+**, genuine **sm_120** support, a compatible driver/PyTorch build, actual kernel execution and frozen hardware evidence; no silent CPU fallback. TT-004 distillation remains future work. The existing learning, source/evidence, CPU, licensing and release gates are unchanged; no new target run is authorized by this roadmap.
 
+## TT-003-FIT-002 — failure-mechanism investigation (5 November 2026)
+
+[TT-003-FIT-002 research design](TEACHER-LAB-FIT-002.md) and its
+[fixed diagnostic/control matrix](TEACHER-LAB-FIT-002-DIAGNOSTICS.md)
+follow the source-bound TT-003-FIT-001 three-seed training and the
+[merged independent evidence review](TEACHER-LAB-FIT-001-EVIDENCE-REVIEW.md).
+All three original 256-update attempts finished and **none** met the 72/72
+complete-answer TRAIN fit gate (seeds 17/29/43: 23/72, 18/72, 23/72).
+This **documentation-first** phase records competing EOS/termination,
+check-label shortcut, vector-transformation fitting and null hypotheses;
+the read-only discriminants, predeclared denominator/negative controls,
+alternative explanations and a future intervention-selection gate.
+These outcomes are engineering-exposed TRAIN observations, not independent
+holdout generalisation. No additional optimiser updates, source-bound
+run requests, authorisations, model inference, changed loss, private evidence
+publication, release or TT-004 are approved. Original FIT-001 single-use
+attempts remain consumed and their source/evidence identities immutable.
+
 ## TT-003-DIAG-001 — frozen teacher behaviour audit (4 November 2026)
 
 [TT-003-DIAG-001](TEACHER-LAB-DIAG-001.md) introduces a read-only audit of all 972 admitted TRAIN rows for the original 32-update teacher checkpoint, comparing initial/final raw greedy outputs across the 128 visited and 844 unvisited inputs. It separates output length/EOS/format from exact semantic answers; it does not alter previous evidence, train a model, score scientific holdouts or permit TT-004 distillation. Target checkpoint stays owner-local, while CI uses a separate no-update forward canary.
