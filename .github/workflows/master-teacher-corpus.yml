@@ -1,0 +1,104 @@
+name: MTC-001 local teacher corpus capture
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Freeze, capture or verify owner-local teacher corpus (no training)'
+        required: true
+        type: choice
+        options: [freeze, capture, verify]
+        default: freeze
+      formal_model:
+        description: 'Installed Ollama model for the 22 formal tasks (freeze)'
+        required: false
+        type: string
+        default: 'qwen3-vl:4b-instruct'
+      vision_model:
+        description: 'Installed Ollama model for the 6 vision tasks (freeze)'
+        required: false
+        type: string
+        default: 'qwen3-vl:2b'
+      request_file:
+        description: 'Absolute owner-local frozen request.json path (capture)'
+        required: false
+        type: string
+      request_identity:
+        description: 'Externally retained request SHA-256 (capture)'
+        required: false
+        type: string
+      server_log:
+        description: 'Absolute local Ollama server log path (capture)'
+        required: false
+        type: string
+      run_directory:
+        description: 'Absolute owner-local finished run folder (verify)'
+        required: false
+        type: string
+      manifest_identity:
+        description: 'Externally retained manifest SHA-256 (verify)'
+        required: false
+        type: string
+      authorize_capture:
+        description: 'I explicitly authorize up to 28 local Ollama calls'
+        required: true
+        type: boolean
+        default: false
+      acknowledge_quarantine:
+        description: 'Outputs remain private and unadmitted (no GitHub upload)'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  owner-local:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 65
+    concurrency:
+      group: mtc-001-owner-local
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Owner-only locally retained operation
+        shell: bash
+        env:
+          MODE: ${{ inputs.operation }}
+          FORMAL_MODEL: ${{ inputs.formal_model }}
+          VISION_MODEL: ${{ inputs.vision_model }}
+          REQUEST_FILE: ${{ inputs.request_file }}
+          REQUEST_IDENTITY: ${{ inputs.request_identity }}
+          SERVER_LOG: ${{ inputs.server_log }}
+          RUN_DIRECTORY: ${{ inputs.run_directory }}
+          MANIFEST_IDENTITY: ${{ inputs.manifest_identity }}
+          AUTHORIZE: ${{ inputs.authorize_capture }}
+          ACK_QUARANTINE: ${{ inputs.acknowledge_quarantine }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$HOME/trinite-mtc"
+          case "$MODE" in
+            freeze)
+              python3 -I -B scripts/master_teacher_corpus.py plan \
+                --formal-model "$FORMAL_MODEL" --vision-model "$VISION_MODEL" \
+                --out "$HOME/trinite-mtc/plan-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+              ;;
+            capture)
+              [[ "$AUTHORIZE" == 'true' && "$ACK_QUARANTINE" == 'true' ]] || { echo 'Both capture acknowledgements are required'; exit 2; }
+              [[ -f "$REQUEST_FILE" && -f "$SERVER_LOG" && -n "$REQUEST_IDENTITY" ]] || { echo 'Frozen request, independent digest and local log required'; exit 2; }
+              python3 -I -B scripts/master_teacher_corpus.py capture \
+                --request "$REQUEST_FILE" --request-identity "$REQUEST_IDENTITY" \
+                --server-log "$SERVER_LOG" \
+                --out "$HOME/trinite-mtc/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+                --authorize-local-capture
+              ;;
+            verify)
+              [[ -d "$RUN_DIRECTORY" && -n "$MANIFEST_IDENTITY" ]] || { echo 'Run path and independent manifest digest required'; exit 2; }
+              python3 -I -B scripts/master_teacher_corpus.py verify \
+                --run "$RUN_DIRECTORY" --manifest-identity "$MANIFEST_IDENTITY"
+              ;;
+            *) echo "Unknown operation"; exit 2;;
+          esac
+          echo 'Owner-local MTC-001 operation completed; no raw artifacts uploaded.'

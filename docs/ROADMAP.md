@@ -1,10 +1,18 @@
 # Roadmap
 
-## Current development order — 26 October 2026
+## Current priority — MTC-001 local Master Teacher Corpus (8 November 2026)
+
+**Owner-directed scheduling change (PROPOSED for merge):** defer the diagnostic-first execution sequence below as the immediate engineering priority and develop [MTC-001's local multi-modal teacher capture pilot](MASTER-TEACHER-CORPUS-V1.md). This is a new, isolated corpus-preparation/evidence workstream, not cancellation or retrospective reinterpretation of the earlier research. It does not authorize native training, new generalisation claims, model-distillation data admission, release or publication of raw captures.
+
+The first tranche uses separately frozen **formal** (22 tasks: modular arithmetic, GF(3) operations and context-symbol relations) and **vision** (6 deterministic synthetic image counts) tracks with independent oracle labels. Separate GitHub Actions workflows provide **hosted offline contract tests** and **explicitly approved owner-local capture**. Captures bind installed Ollama model digests, exact requests, source/protocol closure and SHA-256 manifests; responses, local logs and unmatched cases remain private and quarantined. Current TRINITE has no vision encoder, so vision outputs are external evidence only. Existing DATA/TEACHER-INTAKE rights restrictions, original experimental source/evidence identities, TRI invariants and the zero geometry-loss setting remain unchanged.
+
+**Next decision (MTC-002, not implemented):** after independent review of a genuine local capture, freeze a larger multi-model corpus policy with source/rights checks, family-diverse generators, oracle-only controls, a privileged heldout evaluator and separate owner authorization for any student training. The attached 8 November Ollama server log provides runtime evidence only; it contains no recoverable prompt/answer pairs and is not imported as training data.
+
+## Prior diagnostic-first development order — 26 October 2026 (deferred)
 
 The [diagnostic-first v1 roadmap](ROADMAP-V1.md) now consolidates the 22 October
 research and [subsequent findings](research/UPDATE-2026-10-26.md), including a
-source-pinned shrek_GPT review. Start there for **what to do next**; the phase
+source-pinned shrek_GPT review. That plan remains retained for eventual resumption; the phase
 contracts and historical chronology below remain preserved and authoritative
 for their existing numerical, evidence and scientific gates.
 

@@ -1,0 +1,23 @@
+name: MTC-001 offline contract validation
+
+on:
+  pull_request:
+    paths:
+      - 'docs/ROADMAP.md'
+      - 'docs/MASTER-TEACHER-CORPUS-V1.md'
+      - 'scripts/master_teacher_corpus.py'
+      - 'tests/master_teacher_corpus_v1/**'
+      - '.github/workflows/master-teacher-corpus*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline MTC-001 tests (no Ollama calls, no model downloads)
+        run: python3 -I -B -m unittest discover -s tests/master_teacher_corpus_v1 -v
