@@ -85,7 +85,7 @@ def append_sync(path, data):
             raise ValueError("attempt journal is not a regular single-link file")
         file.write(data)
         file.flush()
-        os.fsync(file.fileno()
+        os.fsync(file.fileno())
 
 
 def local_url(url):
