@@ -24,6 +24,16 @@ MAX_RESPONSE = 65536
 MAX_LOG = 8 * 1024 * 1024
 DEFAULT_URL = "http://127.0.0.1:11434"
 CONTRACT_FILES = (
+    "AGENTS.md",
+    ".github/AGENTS.md",
+    "docs/AGENTS.md",
+    "scripts/AGENTS.md",
+    "tests/AGENTS.md",
+    "docs/AGENT-IBAE-GOVERNANCE.md",
+    "docs/DATA.md",
+    "docs/INVARIANTS.md",
+    "docs/INSTRUCTIONS.md",
+    "docs/ROADMAP.md",
     "scripts/master_teacher_corpus.py",
     "tests/master_teacher_corpus_v1/test_master_teacher_corpus.py",
     "docs/MASTER-TEACHER-CORPUS-V1.md",
@@ -52,18 +62,30 @@ def require_regular(path):
     return path.read_bytes()
 
 
+def private_directory(path):
+    # Do not create world-traversable intermediate directories under a loose umask.
+    path.mkdir(mode=0o700, parents=False, exist_ok=False)
+
+
 def write_exclusive(path, data):
-    with path.open("xb") as file:
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags, 0o600)
+    with os.fdopen(fd, "wb") as file:
         file.write(data)
         file.flush()
         os.fsync(file.fileno())
 
 
 def append_sync(path, data):
-    with path.open("ab") as file:
+    flags = os.O_WRONLY | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags)
+    with os.fdopen(fd, "ab") as file:
+        info = os.fstat(file.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ValueError("attempt journal is not a regular single-link file")
         file.write(data)
         file.flush()
-        os.fsync(file.fileno())
+        os.fsync(file.fileno()
 
 
 def local_url(url):
@@ -75,19 +97,37 @@ def local_url(url):
     return url.rstrip("/")
 
 
+class APIResponseError(ValueError):
+    """An HTTP/JSON failure with a preserved bounded response byte prefix."""
+
+    def __init__(self, reason, body=b"", status=None, truncated=False):
+        super().__init__(reason)
+        self.body = body
+        self.status = status
+        self.truncated = truncated
+
+
 def request_json(url, path, payload=None, return_raw=False):
     data = canonical(payload) if payload is not None else None
     req = urllib.request.Request(url + path, data=data, headers={"Content-Type": "application/json"}, method="POST" if data is not None else "GET")
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *unused):
-            raise ValueError("redirect outside local model endpoint prohibited")
+            return None  # urllib raises HTTPError, carrying the redirect body.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect)
-    with opener.open(req, timeout=90) as res:
-        body = res.read(MAX_RESPONSE + 1)
-        if len(body) > MAX_RESPONSE:
-            raise ValueError("Ollama response exceeds maximum size")
+    try:
+        with opener.open(req, timeout=90) as res:
+            body = res.read(MAX_RESPONSE + 1)
+            status = res.status
+    except urllib.error.HTTPError as exc:
+        raw = exc.read(MAX_RESPONSE + 1)
+        raise APIResponseError(f"Ollama HTTP status {exc.code}", raw[:MAX_RESPONSE], exc.code, len(raw) > MAX_RESPONSE) from exc
+    if len(body) > MAX_RESPONSE:
+        raise APIResponseError("Ollama response exceeds maximum size", body[:MAX_RESPONSE], status, True)
+    try:
         parsed = json.loads(body)
-        return (parsed, body) if return_raw else parsed
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise APIResponseError("malformed Ollama API JSON envelope", body, status) from exc
+    return (parsed, body) if return_raw else parsed
 
 
 def model_digest(url, name):
@@ -248,7 +288,7 @@ def plan(args):
            "models": models, "items": [public_item(i) for i in items], "max_requests": len(items),
            "sampling": {"temperature": 0, "top_p": 1, "seed": 0, "num_predict": 64, "num_ctx": 2048},
            "rights_status": "QUARANTINED_NOT_ADMITTED"}
-    args.out.mkdir(parents=True, exist_ok=False)
+    private_directory(args.out)
     write_exclusive(args.out / "request.json", canonical(req))
     print("request_identity=" + digest(canonical(req)))
     print("calls_planned=" + str(len(items)))
@@ -285,7 +325,7 @@ def capture(args):
     for model in req["models"].values():
         if model_digest(url, model["name"]) != model["digest"]:
             raise ValueError("installed Ollama model digest changed")
-    args.out.mkdir(parents=True, exist_ok=False)
+    private_directory(args.out)
     write_exclusive(args.out / "request.json", req_bytes)
     raw_path = args.out / "attempts.jsonl"
     write_exclusive(raw_path, b"")
@@ -303,11 +343,10 @@ def capture(args):
         result = {"item_id": item["id"], "model": model["name"], "model_digest": model["digest"],
                   "request_sha256": digest(canonical(body)), "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
                   "status": "runtime_error", "raw_content": None, "parsed_answer": None, "oracle_match": False,
-                  "raw_response_base64": None, "response_meta": {}, "error": "unknown"}
+                  "raw_response_base64": None, "response_meta": {}, "http_status": None,
+                  "response_truncated": False, "error": "unknown"}
         try:
             response, raw_api = request_json(url, "/api/chat", body, return_raw=True)
-            # Preserve the complete bounded response even when its model answer is
-            # absent, malformed, or oversized; it is not a successful schema match.
             message = response.get("message") if isinstance(response, dict) else None
             content = message.get("content") if isinstance(message, dict) else None
             if not isinstance(content, str):
@@ -315,10 +354,14 @@ def capture(args):
             elif len(content.encode("utf-8")) > 4096:
                 content = None
             value = strict_answer(content) if content is not None else None
-            result.update(status="completed", raw_content=content,
+            result.update(status="completed", raw_content=content, http_status=200,
                           raw_response_base64=base64.b64encode(raw_api).decode("ascii"),
                           parsed_answer=value, oracle_match=value == item["answer"], error=None,
                           response_meta={k: response.get(k) for k in ("done_reason", "total_duration", "load_duration", "prompt_eval_count", "prompt_eval_duration", "eval_count", "eval_duration")})
+        except APIResponseError as exc:
+            result.update(raw_response_base64=base64.b64encode(exc.body).decode("ascii"),
+                          http_status=exc.status, response_truncated=exc.truncated,
+                          error=type(exc).__name__ + ": " + str(exc)[:300])
         except (OSError, ValueError, KeyError, TypeError, urllib.error.URLError) as exc:
             result["error"] = type(exc).__name__ + ": " + str(exc)[:300]
         result["finished_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -398,6 +441,10 @@ def verify(args):
         if a.get("request_sha256") != digest(canonical(body)):
             raise ValueError("request payload identity mismatch")
         if a.get("status") == "completed":
+            if a.get("http_status") != 200 or a.get("response_truncated") is not False:
+                raise ValueError("completed attempt has invalid HTTP status or truncation")
+            if type(a.get("raw_response_base64")) is not str:
+                raise ValueError("completed attempt missing response bytes")
             response_raw = base64.b64decode(a.get("raw_response_base64", ""), validate=True)
             if len(response_raw) > MAX_RESPONSE:
                 raise ValueError("response payload too large")
@@ -413,7 +460,31 @@ def verify(args):
             expected_meta = {k: response.get(k) for k in ("done_reason", "total_duration", "load_duration", "prompt_eval_count", "prompt_eval_duration", "eval_count", "eval_duration")}
             if a.get("response_meta") != expected_meta or a.get("error") is not None:
                 raise ValueError("response metadata mismatch")
-        elif a.get("status") != "runtime_error" or a.get("oracle_match") is not False:
+        elif a.get("status") == "runtime_error":
+            if a.get("oracle_match") is not False or a.get("parsed_answer") is not None or a.get("raw_content") is not None or a.get("response_meta") != {} or not isinstance(a.get("error"), str) or not a["error"]:
+                raise ValueError("invalid failure metadata")
+            encoded = a.get("raw_response_base64")
+            status = a.get("http_status")
+            truncated = a.get("response_truncated")
+            if type(truncated) is not bool or (status is not None and (type(status) is not int or not 100 <= status <= 599)):
+                raise ValueError("invalid failure HTTP metadata")
+            if encoded is None:
+                if status is not None or truncated:
+                    raise ValueError("HTTP failure missing retained bytes")
+            else:
+                if type(encoded) is not str or status is None:
+                    raise ValueError("failure bytes missing HTTP status")
+                raw = base64.b64decode(encoded, validate=True)
+                if len(raw) > MAX_RESPONSE or (truncated and len(raw) != MAX_RESPONSE):
+                    raise ValueError("invalid retained failure byte bound")
+                if status == 200 and not truncated:
+                    try:
+                        json.loads(raw)
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass
+                    else:
+                        raise ValueError("successful JSON incorrectly labelled runtime error")
+        else:
             raise ValueError("invalid attempt status")
     expected_candidates = []
     for a, item in zip(attempts, items):
