@@ -6,7 +6,7 @@
 
 The owner supplied a copy of an `ollama serve` terminal transcript from 8 November 2026 on RTX 5060 Ti. It demonstrates local model loads, GPU offload, `/api/chat` calls and timings for Qwen3-VL 2B, Qwen3-VL 4B Instruct, Qwen2.5-VL 3B and Moondream 1.8B. The upload includes a duplicated console session (96 `/api/chat` log entries, representing **48** calls in the repeated captured session, subject to complete log parsing). Neither prompts, images nor actual model answer bytes appear in that terminal output. It must not be called training data or a model benchmark.
 
-This pilot creates the missing *application-side* collector, without changing native Trinite training. The two captured evidence surfaces are: (a) complete bounded JSON API response bytes including final content and any other returned fields, with the exact API request SHA-256; and (b) a bounded owner-supplied copy of the simultaneously captured `ollama serve` server log. The log is supplementary execution context, **not** sufficient to prove prompts/responses or actual GPU compute. The collector binds the exact script, normative MTC-001 protocol, both workflows and its regression tests in a source/protocol closure. Existing Trinite governance and DATA rules remain authoritative; this local closure is not a complete OS/runtime attestation. The collector does not pull models, enable a cloud endpoint, run student optimizer steps, or import a third-party corpus.
+This pilot creates the missing *application-side* collector, without changing native Trinite training. The two captured evidence surfaces are: (a) complete bounded JSON API response bytes including final content and any other returned fields, with the exact API request SHA-256; and (b) a bounded owner-supplied copy of the simultaneously captured `ollama serve` server log. The log is supplementary execution context, **not** sufficient to prove prompts/responses or actual GPU compute. The collector binds the exact script, normative MTC-001 protocol, both workflows, regression tests, root/scoped agent instructions, QSOL-IBAE governance, DATA, INVARIANTS, INSTRUCTIONS and current roadmap in a source/protocol/governance closure. Existing Trinite governance and DATA rules remain authoritative; this local closure is not a complete OS/runtime attestation. The collector does not pull models, enable a cloud endpoint, run student optimizer steps, or import a third-party corpus.
 
 ## Two distinct datasets, one master envelope
 
@@ -32,8 +32,9 @@ The tiny 28-call first pass is an end-to-end smoke test, not a statistically rep
 Use `ollama serve` locally, listening on `127.0.0.1:11434`, and save its terminal stream to an owner-private log. Example in a **separate terminal**, only if an Ollama server is not already running:
 
 ```bash
-mkdir -p "$HOME/trinite-mtc"
-OLLAMA_NO_CLOUD=1 ollama serve 2>&1 | tee "$HOME/trinite-mtc/ollama-serve.log"
+(umask 077; mkdir -p "$HOME/trinite-mtc")
+chmod 700 "$HOME/trinite-mtc"
+(umask 077; OLLAMA_NO_CLOUD=1 ollama serve 2>&1 | tee "$HOME/trinite-mtc/ollama-serve.log")
 ```
 
 A live `ollama serve` process might already be active; don't start a second. The printed `OLLAMA_NO_CLOUD` value in the old log was `false`, even though its launched `llama-server` command included `--offline`. For this new run explicitly disable cloud behavior at the server process and use **loopback only**. The local capture script rejects non-loopback and redirects and does not use proxy routing. The active model names must already be installed (`ollama list`); no implicit pull/download. Model digests are read from `/api/tags` and rechecked before model inference.
@@ -47,7 +48,7 @@ python3 -I -B scripts/master_teacher_corpus.py plan \
   --out "$HOME/trinite-mtc/plan-001"
 ```
 
-Write down the printed `request_identity=sha256:...` separately before making teacher calls. `request.json` binds the exact collector/protocol/workflow/test closure, loopback endpoint, installed model digests, **all 28 public prompts**, immutable lane/split/family assignments and generation settings (temperature 0, seed 0, 64 generated tokens, 2,048-token context). A source or model revision mismatch blocks the capture; don't patch the old packet.
+Write down the printed `request_identity=sha256:...` separately before making teacher calls. `request.json` binds the exact collector/protocol/workflow/test and applicable governance closure, loopback endpoint, installed model digests, **all 28 public prompts**, immutable lane/split/family assignments and generation settings (temperature 0, seed 0, 64 generated tokens, 2,048-token context). A source or model revision mismatch blocks the capture; don't patch the old packet.
 
 **Step 2 — explicitly authorize capture.** This is a **new, versioned pilot** only. It does not reuse the authorization of earlier local teacher experiments or GPU training protocols:
 
@@ -60,7 +61,7 @@ python3 -I -B scripts/master_teacher_corpus.py capture \
   --authorize-local-capture
 ```
 
-Exactly **28** new `/api/chat` requests are scheduled, sequentially and with no retry or adaptive refill; invalid responses and runtime failures are retained. `--authorize-local-capture` is mandatory. The script has a hard 32-call ceiling and hard 64-KiB HTTP-response/8-MiB log bounds. An interrupted run leaves partial evidence **without** a complete manifest. Do not re-run into the same destination or silently repair it; freeze a new request for new calls.
+Exactly **28** new `/api/chat` requests are scheduled, sequentially and with no retry or adaptive refill; invalid responses and runtime failures are retained. `--authorize-local-capture` is mandatory. The script has a hard 32-call ceiling and hard 64-KiB HTTP-response/8-MiB log bounds. An interrupted run leaves partial evidence **without** a complete manifest. Both freeze and capture require an existing destination parent and create their own output directory with mode `0700`; files are created with mode `0600` independently of the invoking shell's umask. The server log copied into a capture is also created owner-only. Ensure the separate original Ollama log is private as shown above. Do not re-run into the same destination or silently repair it; freeze a new request for new calls.
 
 **Step 3 — offline verify and inspect.** Retain the printed manifest identity outside the run folder:
 
@@ -70,14 +71,14 @@ python3 -I -B scripts/master_teacher_corpus.py verify \
   --manifest-identity 'sha256:THE_RETAINED_MANIFEST_DIGEST'
 ```
 
-`verify` requires all exact members, confirms digest and strict regular-file membership, recomputes generation and a separate oracle implementation, checks every request digest and response byte capture, reconstructs the training-only projection and summary, and requires a separately retained manifest identity. It **does not** replay GPU execution or prove that the runtime log is genuine. A successful check means packet integrity and local numeric consistency, not student usefulness or rights admission.
+`verify` requires all exact members, confirms digest and strict regular-file membership, recomputes generation and a separate oracle implementation, checks every request digest and response byte capture, reconstructs the training-only projection and summary, and requires a separately retained manifest identity. Malformed HTTP JSON bodies and HTTP error bodies are preserved as bounded base64 response bytes with a recorded HTTP status and failure category. Over-limit bodies preserve the first 64 KiB and set `response_truncated=true` rather than pretending to retain the entire response. Socket failures without received bytes remain separately marked. It **does not** replay GPU execution or prove that the runtime log is genuine. A successful check means packet integrity and local numeric consistency, not student usefulness or rights admission.
 
 ## File boundaries
 
 Each frozen run is an owner-private, non-uploaded directory:
 
 - `request.json`: source/model/call/split freeze, with **public-only** task fields.
-- `attempts.jsonl`: **complete bounded Ollama API response bytes (base64)**, parsed final field, errors, request hash, clock timestamps, model digest and timing metadata, including rejected cases.
+- `attempts.jsonl`: **bounded Ollama API response bytes (base64)** or an explicitly flagged truncated prefix, parsed final field where available, HTTP status, errors, request hash, clock timestamps, model digest and timing metadata, including rejected cases.
 - `privileged-targets.jsonl`: full independent-oracle targets, kept separate from model prompts and future student inputs.
 - `train-candidates.jsonl`: **only** exact-oracle-matched `train` candidates, marked `CANDIDATE_UNADMITTED`. No visual weights or external-prose training admission is implied.
 - `summary.json`: counts grouped by lane, task and frozen split, including failed/invalid responses.
@@ -88,7 +89,11 @@ Raw captures can contain unknown copyrighted or personal content even when promp
 
 ## GitHub Actions boundary
 
-`.github/workflows/master-teacher-corpus-contract.yml` runs offline contract tests on pull requests (or manual dispatch) on a hosted runner, without Ollama. Separately, `.github/workflows/master-teacher-corpus.yml` supplies manual `freeze`, `capture` and `verify` operations on an owner-controlled **self-hosted Linux x64 runner**. Manual dispatch requires the workflow file to exist on the default branch after review/merge. `capture` requires two explicit owner checkboxes and a frozen external request digest; it also requires the owner-private server log path. Results stay on that machine, under `$HOME/trinite-mtc`, rather than in the repository or an Actions artifact. It uploads **no** prompts, responses, images, raw logs or artifact archive to GitHub. GH Actions log lines contain only identities/counts and test outcomes. It is **not** a hosted GPU job and must never be presumed capable of reaching the desktop's loopback endpoint unless the runner is actually on that host.
+**Security correction for PR #141:** No GitHub Actions job checks out branch-selected code onto a persistent owner machine. A collaborator with repository write access can select a branch on `workflow_dispatch`; a checkbox or a branch check inside that same mutable workflow does not secure a self-hosted runner against this. Keep persistent owner machines out of unrestricted repository runner pools. A future Actions-triggered GPU job would require separate owner-reviewed, ephemeral runner isolation and repository-side trust controls beyond this source change.
+
+`.github/workflows/master-teacher-corpus-contract.yml` runs offline contract tests on pull requests and manual dispatch on a hosted runner. It watches this pilot's source plus its normative governance files. `.github/workflows/master-teacher-corpus.yml` is a second **manual, hosted-only preflight**: it runs offline tests and CLI help checks, but intentionally cannot perform local freeze/capture/verify. Both have read-only GitHub permissions and no artifact upload.
+
+For real local work, run the CLI in the reviewed exact checkout on the desktop **from your own terminal**, with the source/protocol hashes, stored log and explicitly retained request/manifest digests. No private prompts, model responses, images, log files, or teacher weights are automatically sent to GitHub. This workflow change does not certify a machine's trust, prevent malicious code on a separately configured runner, or authorise live inference or training.
 
 ## Review gates before any TRINITE training
 
