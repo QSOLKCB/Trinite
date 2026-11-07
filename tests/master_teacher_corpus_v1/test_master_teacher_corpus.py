@@ -5,6 +5,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import io
 import json
+import os
+import stat
+import base64
 from pathlib import Path
 import tempfile
 import threading
@@ -55,7 +58,89 @@ class MockMalformedOllama(MockOllama):
         self.answer({"message": {"content": "NOT JSON"}, "done_reason": "stop"})
 
 
+class MockInvalidEnvelope(MockOllama):
+    def do_POST(self):
+        raw = b'{"broken":'
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+
+class MockHTTPFailure(MockOllama):
+    def do_POST(self):
+        raw = b'{"error":"intentional unavailable"}'
+        self.send_response(503)
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+
 class MTCTest(unittest.TestCase):
+    def test_governance_is_in_source_closure(self):
+        for name in ("AGENTS.md", ".github/AGENTS.md", "docs/AGENTS.md", "scripts/AGENTS.md",
+                     "tests/AGENTS.md", "docs/AGENT-IBAE-GOVERNANCE.md", "docs/DATA.md"):
+            self.assertIn(name, mtc.contract_closure())
+        baseline = mtc.contract_closure()
+        original = mtc.require_regular
+        def drift(path):
+            data = original(path)
+            return data + b"\nchanged policy" if path.name == "AGENTS.md" and path.parent.name == "scripts" else data
+        with patch.object(mtc, "require_regular", side_effect=drift):
+            self.assertNotEqual(baseline, mtc.contract_closure())
+
+    def test_runtime_error_envelopes_preserved_and_verified(self):
+        for handler, raw, code in ((MockInvalidEnvelope, b'{"broken":', 200),
+                                   (MockHTTPFailure, b'{"error":"intentional unavailable"}', 503)):
+            with self.subTest(handler=handler.__name__):
+                server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                try:
+                    with tempfile.TemporaryDirectory() as td:
+                        root = Path(td)
+                        url = f"http://127.0.0.1:{server.server_port}"
+                        mtc.main(["plan", "--url", url, "--formal-model", "mock-text", "--vision-model", "mock-vision", "--out", str(root / "plan")])
+                        req = root / "plan" / "request.json"
+                        mtc.main(["capture", "--request", str(req), "--request-identity", mtc.digest(req.read_bytes()),
+                                  "--authorize-local-capture", "--out", str(root / "run")])
+                        rows = [json.loads(x) for x in (root / "run" / "attempts.jsonl").read_bytes().splitlines()]
+                        self.assertEqual(28, len(rows))
+                        self.assertTrue(all(x["status"] == "runtime_error" for x in rows))
+                        self.assertTrue(all(x["http_status"] == code for x in rows))
+                        self.assertTrue(all(base64.b64decode(x["raw_response_base64"]) == raw for x in rows))
+                        self.assertTrue(all(x["response_truncated"] is False for x in rows))
+                        self.assertEqual(b"", (root / "run" / "train-candidates.jsonl").read_bytes())
+                        mtc.main(["verify", "--run", str(root / "run"),
+                                  "--manifest-identity", mtc.digest((root / "run" / "manifest.json").read_bytes())])
+                finally:
+                    server.shutdown(); server.server_close(); thread.join()
+
+    def test_owner_private_permissions_under_loose_umask(self):
+        server = ThreadingHTTPServer(("127.0.0.1", 0), MockOllama)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                original_umask = os.umask(0o022)
+                try:
+                    url = f"http://127.0.0.1:{server.server_port}"
+                    mtc.main(["plan", "--url", url, "--formal-model", "mock-text", "--vision-model", "mock-vision", "--out", str(root / "plan")])
+                    req = root / "plan" / "request.json"
+                    log = root / "log.txt"; log.write_text("mock runtime log")
+                    mtc.main(["capture", "--request", str(req), "--request-identity", mtc.digest(req.read_bytes()),
+                              "--server-log", str(log), "--authorize-local-capture", "--out", str(root / "run")])
+                    for name in ("plan", "run"):
+                        directory = root / name
+                        self.assertEqual(0o700, stat.S_IMODE(directory.stat().st_mode))
+                        self.assertTrue(all(stat.S_IMODE(p.stat().st_mode) == 0o600 for p in directory.iterdir()))
+                finally:
+                    os.umask(original_umask)
+        finally:
+            server.shutdown(); server.server_close(); thread.join()
+
+
     def test_corpus_task_ledger_and_splits(self):
         rows = mtc.generate_items()
         self.assertEqual(28, len(rows))
