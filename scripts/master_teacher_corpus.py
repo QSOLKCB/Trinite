@@ -119,7 +119,10 @@ def request_json(url, path, payload=None, return_raw=False):
             body = res.read(MAX_RESPONSE + 1)
             status = res.status
     except urllib.error.HTTPError as exc:
-        raw = exc.read(MAX_RESPONSE + 1)
+        try:
+            raw = exc.read(MAX_RESPONSE + 1)
+        finally:
+            exc.close()
         raise APIResponseError(f"Ollama HTTP status {exc.code}", raw[:MAX_RESPONSE], exc.code, len(raw) > MAX_RESPONSE) from exc
     if len(body) > MAX_RESPONSE:
         raise APIResponseError("Ollama response exceeds maximum size", body[:MAX_RESPONSE], status, True)
