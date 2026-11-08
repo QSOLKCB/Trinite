@@ -56,3 +56,9 @@ not a scaling target or CPU feasibility claim. The current 5M constructor limit
 and smaller per-run budgets remain unchanged. The isolated prospective adapter
 requires explicit adoption; historical workflows are not silently retrofitted.
 Own-teacher distillation and quantization remain separately gated future work.
+
+## Proposed separate local conversational application (TRI-ORCH-001)
+
+[TRI-ORCH-001](TRI-ORCH-001.md) defines an **application-side** controller (policy, deterministic orchestration and evidence classification), with optional non-generative d1 decision advice, an external LFM3 generative conversation adapter, and exact formal operations independently checked. The proposed chat implementation is **only in a separate subsequent PR**, [TRI-CHAT-001](TRI-CHAT-001.md). Inference model output is not authorization, verified mathematics, native model training, or proof of native model capability. Never conflate recorded controller replay with fresh neural inference reproducibility.
+
+This proposal does **not** replace or change the reference native decoder, tokenizer, optimizer, geometry loss, PROVENANCE observer, source/fixture identities or Phase 5–9 gates. Native Trinite remains a separate research lane; MTC capture and its quarantine/admission remain separate. See [TRI-O01–TRI-O12](INVARIANTS.md#prospective-application-orchestration-invariants-tri-orch-001), the architecture's strict trust/route boundaries and [AGENT-IBAE-GOVERNANCE](AGENT-IBAE-GOVERNANCE.md).

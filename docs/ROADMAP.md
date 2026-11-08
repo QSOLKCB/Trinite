@@ -1,5 +1,14 @@
 # Roadmap
 
+## Current engineering deliverable — TRI-ORCH-001 docs-only design gate (9 November 2026)
+
+**Owner sequencing:** create/review **documentation and invariants only** in [TRI-ORCH-001](TRI-ORCH-001.md) before any application code. The local WebUI/chat prototype is [TRI-CHAT-001](TRI-CHAT-001.md), a **separate next PR after design review/merge**. A later TRI-DECIDE-001 evaluates optional d1 routing. No live inference, model download, owner-local run, native training, new CI workflow, deployment or release is authorized by this docs-only milestone.
+
+Proposed application roles: Trinite deterministic orchestration/authorization; optional Liquid d1-2B **advisory decision** classification; external Liquid LFM3-1.7B **generative teacher** for conversation; exact formal operator + independent oracle for verified arithmetic. d1 does **not** produce conversational answers, prove reasoning or grant authority. Rule-first local chat must be viable without d1. All external weights/teacher output remain isolated from native Trinite's random-initialized research and from MTC's separately admitted teacher corpus.
+
+The **new prospective** [TRI-O01–TRI-O12 application invariants](INVARIANTS.md#prospective-application-orchestration-invariants-tri-orch-001) add to, not replace, TRI-I01–TRI-I14. Current MTC-001 priority and MTC-002 evidence/data decisions below remain preserved as a distinct workstream. Earlier diagnostic-first native work remains deferred, **not cancelled**; no historical experiment is reinterpreted. GAN training is not part of the chat/decision solution: for exact formal labels favor deterministic generation/oracles; adversarial testing belongs in the prototype; any GAN-based visual/audio synthetic corpus needs a separately approved future dataset proposal.
+
+
 ## Current priority — MTC-001 local Master Teacher Corpus (8 November 2026)
 
 **Owner-directed scheduling change (PROPOSED for merge):** defer the diagnostic-first execution sequence below as the immediate engineering priority and develop [MTC-001's local multi-modal teacher capture pilot](MASTER-TEACHER-CORPUS-V1.md). This is a new, isolated corpus-preparation/evidence workstream, not cancellation or retrospective reinterpretation of the earlier research. It does not authorize native training, new generalisation claims, model-distillation data admission, release or publication of raw captures.
