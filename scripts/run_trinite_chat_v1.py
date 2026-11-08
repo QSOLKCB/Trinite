@@ -285,6 +285,7 @@ def teacher_chat(config, message, history):
     conn.response_class = lambda sock, **kwargs: DeadlineHTTPResponse(
         sock, deadline=deadline, **kwargs
     )
+    response = None
     try:
         conn.request("POST", "/v1/chat/completions", body=payload,
                      headers={"Content-Type": "application/json", "Accept": "application/json"})
@@ -341,6 +342,8 @@ def teacher_chat(config, message, history):
             raise TeacherFault("teacher_timeout") from None
         raise TeacherFault("teacher_unavailable") from None
     finally:
+        if response is not None:
+            response.close()
         conn.close()
 
 
