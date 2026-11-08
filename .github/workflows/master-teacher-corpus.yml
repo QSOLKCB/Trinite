@@ -1,0 +1,26 @@
+name: MTC-001 manual hosted preflight (no local capture)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate collector contracts without owner hardware or secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I -B -m unittest discover -s tests/master_teacher_corpus_v1 -v
+          python3 -I -B scripts/master_teacher_corpus.py plan --help >/dev/null
+          python3 -I -B scripts/master_teacher_corpus.py capture --help >/dev/null
+          python3 -I -B scripts/master_teacher_corpus.py verify --help >/dev/null
+          echo 'PRECHECK ONLY: no Ollama calls, GPU execution, corpus upload or student training.'
+          echo 'For a real owner-local freeze/capture/verify, use the reviewed CLI commands in docs/MASTER-TEACHER-CORPUS-V1.md.'
