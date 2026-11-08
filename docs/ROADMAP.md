@@ -1,5 +1,20 @@
 # Roadmap
 
+
+## Next planned application increment — TRI-SQLITE-001 local persistence (9 November 2026)
+
+**Owner direction (planning record only, not yet implemented):** after TRI-CHAT-001's four open review findings are corrected and reviewed, open a **separate PR** for a local Python standard-library `sqlite3` persistence adapter. This is a prospective application feature, **not** native Trinite training, MTC data admission, model reasoning evidence, or permission to persist users' messages without opt-in.
+
+- **Storage:** default application path `data/trinite.db`, **excluded from Git** by a narrowly scoped `.gitignore` rule (`/data/trinite.db` and associated `-wal`/`-shm` sidecars, backups and temporary artifacts). No database bytes, private conversations or credentials committed; choose a private, owner-writable local directory and restrict access.
+- **Schema:** additive versioned migrations with `PRAGMA user_version`, parameterized SQL only, explicit transaction ownership and foreign keys. Separate `conversations`, `messages`, `route_decisions`, `tool_results`, `model_registry` and `receipt_refs` (stored metadata and identities only); define constraints and limits before use. Avoid model-provided SQL and uncontrolled extension loading.
+- **Privacy/retention:** persistence **off by default** until the owner opts in; explicit session retention, listing, export and deletion semantics, no secret/raw model-output leakage into logs and **no silent training corpus admission**. Avoid claiming secure erasure simply by deleting SQLite rows; define WAL/checkpoint/backup retention and disk-forensic limitations.
+- **Backup:** an explicit offline CLI backup/restore/verify workflow using SQLite's online Backup API (`sqlite3.Connection.backup()`) rather than copying a live WAL database file; backup into a fresh, owner-selected local path with no clobber, SHA-256 receipt, `PRAGMA integrity_check`, schema compatibility and restore on an isolated destination before any replacement. Document encryption at rest as an OS/storage responsibility, not a builtin guarantee of standard-library SQLite.
+- **Determinism and evidence:** serialize/identify events canonically, distinguish recorded controller replay from fresh neural model inference, preserve rejected/partial outcomes, and never reinterpret old research evidence. Git/PROVENANCE remain authoritative for source-bound scientific artifacts. Notion remains an optional **cloud-hosted curated knowledge index**, not Trinite's runtime chat database.
+- **Acceptance before merge:** clean migration/reopen/rollback, power-loss/interruption fault injections, WAL reader/writer and busy-timeout tests, oversized/invalid text, no-opt-in persistence, bounded rows/history, backup against concurrent writes and verified restore on a fresh file, symlink/path protections and read-only inventory tests. Document which checks are software conformance vs real host persistence tests.
+
+**Order:** finish TRI-CHAT-001 correction and code review → TRI-SQLITE-001 new PR and owner-reviewed storage/backup protocol → optional later TRI-DECIDE-001 model routing study. This entry changes **ROADMAP.md only** and does not authorize implementation or local state mutation by itself.
+
+
 ## Current engineering deliverable — TRI-ORCH-001 docs-only design gate (9 November 2026)
 
 **Owner sequencing:** create/review **documentation and invariants only** in [TRI-ORCH-001](TRI-ORCH-001.md) before any application code. The local WebUI/chat prototype is [TRI-CHAT-001](TRI-CHAT-001.md), a **separate next PR after design review/merge**. A later TRI-DECIDE-001 evaluates optional d1 routing. No live inference, model download, owner-local run, native training, new CI workflow, deployment or release is authorized by this docs-only milestone.
