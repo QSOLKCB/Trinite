@@ -74,10 +74,18 @@ class DeadlineHTTPResponse(http.client.HTTPResponse):
 
     def __init__(self, sock, *, deadline, **kwargs):
         super().__init__(sock, **kwargs)
-        # Replace HTTPResponse's ordinary makefile reader, which can block on
-        # slow-trickled headers or body indefinitely, with a deadline reader.
-        self.fp.close()
+        # Retain the original socket.makefile reference until response close.
+        # HTTPConnection closes its socket after HTTP/1.0 response headers;
+        # closing the makefile here would drop the last IO reference and close
+        # the descriptor before the buffered body could be read.
+        self._socket_lifetime_fp = self.fp
         self.fp = io.BufferedReader(DeadlineSocketReader(sock, deadline))
+
+    def close(self):
+        try:
+            super().close()
+        finally:
+            self._socket_lifetime_fp.close()
 
 
 class Invalid(ValueError):
