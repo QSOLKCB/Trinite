@@ -47,6 +47,72 @@ class SQLiteContracts(unittest.TestCase):
             store.backup_database(self.db, self.root / "snapshot.db")
         self.assertFalse((self.root/"snapshot.db").exists())
 
+    @unittest.skipUnless(os.name == "posix", "POSIX directory mode contract")
+    def test_attacker_writable_parent_is_rejected_before_creation(self):
+        self.root.chmod(0o777)
+        with self.assertRaisesRegex(store.StoreError, "unsafe_parent_permissions"):
+            self.init()
+        self.assertFalse(self.db.exists())
+
+    def test_incompatible_database_is_not_changed_before_rejection(self):
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.execute("CREATE TABLE unrelated(value TEXT)")
+        before = self.db.read_bytes()
+        with self.assertRaisesRegex(store.StoreError, "schema_version_mismatch"):
+            store.open_store(self.db, enable_persistence=True)
+        self.assertEqual(self.db.read_bytes(), before)
+        with closing(sqlite3.connect(self.db)) as conn:
+            self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0], "delete")
+
+    def test_init_publication_race_does_not_modify_substituted_victim(self):
+        victim = self.root / "victim.db"
+        with closing(sqlite3.connect(victim)) as conn:
+            conn.execute("CREATE TABLE sentinel(value TEXT)")
+            conn.execute("INSERT INTO sentinel VALUES ('preserve-me')")
+        before = victim.read_bytes()
+        real_link = store.os.link
+
+        def substitute_before_publish(source, destination):
+            Path(destination).symlink_to(victim)
+            return real_link(source, destination)
+
+        with mock.patch.object(store.os, "link", side_effect=substitute_before_publish):
+            with self.assertRaisesRegex(store.StoreError, "database_already_exists"):
+                self.init()
+        self.assertTrue(self.db.is_symlink())
+        self.assertEqual(victim.read_bytes(), before)
+        with closing(sqlite3.connect(victim)) as conn:
+            self.assertEqual(
+                conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall(),
+                [("sentinel",)],
+            )
+
+    def test_message_and_conversation_caps_are_atomic(self):
+        self.init()
+        with mock.patch.object(store, "MAX_MESSAGES_PER_CONVERSATION", 4):
+            self.write(user="u1", answer="a1")
+            self.write(user="u2", answer="a2")
+            with self.assertRaisesRegex(store.StoreError, "conversation_message_limit"):
+                self.write(user="u3", answer="a3")
+        self.assertEqual(len(store.list_messages(self.db, "conversation-1")), 4)
+        with mock.patch.object(store, "MAX_MESSAGES_PER_CONVERSATION", 3):
+            with self.assertRaisesRegex(store.StoreError, "conversation_message_limit"):
+                store.list_messages(self.db, "conversation-1")
+
+        with (mock.patch.object(store, "MAX_MESSAGES_PER_CONVERSATION", 100),
+              mock.patch.object(store, "MAX_TOTAL_MESSAGES", 6),
+              mock.patch.object(store, "MAX_CONVERSATIONS", 2)):
+            self.write(conversation_id="second")
+            with self.assertRaisesRegex(store.StoreError, "total_message_limit"):
+                self.write(conversation_id="third")
+        self.assertEqual(store.list_messages(self.db, "third"), [])
+        with (mock.patch.object(store, "MAX_MESSAGES_PER_CONVERSATION", 100),
+              mock.patch.object(store, "MAX_TOTAL_MESSAGES", 100),
+              mock.patch.object(store, "MAX_CONVERSATIONS", 2)):
+            with self.assertRaisesRegex(store.StoreError, "conversation_count_limit"):
+                self.write(conversation_id="third")
+        self.assertEqual(store.list_messages(self.db, "third"), [])
+
     def test_schema_and_atomic_roundtrip(self):
         self.init()
         self.assertTrue(self.db.exists())

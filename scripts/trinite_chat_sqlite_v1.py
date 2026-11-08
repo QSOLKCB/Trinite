@@ -26,6 +26,9 @@ MAX_USER = 8 * 1024
 MAX_ASSISTANT = 64 * 1024
 MAX_ID = 128
 MAX_BACKUP_SECONDS = 30.0
+MAX_CONVERSATIONS = 1024
+MAX_MESSAGES_PER_CONVERSATION = 256
+MAX_TOTAL_MESSAGES = 4096
 
 TABLES = (
     """CREATE TABLE conversations (
@@ -128,6 +131,12 @@ def checked_path(path, *, require_file=False):
         raise StoreError("missing_regular_file")
     if not absolute.parent.is_dir():
         raise StoreError("missing_parent")
+    if os.name == "posix":
+        parent = absolute.parent.stat()
+        if parent.st_uid != os.geteuid():
+            raise StoreError("unowned_parent_directory")
+        if parent.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+            raise StoreError("unsafe_parent_permissions")
     return absolute
 
 
@@ -181,11 +190,14 @@ def sqlite_connect(path, *, readonly, immutable_snapshot=False):
                                      timeout=3.0, isolation_level=None)
     else:
         connection = sqlite3.connect(str(path), timeout=3.0, isolation_level=None)
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("PRAGMA synchronous=FULL")
     connection.execute("PRAGMA foreign_keys=ON")
     connection.execute("PRAGMA busy_timeout=3000")
     return connection
+
+
+def configure_writable_connection(connection):
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("PRAGMA synchronous=FULL")
 
 
 def check_schema(conn):
@@ -229,33 +241,45 @@ def initialize(path=DEFAULT_DB, *, enable_persistence=False):
     if path == DEFAULT_DB and not path.parent.exists():
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=False)
     path = checked_path(path)
-    if path.exists():
-        raise StoreError("database_already_exists")
-    exclusive_empty_file(path)
-    conn = sqlite_connect(path, readonly=False)
+    check_fresh_database_destination(path)
+    temp = private_temp_path(path)
     try:
-        conn.execute("BEGIN IMMEDIATE")
+        conn = sqlite_connect(temp, readonly=False)
         try:
-            for statement in TABLES + INDEXES:
-                conn.execute(statement)
-            conn.execute("PRAGMA user_version=1")
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            raise
-        check_schema(conn)
+            configure_writable_connection(conn)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                for statement in TABLES + INDEXES:
+                    conn.execute(statement)
+                conn.execute("PRAGMA user_version=1")
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+            check_schema(conn)
+        finally:
+            conn.close()
+        check_fresh_database_destination(path)
+        publish_link_no_clobber(temp, path, "database_already_exists")
+        sync_parent(path)
+        return path
     finally:
-        conn.close()
-    return path
+        cleanup_private_temp(temp)
 
 
 def open_store(path=DEFAULT_DB, *, enable_persistence=False):
     if not enable_persistence:
         raise StoreError("persistence_opt_in_required")
     path = checked_path(path, require_file=True)
+    # Reject an incompatible or attacker-replaced database before applying
+    # persistent journal-mode changes to it. Recheck on the writable handle to
+    # catch a replacement between the two opens.
+    with closing(sqlite_connect(path, readonly=True)) as inspection:
+        check_schema(inspection)
     conn = sqlite_connect(path, readonly=False)
     try:
         check_schema(conn)
+        configure_writable_connection(conn)
         return conn
     except Exception:
         conn.close()
@@ -296,6 +320,25 @@ def record_exchange(path, conversation_id, user_text, assistant_text, *,
         stamp = now_utc()
         conn.execute("BEGIN IMMEDIATE")
         try:
+            existing = conn.execute(
+                "SELECT count(*) FROM messages WHERE conversation_id=?",
+                (conversation_id,),
+            ).fetchone()[0]
+            if existing > MAX_MESSAGES_PER_CONVERSATION - 2:
+                raise StoreError("conversation_message_limit")
+            total = conn.execute("SELECT count(*) FROM messages").fetchone()[0]
+            if total > MAX_TOTAL_MESSAGES - 2:
+                raise StoreError("total_message_limit")
+            known = conn.execute(
+                "SELECT 1 FROM conversations WHERE conversation_id=?",
+                (conversation_id,),
+            ).fetchone()
+            if known is None:
+                conversations = conn.execute(
+                    "SELECT count(*) FROM conversations"
+                ).fetchone()[0]
+                if conversations >= MAX_CONVERSATIONS:
+                    raise StoreError("conversation_count_limit")
             conn.execute("""INSERT INTO conversations
                 (conversation_id, created_utc, updated_utc, consent)
                 VALUES (?, ?, ?, 1)
@@ -319,10 +362,14 @@ def list_messages(path, conversation_id):
     path = checked_path(path, require_file=True)
     with closing(sqlite_connect(path, readonly=True)) as conn:
         check_schema(conn)
-        return conn.execute(
+        rows = conn.execute(
             "SELECT role, content, classification FROM messages "
-            "WHERE conversation_id=? ORDER BY message_id", (conversation_id,)
+            "WHERE conversation_id=? ORDER BY message_id LIMIT ?",
+            (conversation_id, MAX_MESSAGES_PER_CONVERSATION + 1),
         ).fetchall()
+        if len(rows) > MAX_MESSAGES_PER_CONVERSATION:
+            raise StoreError("conversation_message_limit")
+        return rows
 
 
 def delete_conversation(path, conversation_id, *, enable_persistence=False):
@@ -346,6 +393,19 @@ def private_temp_path(destination):
     path = destination.with_name(destination.name + ".partial-" + secrets.token_hex(8))
     exclusive_empty_file(path)
     return path
+
+
+def cleanup_private_temp(path):
+    Path(path).unlink(missing_ok=True)
+    for sidecar in sqlite_sidecars(path):
+        sidecar.unlink(missing_ok=True)
+
+
+def publish_link_no_clobber(source, destination, error):
+    try:
+        os.link(source, destination)
+    except FileExistsError:
+        raise StoreError(error) from None
 
 
 def sync_parent(path):
@@ -436,20 +496,20 @@ def backup_database(database, target, *, authorize_backup=False):
         with open(temp, "rb") as src:
             os.fsync(src.fileno())
         # Link is atomic and refuses an existing file (unlike os.replace).
-        os.link(temp, target)
-        os.link(temp_manifest, manifest)
+        publish_link_no_clobber(temp, target, "backup_destination_exists")
+        publish_link_no_clobber(temp_manifest, manifest, "backup_destination_exists")
         sync_parent(target)
         verify_backup(target, manifest)
         return target, manifest
     finally:
         source_conn.close()
         if temp is not None:
-            temp.unlink(missing_ok=True)
+            cleanup_private_temp(temp)
         if temp_manifest is not None:
             temp_manifest.unlink(missing_ok=True)
 
 
-def check_fresh_restore_destination(output):
+def check_fresh_database_destination(output):
     """An absent main .db file is insufficient if an old WAL still exists."""
     if path_present(output):
         raise StoreError("restore_destination_exists")
@@ -462,7 +522,7 @@ def restore_backup(backup, manifest, output, *, authorize_restore=False):
         raise StoreError("restore_authorization_required")
     info = verify_backup(backup, manifest)
     output = checked_path(output)
-    check_fresh_restore_destination(output)
+    check_fresh_database_destination(output)
     temp = private_temp_path(output)
     try:
         with open(backup, "rb") as src, open(temp, "wb") as dest:
@@ -479,12 +539,12 @@ def restore_backup(backup, manifest, output, *, authorize_restore=False):
         # Detect WAL/SHM/journal artifacts added while copying, before the
         # no-clobber main-database publication. The target directory must
         # remain owner-controlled; this is not a hostile-host race guarantee.
-        check_fresh_restore_destination(output)
-        os.link(temp, output)
+        check_fresh_database_destination(output)
+        publish_link_no_clobber(temp, output, "restore_destination_exists")
         sync_parent(output)
         return output
     finally:
-        temp.unlink(missing_ok=True)
+        cleanup_private_temp(temp)
 
 
 def main(argv=None):
