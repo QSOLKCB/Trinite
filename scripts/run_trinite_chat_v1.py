@@ -325,6 +325,12 @@ def teacher_chat(config, message, history):
     except (TimeoutError, socket.timeout) as exc:
         raise TeacherFault("teacher_timeout") from None
     except (ConnectionError, OSError, http.client.HTTPException) as exc:
+        # io.BufferedReader may surface a socket timeout as a plain OSError
+        # ('cannot read from timed out object') rather than TimeoutError.
+        # The absolute monotonic deadline, not the exception wording, owns
+        # the timeout classification.
+        if time.monotonic() >= deadline:
+            raise TeacherFault("teacher_timeout") from None
         raise TeacherFault("teacher_unavailable") from None
     finally:
         conn.close()

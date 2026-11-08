@@ -12,6 +12,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "scripts" / "run_trinite_chat_v1.py"
@@ -43,6 +44,11 @@ class CoreContracts(unittest.TestCase):
                     chat.parse_request(bad)
         with self.assertRaises(chat.Invalid):
             chat.parse_request(chat.canonical(sample("a" * (chat.MAX_MESSAGE + 1))))
+        # JSON recursion thresholds differ between supported Python versions.
+        # Force the decoder's RecursionError to prove the documented handler.
+        with mock.patch.object(chat.json, "loads", side_effect=RecursionError):
+            with self.assertRaisesRegex(chat.Invalid, "malformed_json"):
+                chat.strict_json(b"{}")
 
     def test_exact_arithmetic_and_independent_oracle(self):
         cfg = chat.Config()
@@ -173,7 +179,7 @@ class HTTPContracts(unittest.TestCase):
             "POST", "/api/chat", raw, {"Content-Type": "application/json"}
         )
         self.assertEqual(status, 400)
-        self.assertEqual(json.loads(data)["reason"], "malformed_json")
+        self.assertIn(json.loads(data)["reason"], ("malformed_json", "invalid_history"))
 
     def test_escape_only_webui(self):
         js = (ROOT/"scripts/trinite_chat_v1_ui/app.js").read_text()
