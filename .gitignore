@@ -6,8 +6,9 @@ build/
 dist/
 
 # TRI-SQLITE-001 local-only state, WAL/SHM sidecars and private backups.
-/data/trinite.db
-/data/trinite.db-wal
-/data/trinite.db-shm
-/data/trinite.db-journal
+/data/*.db
+/data/*.db-wal
+/data/*.db-shm
+/data/*.db-journal
+/data/*.db.manifest.json
 /data/backups/

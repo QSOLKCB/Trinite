@@ -7,6 +7,7 @@ This adapter is inert until explicitly opened by an owner-authorized caller.
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -259,7 +260,7 @@ def record_exchange(path, conversation_id, user_text, assistant_text, *,
 def list_messages(path, conversation_id):
     validated_id(conversation_id)
     path = checked_path(path, require_file=True)
-    with sqlite_connect(path, readonly=True) as conn:
+    with closing(sqlite_connect(path, readonly=True)) as conn:
         check_schema(conn)
         return conn.execute(
             "SELECT role, content, classification FROM messages "

@@ -86,6 +86,11 @@ class SQLiteContracts(unittest.TestCase):
         writer = sqlite3.connect(self.db, isolation_level=None)
         writer.execute("PRAGMA journal_mode=WAL")
         writer.execute("BEGIN IMMEDIATE")
+        writer.execute(
+            "INSERT INTO conversations (conversation_id, created_utc, updated_utc, consent) "
+            "VALUES (?, ?, ?, 1)",
+            ("uncommitted", store.now_utc(), store.now_utc())
+        )
         try:
             target = self.root / "snapshot.db"
             result, manifest = store.backup_database(
@@ -104,6 +109,10 @@ class SQLiteContracts(unittest.TestCase):
         store.restore_backup(result, manifest, restored, authorize_restore=True)
         self.assertEqual(store.list_messages(restored,"conversation-1"),
                          store.list_messages(self.db,"conversation-1"))
+        with sqlite3.connect(restored) as restored_conn:
+            self.assertIsNone(restored_conn.execute(
+                "SELECT conversation_id FROM conversations WHERE conversation_id='uncommitted'"
+            ).fetchone())
         self.write(user="after",answer="another")
         self.assertEqual(len(store.list_messages(restored,"conversation-1")), 2)
         with self.assertRaisesRegex(store.StoreError, "restore_destination_exists"):
