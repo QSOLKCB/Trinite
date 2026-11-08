@@ -4,3 +4,11 @@ __pycache__/
 .venv/
 build/
 dist/
+
+# TRI-SQLITE-001 local-only state, WAL/SHM sidecars and private backups.
+/data/*.db
+/data/*.db-wal
+/data/*.db-shm
+/data/*.db-journal
+/data/*.db.manifest.json
+/data/backups/
