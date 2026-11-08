@@ -140,6 +140,124 @@ class SQLiteContracts(unittest.TestCase):
         with self.assertRaisesRegex(store.StoreError, "symlink_path"):
             store.list_messages(link,"conversation-1")
 
+
+    def test_read_of_closed_wal_does_not_create_sidecars(self):
+        self.init()
+        self.assertEqual({p.name for p in self.root.iterdir()}, {"trinite.db"})
+        self.assertEqual(store.list_messages(self.db, "s"), [])
+        self.assertEqual({p.name for p in self.root.iterdir()}, {"trinite.db"})
+
+    def test_live_wal_read_retains_uncheckpointed_committed_rows(self):
+        self.init()
+        writer = sqlite3.connect(self.db, isolation_level=None)
+        try:
+            writer.execute("PRAGMA journal_mode=WAL")
+            writer.execute(
+                "INSERT INTO conversations VALUES (?, ?, ?, 1)",
+                ("live", store.now_utc(), store.now_utc())
+            )
+            writer.execute(
+                "INSERT INTO messages (conversation_id, role, content, classification, created_utc) "
+                "VALUES (?, ?, ?, ?, ?)",
+                ("live", "user", "in WAL", "user", store.now_utc())
+            )
+            self.assertTrue(self.db.with_name("trinite.db-wal").exists())
+            self.assertTrue(self.db.with_name("trinite.db-shm").exists())
+            self.assertEqual(store.list_messages(self.db, "live"),
+                             [("user", "in WAL", "user")])
+            self.db.with_name("trinite.db-shm").unlink()
+            with self.assertRaisesRegex(store.StoreError, "incomplete_wal_sidecars"):
+                store.list_messages(self.db, "live")
+            self.assertFalse(self.db.with_name("trinite.db-shm").exists())
+        finally:
+            writer.close()
+
+    def test_restore_rejects_stale_wal_after_main_unlinked(self):
+        self.init()
+        self.write(user="source", answer="source answer")
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        destination = self.root / "restore.db"
+        store.initialize(destination, enable_persistence=True)
+        stale = sqlite3.connect(destination, isolation_level=None)
+        try:
+            stale.execute("PRAGMA journal_mode=WAL")
+            stale.execute(
+                "INSERT INTO conversations VALUES (?, ?, ?, 1)",
+                ("stale", store.now_utc(), store.now_utc())
+            )
+            stale.execute("INSERT INTO messages "
+                          "(conversation_id, role, content, classification, created_utc) "
+                          "VALUES (?, ?, ?, ?, ?)",
+                          ("stale", "user", "stale WAL", "user", store.now_utc()))
+            self.assertTrue(destination.with_name("restore.db-wal").exists())
+            self.assertTrue(destination.with_name("restore.db-shm").exists())
+            destination.unlink()
+            with self.assertRaisesRegex(store.StoreError, "restore_destination_sidecars_exist"):
+                store.restore_backup(backup, manifest, destination,
+                                     authorize_restore=True)
+            self.assertFalse(destination.exists())
+            self.assertTrue(destination.with_name("restore.db-wal").exists())
+        finally:
+            stale.close()
+
+    def test_restore_rejects_each_orphan_sidecar(self):
+        self.init()
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        target = self.root / "restore.db"
+        for extension in ("-wal", "-shm", "-journal"):
+            with self.subTest(extension=extension):
+                sidecar = self.root / ("restore.db" + extension)
+                sidecar.write_bytes(b"orphan")
+                with self.assertRaisesRegex(store.StoreError, "restore_destination_sidecars_exist"):
+                    store.restore_backup(backup, manifest, target,
+                                         authorize_restore=True)
+                self.assertFalse(target.exists())
+                sidecar.unlink()
+
+    def test_renamed_column_and_missing_index_fail_schema_gate(self):
+        self.init()
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.execute("ALTER TABLE messages RENAME COLUMN content TO payload")
+            conn.commit()
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.list_messages(self.db, "s")
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.backup_database(self.db, self.root / "bad-snapshot.db",
+                                  authorize_backup=True)
+        self.assertFalse((self.root / "bad-snapshot.db").exists())
+        # A self-updated manifest must not turn structurally incompatible
+        # bytes into an acceptable restored database.
+        second = self.root / "second.db"
+        store.initialize(second, enable_persistence=True)
+        with closing(sqlite3.connect(second)) as conn:
+            conn.execute("DROP INDEX messages_by_conversation")
+            conn.commit()
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.list_messages(second, "s")
+
+    def test_corrupted_backup_schema_rejected_even_with_matching_hash(self):
+        self.init()
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        with closing(sqlite3.connect(backup)) as conn:
+            conn.execute("ALTER TABLE messages RENAME COLUMN content TO payload")
+            conn.commit()
+        forged = json.loads(manifest.read_text("utf-8"))
+        forged["bytes"] = backup.stat().st_size
+        forged["sha256"] = store.sha256_path(backup)
+        manifest.write_bytes(store.json_bytes(forged))
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.verify_backup(backup, manifest)
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.restore_backup(backup, manifest, self.root / "fresh.db",
+                                 authorize_restore=True)
+        self.assertFalse((self.root / "fresh.db").exists())
+
     def test_version_drift_rejected(self):
         self.init()
         with closing(sqlite3.connect(self.db)) as conn:

@@ -137,9 +137,40 @@ def exclusive_empty_file(path):
     os.close(fd)
 
 
+def path_present(path):
+    """Include broken symlinks and special files; Path.exists() misses them."""
+    try:
+        Path(path).lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def sqlite_sidecars(path):
+    return tuple(Path(str(path) + ext) for ext in ("-wal", "-shm", "-journal"))
+
+
 def sqlite_connect(path, *, readonly):
     if readonly:
-        connection = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True,
+        wal, shm, _journal = sqlite_sidecars(path)
+        has_wal, has_shm = path_present(wal), path_present(shm)
+        if has_wal != has_shm:
+            # A partial WAL pair cannot be opened without risking SQLite
+            # creating a missing sidecar or silently omitting committed rows.
+            raise StoreError("incomplete_wal_sidecars")
+        if has_wal:
+            checked_path(wal, require_file=True)
+            checked_path(shm, require_file=True)
+            # Both live WAL sidecars exist: normal read-only SQLite honors
+            # committed WAL data and does not need to create missing files.
+            mode = "mode=ro"
+        else:
+            # A closed/checkpointed WAL database has no sidecars. Plain
+            # mode=ro creates new -wal/-shm files even for a SELECT.
+            # Immutable mode reads the standalone main database without
+            # creating artifacts. Never use it when WAL data is present.
+            mode = "mode=ro&immutable=1"
+        connection = sqlite3.connect(path.as_uri() + "?" + mode, uri=True,
                                      timeout=3.0, isolation_level=None)
     else:
         connection = sqlite3.connect(str(path), timeout=3.0, isolation_level=None)
@@ -159,6 +190,25 @@ def check_schema(conn):
     )}
     if tables != EXPECTED_TABLES:
         raise StoreError("schema_membership_mismatch")
+    # Table names and PRAGMA integrity_check alone cannot detect a renamed
+    # column, missing CHECK/foreign key, relaxed NOT NULL or missing index.
+    # Schema v1 is a frozen contract; compare the exact stored definitions
+    # of all application tables and indexes, rejecting extra views/triggers.
+    expected_sql = {
+        ("table", statement.split()[2]): statement for statement in TABLES
+    }
+    expected_sql.update({
+        ("index", statement.split()[2]): statement for statement in INDEXES
+    })
+    actual_sql = {
+        (kind, name): sql for kind, name, sql in conn.execute(
+            "SELECT type, name, sql FROM sqlite_master "
+            "WHERE type IN ('table', 'index', 'view', 'trigger') "
+            "AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL"
+        )
+    }
+    if actual_sql != expected_sql:
+        raise StoreError("schema_structure_mismatch")
     if conn.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
         raise StoreError("sqlite_integrity_failed")
     if conn.execute("PRAGMA foreign_key_check").fetchone() is not None:
@@ -392,13 +442,20 @@ def backup_database(database, target, *, authorize_backup=False):
             temp_manifest.unlink(missing_ok=True)
 
 
+def check_fresh_restore_destination(output):
+    """An absent main .db file is insufficient if an old WAL still exists."""
+    if path_present(output):
+        raise StoreError("restore_destination_exists")
+    if any(path_present(sidecar) for sidecar in sqlite_sidecars(output)):
+        raise StoreError("restore_destination_sidecars_exist")
+
+
 def restore_backup(backup, manifest, output, *, authorize_restore=False):
     if not authorize_restore:
         raise StoreError("restore_authorization_required")
     info = verify_backup(backup, manifest)
     output = checked_path(output)
-    if output.exists():
-        raise StoreError("restore_destination_exists")
+    check_fresh_restore_destination(output)
     temp = private_temp_path(output)
     try:
         with open(backup, "rb") as src, open(temp, "wb") as dest:
@@ -412,6 +469,10 @@ def restore_backup(backup, manifest, output, *, authorize_restore=False):
             check_schema(conn)
         finally:
             conn.close()
+        # Detect WAL/SHM/journal artifacts added while copying, before the
+        # no-clobber main-database publication. The target directory must
+        # remain owner-controlled; this is not a hostile-host race guarantee.
+        check_fresh_restore_destination(output)
         os.link(temp, output)
         sync_parent(output)
         return output

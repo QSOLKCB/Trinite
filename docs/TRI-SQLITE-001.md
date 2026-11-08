@@ -7,8 +7,8 @@
 - Python 3.11+ standard-library sqlite3; zero extra dependencies, offline and local by default. No cloud database, HTTP, model call, Node, NPM or Notion API in this module.
 - Default path: data/trinite.db. .gitignore excludes that file, its WAL, SHM and journal sidecars, and the data/backups/ directory. Never commit user conversations, backup files, journals or credentials.
 - Persistence **requires explicit opt-in** at both initialization and programmatic write. No file is created by a read, and this PR does **not automatically wire** the existing TRI-CHAT-001 WebUI to disk.
-- Version 1 schema with a PRAGMA user_version gate; explicit SQL transactions, parameterized statements, strict foreign keys, WAL and synchronous FULL, identity/size constraints. Tables: conversations, messages, route_decisions, tool_results, model_registry and receipt_refs.
-- Exchange writes atomically store one bounded user + assistant pair; reading and logical deletion are explicit. Input is *application data*, not an independently verified research label or authorization token.
+- Version 1 schema with a PRAGMA user_version gate and exact table/index SQL-definition validation (including column names, NOT NULL, CHECK and foreign keys); explicit SQL transactions, parameterized statements, strict foreign keys, WAL and synchronous FULL, identity/size constraints. Tables: conversations, messages, route_decisions, tool_results, model_registry and receipt_refs.
+- Exchange writes atomically store one bounded user + assistant pair; reading and logical deletion are explicit. Reads of a checkpointed/closed WAL database use a no-artifact immutable SQLite connection; when both live WAL/SHM files exist, ordinary SQLite read-only mode includes committed WAL data. A partial WAL sidecar pair fails closed instead of creating a missing file or silently dropping WAL changes. Input is *application data*, not an independently verified research label or authorization token.
 - SQLite is plaintext without native encryption in the standard-library build. Use a private local directory and OS/disk encryption for sensitive material. Deletion is not forensic erasure from previous SQLite pages, WAL, filesystem snapshots or retained backups.
 - Notion remains an optional curated cloud knowledge index. Raw chat transcripts, private model outputs and local database files are never sent there by this adapter.
 
@@ -44,7 +44,7 @@ python3 -I -B scripts/trinite_chat_sqlite_v1.py restore \
 
 Backup uses SQLite Connection.backup() to obtain a consistent snapshot of a live WAL database rather than copying an open database file. A standalone backup is converted to DELETE journal mode, validated by SQLite integrity_check and foreign_key_check plus version and table inventory, and bound to an external JSON SHA-256/byte-count manifest. Backup and manifest are published without clobbering existing filenames; failures retain any already published partial output for audit.
 
-Restore verifies the manifest, exact checksum and schema before making a fresh destination. It never overwrites an active DB. Stop the app and inspect the restored database before deciding on any separate replacement or switchover. Secure long-term retention, backup encryption and deleting old copies are owner-managed policies.
+Restore verifies the manifest, exact checksum and structural schema before making a fresh destination. It rejects a destination with any existing main database or orphaned -wal/-shm/-journal sidecar, including sidecars left after the main file was unlinked, and rechecks before publication. It never overwrites an active DB. Stop the app and inspect the restored database before deciding on any separate replacement or switchover. Secure long-term retention, backup encryption and deleting old copies are owner-managed policies.
 
 ## Programmatic API (not integrated into TRI-CHAT-001 yet)
 
