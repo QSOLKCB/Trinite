@@ -31,3 +31,9 @@ Documentation changes require relative-link and moved-asset checks plus review f
 PR descriptions state the concrete behavior, scope, checks actually run, and remaining gates. Update the roadmap only for demonstrated completion. Do not add a green CI badge before that workflow exists. Open reviewable PRs; release/tag/archive actions follow an explicit release task and retained evidence.
 
 The combined CPU runner python scripts/check_cpu.py executes the same required suite IDs/order; explicit subprocess isolation remains. Performance work follows the target contract, equivalence gates and paired measurements in [OPTIMIZATION.md](OPTIMIZATION.md). Never cache verifier outcomes, source-audit success, or test results in place of executing current checks.
+
+## New proposed orchestration review boundary (TRI-ORCH-001)
+
+Owner-requested order on 9 November 2026: first [TRI-ORCH-001](TRI-ORCH-001.md) **documentation-only** review (roadmap, architecture, prospective TRI-O invariants and prototype gates), then a **separate** [TRI-CHAT-001](TRI-CHAT-001.md) implementation PR. Do not add executable code, server, model dependencies, workflows, downloads, assets, changed `AGENTS.md`, native training or runs to the design PR. Do not claim its proposal passed runtime/security tests. Current owner authorization covers only the docs PR.
+
+The future implementation must distinguish real local LFM3 generative calls from optional d1 **non-generative decision advice**, preserve the static governing allowlist, use an independently checked exact formal path, enforce local-only and resource limits, retain model/rights provenance, refuse unsafe/uncertain states and run adversarial tests. The repository's historical numerical/rights/provenance source closures remain untouched. Actual owner-local inference, distillation, new training, GPU execution, release or remote deployment each need their own scope/approval and evidence.

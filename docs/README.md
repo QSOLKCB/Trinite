@@ -10,6 +10,8 @@ Phases 1–4 implement the offline foundation, a frozen symbolic fixture, dense/
 | --- | --- |
 | [IDEA.md](IDEA.md) | Original brainstorming, preserved verbatim; questions are not decisions |
 | [INVARIANTS.md](INVARIANTS.md) | Openness, data, scientific, and runtime requirements |
+| [TRI-ORCH-001.md](TRI-ORCH-001.md) | Proposed local deterministic orchestrator, decision/teacher roles, trust boundaries and review gates; **docs-only** |
+| [TRI-CHAT-001.md](TRI-CHAT-001.md) | **Separate next PR** plan for local conversation WebUI/server and adversarial verification |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | First model specification and system boundaries |
 | [MODULES.md](MODULES.md) | Responsibilities, interfaces, and permitted dependencies |
 | [TECH-STACK.md](TECH-STACK.md) | Language, dependencies, alternatives, and source references |

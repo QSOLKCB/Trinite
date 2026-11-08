@@ -38,3 +38,9 @@ A fine-tuned upstream pretrained model may be an explicitly labelled comparator.
 The CPU dependency was acquired from the [official PyTorch CPU index](https://download.pytorch.org/whl/cpu) using the [2.8 installation instructions](https://pytorch.org/get-started/previous-versions/). The wheel/backend and rounding behavior were checked during Phase 2 conformance. Version selection is a pinned reference, not a claim to use the latest upstream release.
 
 Sources are prior art and engineering references, not Trinite results. API/version claims must be rechecked when the corresponding implementation dependency is introduced. No model/training dependency is imported or installed by Phase 1 CPU conformance.
+
+## Proposed local chat application stack (documentation-only)
+
+[TRI-ORCH-001](TRI-ORCH-001.md) and [TRI-CHAT-001](TRI-CHAT-001.md) are an **optional, separate application workstream**, not changes to native Trinite's pinned Torch/NumPy CPU environment. Proposed choices: Python 3.11+ standard-library server, argparse/unittest/JSON and strict local network client; vanilla HTML/CSS/JS WebUI with no Node/NPM/build system; optional `uv run` execution where it doesn't replace the historical hash-locked native workflow. Default local loopback endpoints, no cloud fallback, Docker, Kubernetes or implicit package/model acquisition.
+
+The generative LFM3-1.7B and non-generative d1-2B models are external locally provisioned assets, **not** Trinite native checkpoints or automatically installed dependencies. d1-2B-GGUF requires separately verified compatible llama.cpp `/v1/systemone` serving, not generic chat-completions wiring. LFM Open License v1.0 applies to their weights, Trinite repository code stays MPL-2.0, and training-data rights remain separately gated by [DATA](DATA.md). Do not assert RTX 5060 Ti VRAM fit, GPU performance or deterministic teacher outputs without actual pinned local measurements.

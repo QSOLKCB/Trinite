@@ -473,3 +473,19 @@ strict EOS, no retries and separate post-episode evaluation. Qutrit remains
 one-shot small public conformance. No checkpoint adapter, training or learning
 gain is claimed; future scientific execution requires a fresh exact freeze and
 owner approval. Historical negative evidence and numerical bridges are unchanged.
+
+## Proposed application-side modules (TRI-ORCH-001, not implemented)
+
+See [TRI-ORCH-001](TRI-ORCH-001.md) and [next-PR prototype](TRI-CHAT-001.md). These are logical responsibilities, **not** current directories, imports, public interfaces or permission to create implementation files in this PR.
+
+| Logical component | Sole responsibility | Dependencies |
+| --- | --- | --- |
+| Loopback transport | bounded strict HTTP/JSON, Host/Origin, static files | standard library and validated controller API |
+| Deterministic policy/controller | prior allowlist, route selection, limits, abstention, failure/receipt state | strictly typed contracts and injected adapters only |
+| Optional d1 adapter | narrow structured choice/score advice through explicitly verified local `/v1/systemone` | loopback client, no direct tool execution |
+| Chat teacher adapter | external locally pinned generative text | loopback client; returns untrusted text only |
+| Exact formal operator | first-party bounded integer/GF(3) arithmetic | pure validation and independent oracle; no model imports |
+| Verification/evidence | immutable formal check, scoped digests and redacted receipts | typed result, no ability to modify model/backend decision |
+| Browser presenter | display escaped text and status, no model-supplied executable content | local HTTP API only |
+
+The native decoder, training, data admission, geometry, checkpoint and PROVENANCE modules remain isolated. No framework/plugin registry, cross-import from low-level native modules into server, dynamic `eval`, silent backend substitution or duplicated numerical updater. The implementation PR must freeze real module paths, interface versions and source closure before any target run.
