@@ -1,0 +1,25 @@
+name: TRI-SQLITE-001 offline persistence conformance
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/trinite_chat_sqlite_v1.py'
+      - 'tests/trinite_sqlite_v1/**'
+      - 'docs/TRI-SQLITE-001.md'
+      - '.gitignore'
+      - '.github/workflows/tri-sqlite-001.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: SQLite opt-in, schema, WAL backup, corruption, restore and privacy contracts
+        run: python3 -I -B -m unittest discover -s tests/trinite_sqlite_v1 -v

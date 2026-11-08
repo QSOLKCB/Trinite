@@ -4,3 +4,10 @@ __pycache__/
 .venv/
 build/
 dist/
+
+# TRI-SQLITE-001 local-only state, WAL/SHM sidecars and private backups.
+/data/trinite.db
+/data/trinite.db-wal
+/data/trinite.db-shm
+/data/trinite.db-journal
+/data/backups/
