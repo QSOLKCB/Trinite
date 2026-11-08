@@ -1,6 +1,10 @@
 """TRI-CHAT-001 software-double tests. No model/runtime acquisition."""
 import hashlib
 import http.client
+import socket
+import time
+from types import SimpleNamespace
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from http.server import HTTPServer
 import importlib.util
 import json
@@ -31,6 +35,8 @@ class CoreContracts(unittest.TestCase):
             b'{"schema":"trinite.chat.request.v1","message":"","history":[]}',
             b'{"schema":"trinite.chat.request.v1","message":"A","history":[{"role":"assistant","content":"x"}]}',
             b'\xff',
+            b'{"schema":"trinite.chat.request.v1","message":"Hi","history":' +
+                b'[' * 1100 + b']' * 1100 + b'}',
         ):
             with self.subTest(bad=bad):
                 with self.assertRaises(chat.Invalid):
@@ -147,11 +153,95 @@ class HTTPContracts(unittest.TestCase):
                 self.assertEqual(self.request("POST", path, data, headers)[0], code)
         self.assertEqual(self.request("PUT", "/api/chat")[0], 405)
 
+    def test_unfinished_header_does_not_starve_server(self):
+        # The single synchronous server must expire an accepted connection
+        # even before BaseHTTPRequestHandler parses its request line.
+        idle = socket.create_connection(("127.0.0.1", self.port), timeout=2)
+        try:
+            start = time.monotonic()
+            status, _, _ = self.request("GET", "/")
+            elapsed = time.monotonic() - start
+            self.assertEqual(status, 200)
+            self.assertLess(elapsed, chat.HEADER_DEADLINE + 1.5)
+        finally:
+            idle.close()
+
+    def test_deep_json_returns_structured_400(self):
+        raw = (b'{"schema":"trinite.chat.request.v1","message":"Hi","history":' +
+               b'[' * 1100 + b']' * 1100 + b'}')
+        status, _, data = self.request(
+            "POST", "/api/chat", raw, {"Content-Type": "application/json"}
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(data)["reason"], "malformed_json")
+
     def test_escape_only_webui(self):
         js = (ROOT/"scripts/trinite_chat_v1_ui/app.js").read_text()
         self.assertIn("body.textContent = content", js)
         self.assertNotIn("innerHTML", js)
         self.assertNotIn("eval(", js)
+        self.assertIn("TextEncoder", js)
+        self.assertIn("MAX_REQUEST_BYTES = 16384", js)
+        self.assertIn("byteLength(answer) <= MAX_MESSAGE_BYTES", js)
+        self.assertIn("pruneHistory(text)", js)
+        self.assertIn("history.splice(0, 2)", js)
+
+
+class AdversarialTeacherDeadline(unittest.TestCase):
+    """A byte-drip server must not extend an absolute teacher deadline."""
+
+    def verify_trickle(self, mode):
+        class SlowTeacher(BaseHTTPRequestHandler):
+            def log_message(self, *_):
+                pass
+
+            def do_POST(self):
+                size = int(self.headers["Content-Length"])
+                self.rfile.read(size)
+                body = json.dumps({"model": "fake", "choices": [
+                    {"finish_reason": "stop",
+                     "message": {"role": "assistant", "content": "ok"}}
+                ]}).encode()
+                try:
+                    if mode == "headers":
+                        # Header trickle begins before getresponse() completes.
+                        for byte in b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\n":
+                            self.connection.sendall(bytes([byte]))
+                            time.sleep(0.04)
+                    else:
+                        self.send_response(200)
+                        self.send_header("Content-Length", str(len(body)))
+                        self.end_headers()
+                        for byte in body:
+                            self.connection.sendall(bytes([byte]))
+                            time.sleep(0.04)
+                except (OSError, BrokenPipeError):
+                    pass
+
+        with ThreadingHTTPServer(("127.0.0.1", 0), SlowTeacher) as server:
+            server.daemon_threads = True
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            saved = chat.TEACHER_DEADLINE
+            chat.TEACHER_DEADLINE = 0.25
+            try:
+                config = SimpleNamespace(active=True, model_id="fake", port=server.server_port)
+                started = time.monotonic()
+                with self.assertRaises(chat.TeacherFault) as captured:
+                    chat.teacher_chat(config, "hello", [])
+                elapsed = time.monotonic() - started
+                self.assertEqual(captured.exception.code, "teacher_timeout")
+                self.assertLess(elapsed, 0.9)
+            finally:
+                chat.TEACHER_DEADLINE = saved
+                server.shutdown()
+                worker.join(timeout=2)
+
+    def test_slow_response_headers(self):
+        self.verify_trickle("headers")
+
+    def test_slow_response_body(self):
+        self.verify_trickle("body")
 
 
 if __name__ == "__main__":

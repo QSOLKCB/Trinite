@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import http.client
+import io
 import json
 import operator
 import os
@@ -26,6 +27,8 @@ MAX_MESSAGE = 8 * 1024
 MAX_HISTORY = 16
 MAX_TEACHER = 64 * 1024
 TEACHER_DEADLINE = 30.0
+HEADER_DEADLINE = 2.0
+BODY_DEADLINE = 5.0
 MAX_GENERATED_TOKENS = 512
 UI = Path(__file__).resolve().parent / "trinite_chat_v1_ui"
 INT = r"-?(?:0|[1-9][0-9]{0,11})"
@@ -40,6 +43,41 @@ GF3 = re.compile(
 FORMAL_PREFIX = re.compile(
     r"^\s*(?:calculate\b|compute\b|gf3\b|gf\(3\)|[-+]?[0-9]|what\s+is\s+[-+]?[0-9])", re.I
 )
+
+
+class DeadlineSocketReader(io.RawIOBase):
+    """Buffered-read source with a single absolute deadline across all recv calls.
+
+    Socket receive timeouts alone allow a peer to keep a blocking read alive
+    indefinitely by trickling bytes. The deadline is rechecked per raw recv,
+    including buffered HTTP header parsing and response bodies.
+    """
+
+    def __init__(self, sock, deadline):
+        super().__init__()
+        self.sock = sock
+        self.deadline = deadline
+
+    def readable(self):
+        return True
+
+    def readinto(self, b):
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("stream_deadline_exceeded")
+        self.sock.settimeout(remaining)
+        return self.sock.recv_into(b)
+
+
+class DeadlineHTTPResponse(http.client.HTTPResponse):
+    """Use the same absolute deadline for status/header parsing and body bytes."""
+
+    def __init__(self, sock, *, deadline, **kwargs):
+        super().__init__(sock, **kwargs)
+        # Replace HTTPResponse's ordinary makefile reader, which can block on
+        # slow-trickled headers or body indefinitely, with a deadline reader.
+        self.fp.close()
+        self.fp = io.BufferedReader(DeadlineSocketReader(sock, deadline))
 
 
 class Invalid(ValueError):
@@ -68,7 +106,7 @@ def strict_json(raw):
 
     try:
         return json.loads(raw, object_pairs_hook=pairs, parse_constant=reject_constant)
-    except (UnicodeError, json.JSONDecodeError, ValueError) as exc:
+    except (UnicodeError, json.JSONDecodeError, ValueError, RecursionError) as exc:
         if isinstance(exc, Invalid):
             raise
         raise Invalid("malformed_json") from None
@@ -235,6 +273,10 @@ def teacher_chat(config, message, history):
     payload = canonical(req)
     start = time.monotonic()
     conn = http.client.HTTPConnection("127.0.0.1", config.port, timeout=TEACHER_DEADLINE)
+    deadline = start + TEACHER_DEADLINE
+    conn.response_class = lambda sock, **kwargs: DeadlineHTTPResponse(
+        sock, deadline=deadline, **kwargs
+    )
     try:
         conn.request("POST", "/v1/chat/completions", body=payload,
                      headers={"Content-Type": "application/json", "Accept": "application/json"})
@@ -245,11 +287,11 @@ def teacher_chat(config, message, history):
             raise TeacherFault("teacher_encoding_rejected")
         raw = bytearray()
         while True:
-            remaining = TEACHER_DEADLINE - (time.monotonic() - start)
-            if remaining <= 0:
+            if time.monotonic() >= deadline:
                 raise TeacherFault("teacher_timeout")
-            if conn.sock is not None:
-                conn.sock.settimeout(remaining)
+            # The underlying raw socket reader independently reapplies the
+            # absolute deadline to every recv, even if response.read waits for
+            # more bytes or the peer sends many short chunks.
             chunk = response.read(min(4096, MAX_TEACHER + 1 - len(raw)))
             if not chunk:
                 break
@@ -326,6 +368,14 @@ def result_for(request, config, adapter=teacher_chat, verifier=independent_oracl
 def http_handler(config, adapter=teacher_chat):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.0"
+
+        def setup(self):
+            super().setup()
+            self.rfile.close()
+            self._deadline_reader = DeadlineSocketReader(
+                self.connection, time.monotonic() + HEADER_DEADLINE
+            )
+            self.rfile = io.BufferedReader(self._deadline_reader)
 
         def log_message(self, *_):
             """Never log user text, query strings or model output."""
@@ -406,7 +456,9 @@ def http_handler(config, adapter=teacher_chat):
             if length == 0:
                 self.fail(400, "empty_request")
                 return
-            self.connection.settimeout(5.0)
+            # The same reader that bounded request lines and headers now
+            # bounds the complete body by an independent absolute deadline.
+            self._deadline_reader.deadline = time.monotonic() + BODY_DEADLINE
             try:
                 raw = self.rfile.read(length)
                 if len(raw) != length:
@@ -457,7 +509,6 @@ def main(argv=None):
     except Invalid as exc:
         parser.error(str(exc))
     server = HTTPServer(("127.0.0.1", args.port), http_handler(config))
-    server.timeout = 2.0
     print("TRI-CHAT-001 listening at http://127.0.0.1:" + str(args.port),
           "| local teacher:", "enabled" if config.active else "disabled", flush=True)
     try:

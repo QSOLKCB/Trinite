@@ -6,6 +6,24 @@
   const status = document.getElementById("status");
   const send = document.getElementById("send");
   const history = [];
+  const encoder = new TextEncoder();
+  const MAX_MESSAGE_BYTES = 8192;
+  const MAX_REQUEST_BYTES = 16384;
+  const MAX_HISTORY = 16;
+  const byteLength = (value) => encoder.encode(value).length;
+  const payload = (message) => ({schema: "trinite.chat.request.v1", message, history});
+
+  // Keep complete user/assistant pairs only. A teacher may return 64 KiB,
+  // while each future history entry is limited to 8 KiB and the entire
+  // request to 16 KiB; oversized answers remain visible but not retained.
+  function pruneHistory(nextMessage) {
+    while (history.length &&
+           (history.length > MAX_HISTORY ||
+            history.some((entry) => byteLength(entry.content) > MAX_MESSAGE_BYTES) ||
+            byteLength(JSON.stringify(payload(nextMessage))) > MAX_REQUEST_BYTES)) {
+      history.splice(0, 2);
+    }
+  }
   let busy = false;
 
   function line(role, content, classification, fingerprint) {
@@ -30,6 +48,15 @@
     if (busy) return;
     const text = prompt.value.trim();
     if (!text) return;
+    if (byteLength(text) > MAX_MESSAGE_BYTES) {
+      status.textContent = "Message exceeds the 8 KiB UTF-8 limit.";
+      return;
+    }
+    pruneHistory(text);
+    if (byteLength(JSON.stringify(payload(text))) > MAX_REQUEST_BYTES) {
+      status.textContent = "Request exceeds the 16 KiB UTF-8 limit.";
+      return;
+    }
     busy = true;
     send.disabled = true;
     status.textContent = "Processing locally...";
@@ -37,7 +64,7 @@
       const reply = await fetch("/api/chat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({schema: "trinite.chat.request.v1", message: text, history}),
+        body: JSON.stringify(payload(text)),
       });
       const result = await reply.json();
       if (!result || result.schema !== "trinite.chat.result.v1" ||
@@ -51,8 +78,10 @@
       }
       line("assistant", answer, result.status, result.receipt && result.receipt.request_sha256);
       if (result.status === "verified_exact" || result.status === "model_generated_unverified") {
-        history.push({role: "user", content: text}, {role: "assistant", content: answer});
-        if (history.length > 16) history.splice(0, 2);
+        if (byteLength(answer) <= MAX_MESSAGE_BYTES) {
+          history.push({role: "user", content: text}, {role: "assistant", content: answer});
+          pruneHistory("");
+        }
       }
       prompt.value = "";
       status.textContent = result.status === "verified_exact"

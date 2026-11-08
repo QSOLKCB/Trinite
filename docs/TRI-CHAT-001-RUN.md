@@ -12,7 +12,7 @@ This prototype is a deterministic rules-first controller and a Python 3.11+ stan
 python3 -I -B -m unittest discover -s tests/trinite_chat_v1 -v
 ~~~
 
-These source-bound software-double checks cover strict JSON, formal operations, oracle disagreement, deterministic policy, browser escaping, loopback HTTP, Host/Origin and size/method rejection. CI has no model calls. Green tests do not certify actual model compatibility, robustness, GPU performance, general learning, or deployment security.
+These source-bound software-double checks cover strict JSON (including excessive nesting), formal operations, oracle disagreement, deterministic policy, browser escaping and UTF-8 conversation history budget, loopback HTTP, Host/Origin and size/method rejection. Slow-trickle tests require independent absolute deadlines for inbound HTTP headers/body and outgoing teacher response headers/body. CI has no model calls. Green tests do not certify actual model compatibility, robustness, GPU performance, general learning, or deployment security.
 
 ## Run locally without model weights
 
@@ -40,7 +40,7 @@ python3 -I -B scripts/run_trinite_chat_v1.py \
 
 The adapter only calls the configured local loopback OpenAI-compatible chat-completions endpoint. No retries or cloud fallback. Invalid model ID, truncated response, timeout or unsafe output fails closed. The teacher response is classified as model_generated_unverified, while independently checked arithmetic is classified verified_exact.
 
-Configured limits: HTTP JSON 16 KiB; message 8 KiB; 16 history turns; teacher output 64 KiB; backend timeout 30 seconds; 512 requested output tokens; one synchronous HTTP request at a time. These are application-level bounds, not proof of whole-system memory, latency or hardware containment. Never publish private chat transcripts or keys.
+Configured limits: HTTP JSON 16 KiB; message 8 KiB (each current/history entry); 16 history turns; teacher output 64 KiB; absolute inbound header deadline 2 seconds and body deadline 5 seconds; absolute teacher response deadline 30 seconds (including headers and slowly delivered body); 512 requested output tokens; one synchronous HTTP request at a time. The browser drops oversized assistant answers from replay history and prunes oldest complete pairs before each next request to stay within both 8-KiB entry and 16-KiB request budgets. These are application-level bounds, not proof of whole-system memory, latency or hardware containment. Never publish private chat transcripts or keys.
 
 ## Static GitHub Pages
 
