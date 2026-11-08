@@ -1,0 +1,24 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0b1020; color: #e6edfb; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { margin: auto; max-width: 880px; min-height: 100vh; padding: 26px 20px; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; gap: 18px; align-items: center; }
+.mark { width: 62px; height: 62px; border: 1px solid #6cc9b5; border-radius: 12px; padding: 15px 9px; font-size: 21px; font-weight: 800; color: #72d4c2; }
+h1 { margin: 0; letter-spacing: .2em; }
+header p { margin: 5px 0; color: #a9b9d6; font-size: .85rem; }
+.notice { border: 1px solid #455571; border-radius: 10px; padding: 12px; color: #d3dced; font-size: .86rem; }
+.messages { flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 230px; }
+.message { border-radius: 12px; padding: 15px; background: #18263d; overflow-wrap: anywhere; }
+.message.user { background: #253552; margin-left: 10%; }
+.message span { font-size: .7rem; letter-spacing: .08em; color: #85d7c6; font-weight: bold; }
+.message p { white-space: pre-wrap; margin-bottom: 4px; line-height: 1.55; }
+.message small { color: #9caec9; overflow-wrap: anywhere; font-family: monospace; font-size: .67rem; }
+form { border-top: 1px solid #455571; padding-top: 18px; }
+form label { display: block; margin-bottom: 9px; color: #bbc9df; }
+.composer { display: flex; gap: 9px; }
+textarea { flex: 1; min-width: 0; resize: vertical; border-radius: 8px; padding: 12px; background: #132037; border: 1px solid #61738d; color: inherit; font: inherit; }
+button { cursor: pointer; border: 0; border-radius: 8px; padding: 12px 18px; background: #65bba9; color: #071c24; font: inherit; font-weight: bold; }
+button:disabled { opacity: .5; cursor: default; }
+button.secondary { background: transparent; color: #b6cee8; padding: 5px 0; }
+#status { min-height: 1.5em; color: #b0c3db; font-size: .85rem; }
+@media(max-width: 600px) { main { padding: 12px; } .message.user { margin-left: 5%; } h1 { font-size: 1.4rem; } }

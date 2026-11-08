@@ -1,0 +1,25 @@
+name: TRI-CHAT-001 offline contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/run_trinite_chat_v1.py'
+      - 'scripts/trinite_chat_v1_ui/**'
+      - 'tests/trinite_chat_v1/**'
+      - 'docs/TRI-CHAT-001-RUN.md'
+      - '.github/workflows/tri-chat-001.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Strict local socket and controller tests (no teacher calls)
+        run: python3 -I -B -m unittest discover -s tests/trinite_chat_v1 -v

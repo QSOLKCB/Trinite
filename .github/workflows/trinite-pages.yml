@@ -1,0 +1,49 @@
+name: TRINITE static GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/trinite-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trinite-static-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main' && github.repository == 'QSOLKCB/Trinite'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate public static site
+        run: |
+          test -f site/index.html
+          test -f site/style.css
+          ! grep -rE 'localhost|127[.]0[.]0[.]1|api/chat|fetch\(' site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.repository == 'QSOLKCB/Trinite'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+    steps:
+      - name: Deploy reviewed main-branch static artifact
+        id: deployment
+        uses: actions/deploy-pages@v4

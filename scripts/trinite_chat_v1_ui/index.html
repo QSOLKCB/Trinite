@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TRINITE — Local Chat Prototype</title>
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="mark">T / /</div>
+      <div>
+        <h1>TRINITE</h1>
+        <p>Local Chat · TRI-CHAT-001 · Experimental application</p>
+      </div>
+    </header>
+    <section class="notice">
+      Exact arithmetic is checked independently. Teacher conversation is unverified.
+      This application is not a native Trinite reasoning model.
+    </section>
+    <section id="messages" class="messages" aria-live="polite" aria-label="Conversation">
+      <article class="message system"><span>TRINITE</span><p>Enter a message or try <code>17 * 19</code> or <code>gf3(2+2)</code>. General chat requires an explicitly configured local model.</p></article>
+    </section>
+    <form id="chat-form" autocomplete="off">
+      <label for="prompt">Message</label>
+      <div class="composer">
+        <textarea id="prompt" required maxlength="8192" rows="2" placeholder="Ask Trinite..." aria-label="Message"></textarea>
+        <button type="submit" id="send">Send</button>
+      </div>
+      <p id="status" role="status">No message sent. Private chat history stays in this browser tab's memory.</p>
+      <button type="button" id="clear" class="secondary">Clear conversation</button>
+    </form>
+  </main>
+</body>
+</html>
