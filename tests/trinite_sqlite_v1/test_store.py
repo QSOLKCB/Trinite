@@ -7,6 +7,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "scripts" / "trinite_chat_sqlite_v1.py"
@@ -141,11 +142,15 @@ class SQLiteContracts(unittest.TestCase):
             store.list_messages(link,"conversation-1")
 
 
-    def test_read_of_closed_wal_does_not_create_sidecars(self):
+    def test_read_of_closed_wal_preserves_rows_and_main_file(self):
         self.init()
         self.assertEqual({p.name for p in self.root.iterdir()}, {"trinite.db"})
+        before = store.sha256_path(self.db)
         self.assertEqual(store.list_messages(self.db, "s"), [])
-        self.assertEqual({p.name for p in self.root.iterdir()}, {"trinite.db"})
+        self.assertEqual(store.sha256_path(self.db), before)
+        # A mutable WAL database needs SQLite locking and may create
+        # -wal/-shm coordination files even for a logically read-only query.
+        self.assertTrue(self.db.is_file())
 
     def test_live_wal_read_retains_uncheckpointed_committed_rows(self):
         self.init()
@@ -257,6 +262,130 @@ class SQLiteContracts(unittest.TestCase):
             store.restore_backup(backup, manifest, self.root / "fresh.db",
                                  authorize_restore=True)
         self.assertFalse((self.root / "fresh.db").exists())
+
+
+    def test_mutable_online_backup_never_mixes_checkpoint_versions(self):
+        """Reproduce the immutable backup's 500-row mixed-page defect."""
+        self.init()
+        stamp = store.now_utc()
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.execute(
+                "INSERT INTO conversations VALUES (?, ?, ?, 1)",
+                ("bulk", stamp, stamp)
+            )
+            conn.executemany(
+                "INSERT INTO messages (conversation_id, role, content, classification, created_utc) "
+                "VALUES (?, ?, ?, ?, ?)",
+                [("bulk", "assistant", "a" * 4000,
+                  "model_generated_unverified", stamp) for _ in range(500)]
+            )
+            conn.commit()
+        self.assertFalse(self.db.with_name("trinite.db-wal").exists())
+
+        source_path = self.db
+        connect = store.sqlite_connect
+        writer_ran = []
+
+        class InterleavedSource:
+            def __init__(self, original):
+                self.original = original
+
+            def __getattr__(self, name):
+                return getattr(self.original, name)
+
+            def backup(self, target, *, pages, progress, sleep):
+                def after_step(status, remaining, total):
+                    if not writer_ran and 0 < remaining < total:
+                        with closing(sqlite3.connect(source_path, timeout=3.0)) as writer:
+                            writer.execute(
+                                "UPDATE messages SET content=? WHERE conversation_id='bulk'",
+                                ("b" * 4000,)
+                            )
+                            writer.commit()
+                            writer.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                        writer_ran.append(True)
+                    progress(status, remaining, total)
+                return self.original.backup(
+                    target, pages=pages, progress=after_step, sleep=sleep
+                )
+
+        def inject_progress(path, *, readonly, immutable_snapshot=False):
+            connection = connect(
+                path, readonly=readonly, immutable_snapshot=immutable_snapshot
+            )
+            if path == source_path and readonly:
+                self.assertFalse(immutable_snapshot)
+                return InterleavedSource(connection)
+            return connection
+
+        with mock.patch.object(store, "sqlite_connect", side_effect=inject_progress):
+            backup, manifest = store.backup_database(
+                self.db, self.root / "concurrent.db", authorize_backup=True
+            )
+        self.assertTrue(writer_ran, "writer must run between backup steps")
+        store.verify_backup(backup, manifest)
+        with closing(sqlite3.connect(backup)) as snapshot:
+            groups = snapshot.execute(
+                "SELECT substr(content,1,1),count(*) FROM messages "
+                "GROUP BY substr(content,1,1)"
+            ).fetchall()
+        self.assertEqual(sum(count for _, count in groups), 500)
+        self.assertEqual(len(groups), 1, "mixed old/new pages violate snapshot consistency")
+        self.assertIn(groups[0][0], ("a", "b"))
+
+    def test_immutable_mode_only_for_standalone_snapshots(self):
+        self.init()
+        with self.assertRaisesRegex(store.StoreError, "immutable_snapshot_requires_readonly"):
+            store.sqlite_connect(self.db, readonly=False, immutable_snapshot=True)
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        store.verify_backup(backup, manifest)
+        with closing(store.sqlite_connect(backup, readonly=True,
+                                          immutable_snapshot=True)) as snapshot:
+            store.check_schema(snapshot)
+        sidecar = self.root / "snapshot.db-wal"
+        sidecar.write_bytes(b"unexpected")
+        with self.assertRaisesRegex(store.StoreError, "snapshot_sidecars_exist"):
+            store.sqlite_connect(backup, readonly=True, immutable_snapshot=True)
+        sidecar.unlink()
+
+    def test_sqliteXerase_trigger_rejected_before_backup(self):
+        self.init()
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.execute(
+                "CREATE TRIGGER sqliteXerase AFTER INSERT ON messages "
+                "BEGIN DELETE FROM messages; END"
+            )
+            conn.commit()
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.list_messages(self.db, "s")
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.backup_database(self.db, self.root / "trigger.db",
+                                  authorize_backup=True)
+        self.assertFalse((self.root / "trigger.db").exists())
+
+    def test_trigger_with_literal_prefix_bypass_in_forged_backup(self):
+        self.init()
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        with closing(sqlite3.connect(backup)) as conn:
+            conn.execute(
+                "CREATE TRIGGER sqliteXerase AFTER INSERT ON messages "
+                "BEGIN DELETE FROM messages; END"
+            )
+            conn.commit()
+        forged = json.loads(manifest.read_text("utf-8"))
+        forged["bytes"] = backup.stat().st_size
+        forged["sha256"] = store.sha256_path(backup)
+        manifest.write_bytes(store.json_bytes(forged))
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.verify_backup(backup, manifest)
+        with self.assertRaisesRegex(store.StoreError, "schema_structure_mismatch"):
+            store.restore_backup(backup, manifest, self.root / "restored.db",
+                                 authorize_restore=True)
+        self.assertFalse((self.root / "restored.db").exists())
 
     def test_version_drift_rejected(self):
         self.init()

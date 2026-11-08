@@ -150,26 +150,33 @@ def sqlite_sidecars(path):
     return tuple(Path(str(path) + ext) for ext in ("-wal", "-shm", "-journal"))
 
 
-def sqlite_connect(path, *, readonly):
+def sqlite_connect(path, *, readonly, immutable_snapshot=False):
+    """Keep SQLite locks for live databases; immutable is snapshot-only.
+
+    The absence of WAL/SHM files does not make a live database immutable.
+    Bypassing SQLite locking can mix old and new pages during backup if a
+    writer updates the database and checkpoints between backup steps.
+    """
+    if immutable_snapshot and not readonly:
+        raise StoreError("immutable_snapshot_requires_readonly")
     if readonly:
-        wal, shm, _journal = sqlite_sidecars(path)
+        wal, shm, journal = sqlite_sidecars(path)
         has_wal, has_shm = path_present(wal), path_present(shm)
-        if has_wal != has_shm:
-            # A partial WAL pair cannot be opened without risking SQLite
-            # creating a missing sidecar or silently omitting committed rows.
-            raise StoreError("incomplete_wal_sidecars")
-        if has_wal:
-            checked_path(wal, require_file=True)
-            checked_path(shm, require_file=True)
-            # Both live WAL sidecars exist: normal read-only SQLite honors
-            # committed WAL data and does not need to create missing files.
-            mode = "mode=ro"
-        else:
-            # A closed/checkpointed WAL database has no sidecars. Plain
-            # mode=ro creates new -wal/-shm files even for a SELECT.
-            # Immutable mode reads the standalone main database without
-            # creating artifacts. Never use it when WAL data is present.
+        if immutable_snapshot:
+            # Only the verified standalone backup and private restore copy
+            # are eligible, not mutable application databases.
+            if has_wal or has_shm or path_present(journal):
+                raise StoreError("snapshot_sidecars_exist")
             mode = "mode=ro&immutable=1"
+        else:
+            if has_wal != has_shm:
+                raise StoreError("incomplete_wal_sidecars")
+            if has_wal:
+                checked_path(wal, require_file=True)
+                checked_path(shm, require_file=True)
+            # For live sources use normal locking and change detection even
+            # if no sidecars exist yet. SQLite may create coordination files.
+            mode = "mode=ro"
         connection = sqlite3.connect(path.as_uri() + "?" + mode, uri=True,
                                      timeout=3.0, isolation_level=None)
     else:
@@ -186,7 +193,7 @@ def check_schema(conn):
     if version != VERSION:
         raise StoreError("schema_version_mismatch")
     tables = {row[0] for row in conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT GLOB 'sqlite_*'"
     )}
     if tables != EXPECTED_TABLES:
         raise StoreError("schema_membership_mismatch")
@@ -204,7 +211,7 @@ def check_schema(conn):
         (kind, name): sql for kind, name, sql in conn.execute(
             "SELECT type, name, sql FROM sqlite_master "
             "WHERE type IN ('table', 'index', 'view', 'trigger') "
-            "AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL"
+            "AND name NOT GLOB 'sqlite_*' AND sql IS NOT NULL"
         )
     }
     if actual_sql != expected_sql:
@@ -380,7 +387,7 @@ def verify_backup(backup, manifest):
             raw["integrity"] != "ok" or not isinstance(raw["sha256"], str) or
             len(raw["sha256"]) != 64 or sha256_path(backup) != raw["sha256"]):
         raise StoreError("backup_identity_mismatch")
-    conn = sqlite_connect(backup, readonly=True)
+    conn = sqlite_connect(backup, readonly=True, immutable_snapshot=True)
     try:
         check_schema(conn)
     finally:
@@ -464,7 +471,7 @@ def restore_backup(backup, manifest, output, *, authorize_restore=False):
             os.fsync(dest.fileno())
         if temp.stat().st_size != info["bytes"] or sha256_path(temp) != info["sha256"]:
             raise StoreError("restore_source_changed")
-        conn = sqlite_connect(temp, readonly=True)
+        conn = sqlite_connect(temp, readonly=True, immutable_snapshot=True)
         try:
             check_schema(conn)
         finally:
