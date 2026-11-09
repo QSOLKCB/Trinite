@@ -7,7 +7,8 @@ This adapter is inert until explicitly opened by an owner-authorized caller.
 from __future__ import annotations
 
 import argparse
-from contextlib import closing
+import errno
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -101,9 +102,85 @@ def json_bytes(value):
                        ensure_ascii=True, allow_nan=False) + "\n").encode("ascii")
 
 
+def _file_identity(info):
+    if not stat.S_ISREG(info.st_mode):
+        raise StoreError("not_regular_file")
+    if os.name == "posix":
+        if info.st_uid != os.geteuid():
+            raise StoreError("unowned_file")
+        if info.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+            raise StoreError("unsafe_file_permissions")
+        if info.st_nlink != 1:
+            raise StoreError("unsafe_file_link_count")
+
+
+@contextmanager
+def pinned_parent(directory):
+    """Walk from / using descriptor-relative, no-follow directory opens.
+
+    Sticky ancestors (for example /tmp) are acceptable because other UIDs
+    cannot rename an owner-owned child there. A non-sticky directory writable
+    by other users is not acceptable even if the final parent is mode 0700.
+    """
+    if os.name != "posix" or not hasattr(os, "O_DIRECTORY"):
+        raise StoreError("secure_directory_descriptors_unavailable")
+    directory = Path(directory).absolute()
+    flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    fd = os.open("/", flags)
+    try:
+        for segment in directory.parts[1:]:
+            info = os.fstat(fd)
+            if (info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
+                    and not info.st_mode & stat.S_ISVTX):
+                raise StoreError("unsafe_writable_ancestor")
+            new_fd = os.open(segment, flags, dir_fd=fd)
+            os.close(fd)
+            fd = new_fd
+        info = os.fstat(fd)
+        if info.st_uid != os.geteuid():
+            raise StoreError("unowned_parent_directory")
+        if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+            raise StoreError("unsafe_parent_permissions")
+        yield fd
+    finally:
+        os.close(fd)
+
+
+def _checked_fd(parent_fd, name):
+    """Open one regular owned private file without following a final symlink."""
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    try:
+        fd = os.open(name, flags, dir_fd=parent_fd)
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise StoreError("symlink_path") from None
+        raise
+    try:
+        _file_identity(os.fstat(fd))
+        return fd
+    except Exception:
+        os.close(fd)
+        raise
+
+
+@contextmanager
+def checked_reader(path):
+    """Validate and read through the same open file descriptor."""
+    raw = Path(path).expanduser()
+    if ".." in raw.parts:
+        raise StoreError("path_traversal")
+    path = raw.absolute()
+    with pinned_parent(path.parent) as directory_fd:
+        fd = _checked_fd(directory_fd, path.name)
+        with os.fdopen(fd, "rb") as source:
+            yield source
+
+
 def sha256_path(path):
     digest = hashlib.sha256()
-    with open(path, "rb") as stream:
+    with checked_reader(path) as stream:
         for chunk in iter(lambda: stream.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -114,29 +191,22 @@ def checked_path(path, *, require_file=False):
     if ".." in raw.parts:
         raise StoreError("path_traversal")
     absolute = raw.absolute()
-    for node in (absolute, *absolute.parents):
+    with pinned_parent(absolute.parent) as parent_fd:
         try:
-            st = node.lstat()
+            info = os.stat(absolute.name, dir_fd=parent_fd, follow_symlinks=False)
         except FileNotFoundError:
-            if node != absolute and node == absolute.parent:
-                raise StoreError("missing_parent") from None
-            continue
-        if stat.S_ISLNK(st.st_mode):
-            raise StoreError("symlink_path")
-        if node == absolute and require_file and not stat.S_ISREG(st.st_mode):
-            raise StoreError("not_regular_file")
-        if node == absolute and not require_file and not stat.S_ISREG(st.st_mode):
-            raise StoreError("not_regular_file")
-    if require_file and not absolute.is_file():
-        raise StoreError("missing_regular_file")
-    if not absolute.parent.is_dir():
-        raise StoreError("missing_parent")
-    if os.name == "posix":
-        parent = absolute.parent.stat()
-        if parent.st_uid != os.geteuid():
-            raise StoreError("unowned_parent_directory")
-        if parent.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
-            raise StoreError("unsafe_parent_permissions")
+            if require_file:
+                raise StoreError("missing_regular_file") from None
+        else:
+            if stat.S_ISLNK(info.st_mode):
+                raise StoreError("symlink_path")
+            fd = _checked_fd(parent_fd, absolute.name)
+            try:
+                opened = os.fstat(fd)
+                if (info.st_dev, info.st_ino) != (opened.st_dev, opened.st_ino):
+                    raise StoreError("file_changed_during_check")
+            finally:
+                os.close(fd)
     return absolute
 
 
@@ -234,6 +304,34 @@ def check_schema(conn):
         raise StoreError("foreign_key_integrity_failed")
 
 
+def _fresh_destination_at(parent_fd, filename):
+    for name in (filename, *(filename + ext for ext in ("-wal", "-shm", "-journal"))):
+        try:
+            os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            continue
+        raise StoreError("database_already_exists")
+
+
+def _parent_unchanged(path, parent_fd):
+    """Detect parent substitution; publication still uses the pinned inode."""
+    try:
+        named = os.stat(path.parent, follow_symlinks=False)
+    except FileNotFoundError:
+        raise StoreError("parent_directory_changed") from None
+    pinned = os.fstat(parent_fd)
+    if not stat.S_ISDIR(named.st_mode) or (named.st_dev, named.st_ino) != (
+            pinned.st_dev, pinned.st_ino):
+        raise StoreError("parent_directory_changed")
+
+
+def _unlink_at(parent_fd, name):
+    try:
+        os.unlink(name, dir_fd=parent_fd)
+    except FileNotFoundError:
+        pass
+
+
 def initialize(path=DEFAULT_DB, *, enable_persistence=False):
     if not enable_persistence:
         raise StoreError("persistence_opt_in_required")
@@ -241,30 +339,50 @@ def initialize(path=DEFAULT_DB, *, enable_persistence=False):
     if path == DEFAULT_DB and not path.parent.exists():
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=False)
     path = checked_path(path)
-    check_fresh_database_destination(path)
-    temp = private_temp_path(path)
-    try:
-        conn = sqlite_connect(temp, readonly=False)
+    with pinned_parent(path.parent) as parent_fd:
+        if not Path("/proc/self/fd").is_dir():
+            # sqlite3 accepts filenames, not a caller-owned file descriptor.
+            # On Linux, the proc fd path keeps SQLite's main/WAL/SHM writes
+            # rooted in the validated directory even after a rename.
+            raise StoreError("fd_relative_sqlite_path_unavailable")
+        _fresh_destination_at(parent_fd, path.name)
+        temp_name = path.name + ".partial-" + secrets.token_hex(8)
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(temp_name, flags, 0o600, dir_fd=parent_fd)
+        os.close(fd)
+        anchored_temp = Path("/proc/self/fd") / str(parent_fd) / temp_name
         try:
-            configure_writable_connection(conn)
-            conn.execute("BEGIN IMMEDIATE")
+            conn = sqlite_connect(anchored_temp, readonly=False)
             try:
-                for statement in TABLES + INDEXES:
-                    conn.execute(statement)
-                conn.execute("PRAGMA user_version=1")
-                conn.execute("COMMIT")
-            except Exception:
-                conn.execute("ROLLBACK")
-                raise
-            check_schema(conn)
+                configure_writable_connection(conn)
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    for statement in TABLES + INDEXES:
+                        conn.execute(statement)
+                    conn.execute("PRAGMA user_version=1")
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
+                check_schema(conn)
+            finally:
+                conn.close()
+            _parent_unchanged(path, parent_fd)
+            _fresh_destination_at(parent_fd, path.name)
+            try:
+                os.link(temp_name, path.name, src_dir_fd=parent_fd,
+                        dst_dir_fd=parent_fd, follow_symlinks=False)
+            except FileExistsError:
+                raise StoreError("database_already_exists") from None
+            # Remove the extra hard link before the caller can use the DB.
+            _unlink_at(parent_fd, temp_name)
+            os.fsync(parent_fd)
+            return path
         finally:
-            conn.close()
-        check_fresh_database_destination(path)
-        publish_link_no_clobber(temp, path, "database_already_exists")
-        sync_parent(path)
-        return path
-    finally:
-        cleanup_private_temp(temp)
+            _unlink_at(parent_fd, temp_name)
+            for ext in ("-wal", "-shm", "-journal"):
+                _unlink_at(parent_fd, temp_name + ext)
 
 
 def open_store(path=DEFAULT_DB, *, enable_persistence=False):
@@ -434,7 +552,9 @@ def verify_backup(backup, manifest):
             result[key] = value
         return result
     try:
-        raw = json.loads(manifest.read_text("utf-8"), object_pairs_hook=reject_duplicates)
+        with checked_reader(manifest) as stream:
+            raw = json.loads(stream.read(4097).decode("utf-8"),
+                             object_pairs_hook=reject_duplicates)
     except (UnicodeError, ValueError, RecursionError):
         raise StoreError("invalid_manifest") from None
     if not isinstance(raw, dict) or set(raw) != {
@@ -498,6 +618,10 @@ def backup_database(database, target, *, authorize_backup=False):
         # Link is atomic and refuses an existing file (unlike os.replace).
         publish_link_no_clobber(temp, target, "backup_destination_exists")
         publish_link_no_clobber(temp_manifest, manifest, "backup_destination_exists")
+        # No-clobber hard-link publication temporarily creates a second link.
+        # Remove those temp names before verifying strict st_nlink == 1.
+        temp.unlink()
+        temp_manifest.unlink()
         sync_parent(target)
         verify_backup(target, manifest)
         return target, manifest
@@ -525,7 +649,7 @@ def restore_backup(backup, manifest, output, *, authorize_restore=False):
     check_fresh_database_destination(output)
     temp = private_temp_path(output)
     try:
-        with open(backup, "rb") as src, open(temp, "wb") as dest:
+        with checked_reader(backup) as src, open(temp, "wb") as dest:
             shutil.copyfileobj(src, dest, length=1 << 20)
             dest.flush()
             os.fsync(dest.fileno())

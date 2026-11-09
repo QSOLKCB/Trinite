@@ -57,6 +57,7 @@ class SQLiteContracts(unittest.TestCase):
     def test_incompatible_database_is_not_changed_before_rejection(self):
         with closing(sqlite3.connect(self.db)) as conn:
             conn.execute("CREATE TABLE unrelated(value TEXT)")
+        self.db.chmod(0o600)
         before = self.db.read_bytes()
         with self.assertRaisesRegex(store.StoreError, "schema_version_mismatch"):
             store.open_store(self.db, enable_persistence=True)
@@ -72,9 +73,10 @@ class SQLiteContracts(unittest.TestCase):
         before = victim.read_bytes()
         real_link = store.os.link
 
-        def substitute_before_publish(source, destination):
-            Path(destination).symlink_to(victim)
-            return real_link(source, destination)
+        def substitute_before_publish(source, destination, **kwargs):
+            # Destination is now relative to the pinned parent descriptor.
+            self.db.symlink_to(victim)
+            return real_link(source, destination, **kwargs)
 
         with mock.patch.object(store.os, "link", side_effect=substitute_before_publish):
             with self.assertRaisesRegex(store.StoreError, "database_already_exists"):
@@ -112,6 +114,89 @@ class SQLiteContracts(unittest.TestCase):
             with self.assertRaisesRegex(store.StoreError, "conversation_count_limit"):
                 self.write(conversation_id="third")
         self.assertEqual(store.list_messages(self.db, "third"), [])
+
+
+    @unittest.skipUnless(os.name == "posix" and Path("/proc/self/fd").is_dir(),
+                         "Linux descriptor-relative SQLite initialization")
+    def test_ancestor_substitution_is_rejected_without_retargeting_database(self):
+        """Rename the parent after validation, before fd-relative publication."""
+        outer = self.root / "safe-outer"
+        outer.mkdir(mode=0o700)
+        parent = outer / "private"
+        parent.mkdir(mode=0o700)
+        target = parent / "db.sqlite"
+        replacement = outer / "replacement"
+        replacement.mkdir(mode=0o700)
+        check = store._parent_unchanged
+
+        def swap_parent(path, parent_fd):
+            parent.rename(outer / "old-private")
+            replacement.rename(parent)
+            return check(path, parent_fd)
+
+        with mock.patch.object(store, "_parent_unchanged", side_effect=swap_parent):
+            with self.assertRaisesRegex(store.StoreError, "parent_directory_changed"):
+                store.initialize(target, enable_persistence=True)
+        self.assertFalse(target.exists())
+        self.assertEqual(list((outer / "old-private").iterdir()), [])
+        self.assertEqual(list(parent.iterdir()), [])
+
+    @unittest.skipUnless(os.name == "posix", "POSIX ancestor modes")
+    def test_unsafe_nonsticky_writable_ancestor_rejected(self):
+        ancestor = self.root / "unsafe-ancestor"
+        ancestor.mkdir(mode=0o700)
+        ancestor.chmod(0o777)
+        child = ancestor / "private"
+        child.mkdir(mode=0o700)
+        try:
+            with self.assertRaisesRegex(store.StoreError, "unsafe_writable_ancestor"):
+                store.initialize(child / "test.db", enable_persistence=True)
+        finally:
+            ancestor.chmod(0o700)
+        self.assertFalse((child / "test.db").exists())
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file permissions")
+    def test_existing_world_writable_database_rejected(self):
+        self.init()
+        self.db.chmod(0o666)
+        with self.assertRaisesRegex(store.StoreError, "unsafe_file_permissions"):
+            store.open_store(self.db, enable_persistence=True)
+        with self.assertRaisesRegex(store.StoreError, "unsafe_file_permissions"):
+            store.list_messages(self.db, "s")
+        self.db.chmod(0o600)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file permissions")
+    def test_world_writable_backup_or_manifest_rejected(self):
+        self.init()
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        for item in (backup, manifest):
+            item.chmod(0o666)
+            with self.assertRaisesRegex(store.StoreError, "unsafe_file_permissions"):
+                store.verify_backup(backup, manifest)
+            item.chmod(0o600)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX hardlink contract")
+    def test_existing_database_and_manifest_extra_hardlinks_rejected(self):
+        self.init()
+        alias = self.root / "database-alias.db"
+        os.link(self.db, alias)
+        try:
+            with self.assertRaisesRegex(store.StoreError, "unsafe_file_link_count"):
+                store.list_messages(self.db, "s")
+        finally:
+            alias.unlink()
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        alias = self.root / "manifest-alias"
+        os.link(manifest, alias)
+        try:
+            with self.assertRaisesRegex(store.StoreError, "unsafe_file_link_count"):
+                store.verify_backup(backup, manifest)
+        finally:
+            alias.unlink()
 
     def test_schema_and_atomic_roundtrip(self):
         self.init()
