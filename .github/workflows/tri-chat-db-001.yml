@@ -1,0 +1,30 @@
+name: TRI-CHAT-DB-001 offline integration contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/run_trinite_chat_v1.py'
+      - 'scripts/trinite_chat_sqlite_v1.py'
+      - 'scripts/trinite_chat_v1_ui/**'
+      - 'tests/trinite_chat_db_v1/**'
+      - 'docs/TRI-CHAT-DB-001.md'
+      - '.github/workflows/tri-chat-db-001.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: In-tab local chat tests without teacher weights
+        run: python3 -I -B -m unittest discover -s tests/trinite_chat_v1 -v
+      - name: SQLite storage and backup contracts on synthetic files
+        run: python3 -I -B -m unittest discover -s tests/trinite_sqlite_v1 -v
+      - name: Session opt-in, bounded history and local HTTP contracts
+        run: python3 -I -B -m unittest discover -s tests/trinite_chat_db_v1 -v

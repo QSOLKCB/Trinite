@@ -493,6 +493,32 @@ def list_messages(path, conversation_id):
         return rows
 
 
+def load_session_tail(path, conversation_id, *, limit=16):
+    """Return up to eight complete pairs without loading all 256 stored rows.
+
+    None means no such session. The separate fixed-size query is deliberately
+    smaller than the full developer inventory and does not create a database.
+    """
+    validated_id(conversation_id)
+    if type(limit) is not int or not 2 <= limit <= 16 or limit % 2:
+        raise StoreError("invalid_history_limit")
+    path = checked_path(path, require_file=True)
+    with closing(sqlite_connect(path, readonly=True)) as conn:
+        check_schema(conn)
+        exists = conn.execute(
+            "SELECT 1 FROM conversations WHERE conversation_id=?",
+            (conversation_id,),
+        ).fetchone()
+        if exists is None:
+            return None
+        rows = conn.execute(
+            "SELECT role, content, classification FROM messages "
+            "WHERE conversation_id=? ORDER BY message_id DESC LIMIT ?",
+            (conversation_id, limit),
+        ).fetchall()
+        return list(reversed(rows))
+
+
 def delete_conversation(path, conversation_id, *, enable_persistence=False):
     validated_id(conversation_id)
     conn = open_store(path, enable_persistence=enable_persistence)

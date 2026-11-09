@@ -23,6 +23,14 @@
     <section id="messages" class="messages" aria-live="polite" aria-label="Conversation">
       <article class="message system"><span>TRINITE</span><p>Enter a message or try <code>17 * 19</code> or <code>gf3(2+2)</code>. General chat requires an explicitly configured local model.</p></article>
     </section>
+    <section class="retention" aria-label="Local conversation storage">
+      <label><input type="checkbox" id="remember"> Remember in local SQLite (explicit opt-in)</label>
+      <div class="retention-actions">
+        <button type="button" id="load-saved" class="secondary">Load saved conversation</button>
+        <button type="button" id="forget-saved" class="secondary">Forget saved conversation</button>
+      </div>
+      <small>Disabled by default. Requires the preinitialized database and server --enable-persistence flag. Logical deletion cannot erase backup copies.</small>
+    </section>
     <form id="chat-form" autocomplete="off">
       <label for="prompt">Message</label>
       <div class="composer">

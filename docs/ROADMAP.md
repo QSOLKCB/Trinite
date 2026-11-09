@@ -1,9 +1,18 @@
 # Roadmap
 
+## Current implementation — TRI-CHAT-DB-001 explicit session persistence (9 November 2026)
 
-## Next planned application increment — TRI-SQLITE-001 local persistence (9 November 2026)
+**Status: implementation proposal in a separate PR after merged TRI-CHAT-001, TRI-SQLITE-001 and TRI-SEC-001.** Connect the existing rules-first local chat server and vanilla browser UI to version-1 SQLite only with **two distinct owner/user decisions**: server startup with \`--enable-persistence\`, and a per-browser explicit **Remember in local SQLite** choice. See [TRI-CHAT-DB-001](TRI-CHAT-DB-001.md).
 
-**Owner direction (planning record only, not yet implemented):** after TRI-CHAT-001's four open review findings are corrected and reviewed, open a **separate PR** for a local Python standard-library `sqlite3` persistence adapter. This is a prospective application feature, **not** native Trinite training, MTC data admission, model reasoning evidence, or permission to persist users' messages without opt-in.
+Acceptance: original no-database chat request shape and tests unchanged; saved requests never trust client-provided transcript history, load a bounded SQLite tail and prune context under the existing request budget; show separate exact-vs-unverified result status; persist only completed exchanges after atomic commits; generate unpredictable session identifiers; explicit reload and logical deletion; no automatic model retries or cloud fallback. Failure to open/validate the database fails startup closed. Storage permission/backup/retention/security semantics remain TRI-SQLITE-001/SEC-001, not new research evidence. Model advice cannot authorize persistence or native training.
+
+**After this gate:** separately review **TRI-DECIDE-001** optional d1 advisory routing comparison against the frozen rule-first baseline. Notion continues as a curated cloud index only; no raw chat upload or model training admission.
+
+
+
+## Implemented application foundation — TRI-SQLITE-001 local persistence (9 November 2026)
+
+**Historical planning record (implemented in merged PR #144, hardened in merged PR #145):** the standalone Python standard-library `sqlite3` persistence adapter is the approved application storage foundation. The following bullets preserve its original acceptance decisions. This is a prospective application feature, **not** native Trinite training, MTC data admission, model reasoning evidence, or permission to persist users' messages without opt-in.
 
 - **Storage:** default application path `data/trinite.db`, **excluded from Git** by a narrowly scoped `.gitignore` rule (`/data/trinite.db` and associated `-wal`/`-shm` sidecars, backups and temporary artifacts). No database bytes, private conversations or credentials committed; choose a private, owner-writable local directory and restrict access.
 - **Schema:** additive versioned migrations with `PRAGMA user_version`, parameterized SQL only, explicit transaction ownership and foreign keys. Separate `conversations`, `messages`, `route_decisions`, `tool_results`, `model_registry` and `receipt_refs` (stored metadata and identities only); define constraints and limits before use. Avoid model-provided SQL and uncontrolled extension loading.
