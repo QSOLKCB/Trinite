@@ -1,6 +1,6 @@
 # MTC-SCAFFOLD-ABLATION-001 — controlled Modelfile × harness experiment
 
-**Status: PROPOSED, DOCS-ONLY.** This is a prospective, separately reviewable protocol, not an implemented runner, completed experiment, teacher appointment, training decision, or authorization to execute models. It does not alter the frozen Qwen principal failures or the pending [MTC-TEACHER-RECRUITMENT-001](MTC-TEACHER-RECRUITMENT-001.md) candidate assessment.
+**Status: PROPOSED, DOCS-ONLY.** This is a prospective, separately reviewable protocol, not an implemented runner, completed experiment, teacher appointment, training decision, or authorization to execute models. It does not alter the frozen Qwen principal failures or the pending [MTC-TEACHER-RECRUITMENT-001 (draft PR #156)](https://github.com/QSOLKCB/Trinite/pull/156) candidate assessment.
 
 ## Research question
 
@@ -65,7 +65,7 @@ An implementation successor (separate PR, **not included here**) must provide a 
 - Independent oracle tests, tamper/digest/branch-drift failure tests, duplicate/invalid JSON tests, wrong-claim controls, prompt-answer leakage tests, and a *manifest validator that does not trust its stored scores*.
 - Frozen primary comparisons and explicit **observed / derived / proposed / unknown** statuses; no edits to historical Qwen evidence, native Trinite optimizer, pretrained weight intake, rights policy, or pre-existing MTC candidate captures.
 
-**Sequence:** review the in-progress [MTC-TEACHER-RECRUITMENT-001](MTC-TEACHER-RECRUITMENT-001.md) first; create an additive implementation successor; run offline conformance; obtain fresh owner authorization for each installed model, derived profile creation, and each bounded owner-local candidate run; verify; then make a separate supervision or training admission decision.
+**Sequence:** review the in-progress [MTC-TEACHER-RECRUITMENT-001 (draft PR #156)](https://github.com/QSOLKCB/Trinite/pull/156) first; create an additive implementation successor; run offline conformance; obtain fresh owner authorization for each installed model, derived profile creation, and each bounded owner-local candidate run; verify; then make a separate supervision or training admission decision.
 
 ## Relationships and invariants
 
