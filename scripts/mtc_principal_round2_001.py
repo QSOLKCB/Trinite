@@ -44,6 +44,15 @@ def training_tasks():
     return [t for t in mtc.tasks() if t["split"] == "train"]
 
 
+def reject_nested_output(out, teacher_run, previous_run):
+    """Keep new plan/capture directories outside immutable parent archives."""
+    destination = Path(out).resolve(strict=False)
+    for archive in (teacher_run, previous_run):
+        parent = Path(archive).resolve(strict=True)
+        if destination == parent or parent in destination.parents:
+            raise ValueError("Round 2 output must be outside parent evidence archives")
+
+
 def prior_evidence(teacher_run, previous_run, manifest_identity):
     """Revalidate *both* earlier archives before any new plan or inference."""
     if type(manifest_identity) is not str or re.fullmatch(
@@ -251,6 +260,7 @@ def summary(rows):
 
 
 def plan_command(args):
+    reject_nested_output(args.out, args.teacher_run, args.previous_run)
     new_plan = validate_plan(plan_value(
         args.teacher_run, args.previous_run, args.previous_manifest_identity
     ))
@@ -264,6 +274,7 @@ def plan_command(args):
 def capture_command(args):
     if not args.authorize_round2:
         raise ValueError("separate Round 2 owner authorization required")
+    reject_nested_output(args.out, args.teacher_run, args.previous_run)
     raw = mtc.checked_file(args.plan)
     if mtc.sha(raw) != args.request_identity:
         raise ValueError("Round 2 request identity mismatch")

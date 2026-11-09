@@ -261,6 +261,28 @@ class Round2Contracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Round 2 member hash mismatch"):
             self.verify()
 
+    def test_outputs_cannot_modify_parent_evidence_archives(self):
+        for parent in (self.teacher_run, self.principal_run):
+            self.plan_dir = parent / "nested-round2-plan"
+            with self.assertRaisesRegex(ValueError, "outside parent evidence archives"):
+                self.freeze()
+            self.assertFalse(self.plan_dir.exists())
+
+        self.plan_dir = self.root / "plan-r2"
+        identity = self.freeze()
+        for parent in (self.teacher_run, self.principal_run):
+            self.run_dir = parent / "nested-round2-capture"
+            with self.assertRaisesRegex(ValueError, "outside parent evidence archives"):
+                self.capture(identity)
+            self.assertFalse(self.run_dir.exists())
+
+        self.assertEqual(FakeOllama.counts,
+                         {"baseline": 0, "principal": 0, "revisions": 0})
+        principal.verify_command(SimpleNamespace(
+            teacher_run=self.teacher_run, run=self.principal_run,
+            manifest_identity=self.principal_anchor
+        ))
+
     def test_round2_is_not_replay_of_original_teacher_baseline(self):
         identity = self.freeze()
         plan = mtc.strict_json((self.plan_dir / "plan.json").read_bytes())
