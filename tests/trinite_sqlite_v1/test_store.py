@@ -5,6 +5,8 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -46,6 +48,216 @@ class SQLiteContracts(unittest.TestCase):
         with self.assertRaises(store.StoreError):
             store.backup_database(self.db, self.root / "snapshot.db")
         self.assertFalse((self.root/"snapshot.db").exists())
+
+
+    @unittest.skipUnless(os.name == "posix" and hasattr(os, "mkfifo")
+                         and hasattr(os, "O_NONBLOCK"), "POSIX FIFO support")
+    def test_fifo_rejected_without_blocking_in_all_file_entrypoints(self):
+        """Untrusted FIFO must never wait for a writer before fstat rejects.
+
+        Use a bounded subprocess for every operation: if O_NONBLOCK is removed,
+        the child can be killed and this regression fails without hanging CI.
+        """
+        child = """
+import importlib.util
+import os
+from pathlib import Path
+import sys
+import tempfile
+
+script, case = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("storage", script)
+store = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(store)
+
+with tempfile.TemporaryDirectory() as work:
+    fifo = Path(work) / "poison.db"
+    os.mkfifo(fifo, 0o600)
+    actions = {
+        "initialize": lambda: store.initialize(fifo, enable_persistence=True),
+        "read": lambda: store.list_messages(fifo, "session"),
+        "backup": lambda: store.backup_database(
+            fifo, Path(work) / "out.db", authorize_backup=True),
+        "verify": lambda: store.verify_backup(
+            fifo, Path(work) / "poison.db.manifest.json"),
+        "restore": lambda: store.restore_backup(
+            fifo, Path(work) / "poison.db.manifest.json",
+            Path(work) / "restored.db", authorize_restore=True),
+    }
+    try:
+        actions[case]()
+    except store.StoreError as error:
+        if str(error) == "not_regular_file":
+            sys.exit(0)
+        print("unexpected error:", repr(str(error)))
+        sys.exit(2)
+    print("FIFO unexpectedly accepted")
+    sys.exit(3)
+"""
+        for action in ("initialize", "read", "backup", "verify", "restore"):
+            with self.subTest(action=action):
+                try:
+                    result = subprocess.run(
+                        [sys.executable, "-I", "-B", "-c", child, str(SOURCE), action],
+                        capture_output=True, text=True, timeout=3.0, check=False,
+                    )
+                except subprocess.TimeoutExpired:
+                    self.fail(action + ": FIFO open blocked before file validation")
+                self.assertEqual(
+                    result.returncode, 0,
+                    action + ": " + (result.stdout + result.stderr).strip(),
+                )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX directory mode contract")
+    def test_attacker_writable_parent_is_rejected_before_creation(self):
+        self.root.chmod(0o777)
+        with self.assertRaisesRegex(store.StoreError, "unsafe_parent_permissions"):
+            self.init()
+        self.assertFalse(self.db.exists())
+
+    def test_incompatible_database_is_not_changed_before_rejection(self):
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.execute("CREATE TABLE unrelated(value TEXT)")
+        self.db.chmod(0o600)
+        before = self.db.read_bytes()
+        with self.assertRaisesRegex(store.StoreError, "schema_version_mismatch"):
+            store.open_store(self.db, enable_persistence=True)
+        self.assertEqual(self.db.read_bytes(), before)
+        with closing(sqlite3.connect(self.db)) as conn:
+            self.assertEqual(conn.execute("PRAGMA journal_mode").fetchone()[0], "delete")
+
+    def test_init_publication_race_does_not_modify_substituted_victim(self):
+        victim = self.root / "victim.db"
+        with closing(sqlite3.connect(victim)) as conn:
+            conn.execute("CREATE TABLE sentinel(value TEXT)")
+            conn.execute("INSERT INTO sentinel VALUES ('preserve-me')")
+        before = victim.read_bytes()
+        real_link = store.os.link
+
+        def substitute_before_publish(source, destination, **kwargs):
+            # Destination is now relative to the pinned parent descriptor.
+            self.db.symlink_to(victim)
+            return real_link(source, destination, **kwargs)
+
+        with mock.patch.object(store.os, "link", side_effect=substitute_before_publish):
+            with self.assertRaisesRegex(store.StoreError, "database_already_exists"):
+                self.init()
+        self.assertTrue(self.db.is_symlink())
+        self.assertEqual(victim.read_bytes(), before)
+        with closing(sqlite3.connect(victim)) as conn:
+            self.assertEqual(
+                conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall(),
+                [("sentinel",)],
+            )
+
+    def test_message_and_conversation_caps_are_atomic(self):
+        self.init()
+        with mock.patch.object(store, "MAX_MESSAGES_PER_CONVERSATION", 4):
+            self.write(user="u1", answer="a1")
+            self.write(user="u2", answer="a2")
+            with self.assertRaisesRegex(store.StoreError, "conversation_message_limit"):
+                self.write(user="u3", answer="a3")
+        self.assertEqual(len(store.list_messages(self.db, "conversation-1")), 4)
+        with mock.patch.object(store, "MAX_MESSAGES_PER_CONVERSATION", 3):
+            with self.assertRaisesRegex(store.StoreError, "conversation_message_limit"):
+                store.list_messages(self.db, "conversation-1")
+
+        with (mock.patch.object(store, "MAX_MESSAGES_PER_CONVERSATION", 100),
+              mock.patch.object(store, "MAX_TOTAL_MESSAGES", 6),
+              mock.patch.object(store, "MAX_CONVERSATIONS", 2)):
+            self.write(conversation_id="second")
+            with self.assertRaisesRegex(store.StoreError, "total_message_limit"):
+                self.write(conversation_id="third")
+        self.assertEqual(store.list_messages(self.db, "third"), [])
+        with (mock.patch.object(store, "MAX_MESSAGES_PER_CONVERSATION", 100),
+              mock.patch.object(store, "MAX_TOTAL_MESSAGES", 100),
+              mock.patch.object(store, "MAX_CONVERSATIONS", 2)):
+            with self.assertRaisesRegex(store.StoreError, "conversation_count_limit"):
+                self.write(conversation_id="third")
+        self.assertEqual(store.list_messages(self.db, "third"), [])
+
+
+    @unittest.skipUnless(os.name == "posix" and Path("/proc/self/fd").is_dir(),
+                         "Linux descriptor-relative SQLite initialization")
+    def test_ancestor_substitution_is_rejected_without_retargeting_database(self):
+        """Rename the parent after validation, before fd-relative publication."""
+        outer = self.root / "safe-outer"
+        outer.mkdir(mode=0o700)
+        parent = outer / "private"
+        parent.mkdir(mode=0o700)
+        target = parent / "db.sqlite"
+        replacement = outer / "replacement"
+        replacement.mkdir(mode=0o700)
+        check = store._parent_unchanged
+
+        def swap_parent(path, parent_fd):
+            parent.rename(outer / "old-private")
+            replacement.rename(parent)
+            return check(path, parent_fd)
+
+        with mock.patch.object(store, "_parent_unchanged", side_effect=swap_parent):
+            with self.assertRaisesRegex(store.StoreError, "parent_directory_changed"):
+                store.initialize(target, enable_persistence=True)
+        self.assertFalse(target.exists())
+        self.assertEqual(list((outer / "old-private").iterdir()), [])
+        self.assertEqual(list(parent.iterdir()), [])
+
+    @unittest.skipUnless(os.name == "posix", "POSIX ancestor modes")
+    def test_unsafe_nonsticky_writable_ancestor_rejected(self):
+        ancestor = self.root / "unsafe-ancestor"
+        ancestor.mkdir(mode=0o700)
+        ancestor.chmod(0o777)
+        child = ancestor / "private"
+        child.mkdir(mode=0o700)
+        try:
+            with self.assertRaisesRegex(store.StoreError, "unsafe_writable_ancestor"):
+                store.initialize(child / "test.db", enable_persistence=True)
+        finally:
+            ancestor.chmod(0o700)
+        self.assertFalse((child / "test.db").exists())
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file permissions")
+    def test_existing_world_writable_database_rejected(self):
+        self.init()
+        self.db.chmod(0o666)
+        with self.assertRaisesRegex(store.StoreError, "unsafe_file_permissions"):
+            store.open_store(self.db, enable_persistence=True)
+        with self.assertRaisesRegex(store.StoreError, "unsafe_file_permissions"):
+            store.list_messages(self.db, "s")
+        self.db.chmod(0o600)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file permissions")
+    def test_world_writable_backup_or_manifest_rejected(self):
+        self.init()
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        for item in (backup, manifest):
+            item.chmod(0o666)
+            with self.assertRaisesRegex(store.StoreError, "unsafe_file_permissions"):
+                store.verify_backup(backup, manifest)
+            item.chmod(0o600)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX hardlink contract")
+    def test_existing_database_and_manifest_extra_hardlinks_rejected(self):
+        self.init()
+        alias = self.root / "database-alias.db"
+        os.link(self.db, alias)
+        try:
+            with self.assertRaisesRegex(store.StoreError, "unsafe_file_link_count"):
+                store.list_messages(self.db, "s")
+        finally:
+            alias.unlink()
+        backup, manifest = store.backup_database(
+            self.db, self.root / "snapshot.db", authorize_backup=True
+        )
+        alias = self.root / "manifest-alias"
+        os.link(manifest, alias)
+        try:
+            with self.assertRaisesRegex(store.StoreError, "unsafe_file_link_count"):
+                store.verify_backup(backup, manifest)
+        finally:
+            alias.unlink()
 
     def test_schema_and_atomic_roundtrip(self):
         self.init()
