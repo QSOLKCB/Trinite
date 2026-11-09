@@ -1,3 +1,35 @@
+# MTC-PRINCIPAL-002 — structured Qwen → LFM3 supervision correction
+
+**Status:** corrective PR for the owner-reported first hardware run, not another real model execution. The earlier Principal archive is complete, verified, private and immutable. The historical Principal v1 protocol is retained below for provenance; the following v2 policy supersedes it.
+
+## Observed failure and current protocol
+
+The owner reported four Qwen3.5 27B replies ending in `done_reason="length"` after 768 generated tokens of `message.thinking`, with empty `message.content`. There were zero valid critiques and zero LFM revisions. Since the LFM baseline also contained no final answers, the original recorded results do **not** measure teaching efficacy, mathematical ability or model accuracy.
+
+**Principal plan and manifest schema v2** now freezes `response_policy={"think":false,"format":"json"}`, applied as **top-level** fields to Qwen critiques and LFM3 revisions. Qwen's feedback must still be valid strict JSON with `verdict`, `feedback` and `suggested_answer`; it is untrusted until an independently computed oracle is applied. A reply with `done_reason="length"` is invalid even if some JSON-like content is present. Blank, truncated or unparsable baseline answers do not trigger a Qwen call. Nothing is extracted from the thinking field as an answer.
+
+The original maximum of four Principal reviews and four revisions, unchanged output caps and 300s deadline, source/model SHA-256 closure, permissions and training-admission gate still apply. Neither teacher nor Principal weights are updated, and no rights decision is made. Qwen3.5 or Ollama may ignore format flags even with thinking disabled: failures must be preserved rather than automatically retried or papered over.
+
+## Fresh owner-local plan (after corrected baseline is verified)
+
+Use a **new** verified LFM3 v3 archive under `single-002`, then freeze a **new** Principal v2 plan under `plan-002`:
+
+~~~sh
+cd ~/Trinite
+uv run --no-project python -I -B scripts/mtc_principal_001.py plan \
+  --teacher-run "$HOME/trinite-mtc-lfm3/single-002/capture" \
+  --teacher-manifest-identity 'sha256:ACTUAL_NEW_LFM3_V3_MANIFEST' \
+  --teacher-model 'lfm3:1.7b' \
+  --principal-model 'qwen3.5:27b' \
+  --out "$HOME/trinite-principal/plan-002"
+~~~
+
+Retain the actual printed request identity before explicitly authorizing a fresh capture under `run-002`, and separately verify its own NEW manifest. No historical run is reinterpreted, overwritten, promoted or replayed automatically.
+
+---
+
+## Historical MTC-PRINCIPAL-001 record (v1; retained for provenance)
+
 # MTC-PRINCIPAL-001 — Qwen3.5 27B supervising one LFM3 teacher
 
 **Status:** separate additive draft, stacked on MTC-LFM3-001 PR #147. No owner-local inference, GPU work, data admission or model training has been performed.

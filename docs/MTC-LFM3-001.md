@@ -1,3 +1,36 @@
+# MTC-LFM3-003 — structured-answer correction (current proposal)
+
+**Status:** corrective PR for the first owner-reported local failure; no new model inference or native training has been executed by this PR. This current section supersedes conflicting **v2** descriptions in the historical MTC-LFM3-002 record below.
+
+## Observed failure and correction
+
+On 9 November 2026 the owner reported that all six LFM3 1.7B replies ended with `done_reason="length"`, `eval_count=96`, nonempty `message.thinking` and **empty `message.content`**. An independently verified captured envelope with zero exact labels is a valid **failure receipt**, not evidence that LFM3 cannot do arithmetic. The older source-bound original artifacts must remain immutable.
+
+**MTC-LFM3-003 plan/manifest schema v3** requests `"think":false` and `"format":"json"` on every local Ollama `/api/chat` request **at the top level**. These two fields are frozen in the new plan's `response_policy`, as well as included in every request SHA-256. They are not `options` fields. The original sampling seed, temperatures, six tasks, split assignments, budgets and 1–5 unique-model-digest validation remain unchanged.
+
+Responses truncated by `done_reason="length"`, missing content or invalid JSON cannot become exact-label matches. Bounded raw response bytes, including thinking-only failures, remain quarantined. No answer is salvaged from `message.thinking`. A model or Ollama release may ignore these flags or the JSON format; only subsequent actual owner-local results can establish compliance. This patch requests non-thinking structured output; it does not certify such output.
+
+### Fresh owner-local planning after merge
+
+Use new output paths. Never rerun, rename, overwrite or reinterpret the original `single-001` capture or the original v2 request identity.
+
+~~~sh
+cd ~/Trinite
+git pull --ff-only
+mkdir -m 700 -p "$HOME/trinite-mtc-lfm3/single-002"
+uv run --no-project python -I -B scripts/mtc_lfm3_001.py plan \
+  --models 'lfm3:1.7b' \
+  --out "$HOME/trinite-mtc-lfm3/single-002/plan"
+~~~
+
+The new v3 `request_identity` must be retained separately and explicitly authorized with a NEW `capture` invocation. After capturing, independently retain and verify the NEW v3 `manifest_identity`. Review correctness **before** attempting Principal supervision. A new Principal v2 run requires a fresh baseline and a fresh separately authorized request. Historical v2 manifests are only verifiable against the original exact source revision; this update intentionally does not automatically convert them.
+
+The same exposure and rights restrictions apply: no automatic cloud access, no student training, and `QUARANTINED_NOT_ADMITTED` regardless of observed correctness. This is an output protocol intervention, not a new independent benchmark.
+
+---
+
+## Historical MTC-LFM3-002 record (v2; retained for provenance)
+
 # MTC-LFM3-002 — one-to-five-model owner-local Ollama capture
 
 **Status: follow-up implementation for review; no owner hardware inference has been executed by this change.** Select **one to five** installed, text-capable LFM3 models and six frozen arithmetic/GF(3) prompts per model (**6–30 calls**). The original five-model schedule remains supported. This is a new source-bound plan/manifest v2 contract: historical v1 frozen packets must be verified using their original pinned checkout, never silently resealed as v2. MTC-001's earlier 28-call evidence remains untouched and outputs never automatically enter Trinite training.
