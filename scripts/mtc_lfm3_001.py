@@ -346,6 +346,8 @@ def validate_attempts(plan, attempts):
             if (row["http_status"] != 200 or row["truncated"] or row["error"] is not None):
                 raise ValueError("completed envelope invalid")
             response = strict_json(decoded)
+            if not isinstance(response, dict) or response.get("model") != model["name"]:
+                raise ValueError("recorded model identity mismatch")
             answer = parse_answer(response)
             if row["answer"] != answer or row["oracle_match"] != (
                     answer == oracle(task) if answer is not None else False):
@@ -353,7 +355,8 @@ def validate_attempts(plan, attempts):
         elif row["status"] == "failed":
             if row["answer"] is not None or row["oracle_match"] is not False or (
                     row["error"] not in ("response_truncated", "http_failure", "invalid_json",
-                                         "deadline", "transport_failure", "model_digest_drift")):
+                                         "deadline", "transport_failure", "model_digest_drift",
+                                         "model_identity_mismatch")):
                 raise ValueError("invalid failure envelope")
             if row["truncated"] and len(decoded) != MAX_HTTP:
                 raise ValueError("incorrect truncated flag")
@@ -428,6 +431,8 @@ def capture_command(args):
             if model_sha(inventory(), model["name"]) != model["digest"]:
                 raise TransportError("model_digest_drift")
             response, raw = api("/api/chat", request)
+            if not isinstance(response, dict) or response.get("model") != model["name"]:
+                raise TransportError("model_identity_mismatch", raw, 200)
             answer = parse_answer(response)
             row.update(status="completed", http_status=200,
                        response_base64=base64.b64encode(raw).decode("ascii"),

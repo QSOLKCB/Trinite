@@ -29,6 +29,7 @@ ANSWERS = {task["prompt"]: mtc.oracle(task) for task in mtc.tasks()}
 class FakeOllama(BaseHTTPRequestHandler):
     counts = 0
     fail = False
+    wrong_model = False
 
     def log_message(self, *_):
         pass
@@ -68,7 +69,7 @@ class FakeOllama(BaseHTTPRequestHandler):
         else:
             expected = ANSWERS[data["messages"][0]["content"]]
             self.respond({
-                "model": data["model"],
+                "model": "unexpected-other-model" if FakeOllama.wrong_model else data["model"],
                 "done": True,
                 "message": {"role": "assistant",
                             "content": json.dumps({"answer": expected})},
@@ -95,6 +96,7 @@ class CaptureContracts(unittest.TestCase):
     def setUp(self):
         FakeOllama.counts = 0
         FakeOllama.fail = False
+        FakeOllama.wrong_model = False
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.plan_dir = self.root / "plan"
@@ -177,6 +179,17 @@ class CaptureContracts(unittest.TestCase):
         self.assertEqual(mtc.summary(rows)["admitted_rows"], 0)
         self.assertIn("synthetic_failure",
                       base64.b64decode(rows[0]["response_base64"]).decode())
+        self.verify()
+
+    def test_mismatched_model_response_is_recorded_failure(self):
+        request_id = self.freeze()
+        FakeOllama.wrong_model = True
+        self.capture(request_id)
+        rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        self.assertEqual(len(rows), 30)
+        self.assertTrue(all(row["status"] == "failed" for row in rows))
+        self.assertTrue(all(row["error"] == "model_identity_mismatch" for row in rows))
+        self.assertTrue(all(not row["oracle_match"] for row in rows))
         self.verify()
 
     def test_explicit_resume_keeps_recorded_attempts(self):
