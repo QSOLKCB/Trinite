@@ -270,7 +270,7 @@ class PrincipalContract(unittest.TestCase):
     def test_resumption_is_not_exposed_as_implicit_retry(self):
         parser_help_source = SOURCE.read_text()
         self.assertNotIn('capture.add_argument("--resume"', parser_help_source)
-        self.assertIn("Never silently send it again", parser_help_source)
+        self.assertIn("never silently send it again", parser_help_source)
         self.assertEqual(principal.LIMIT, 4)
 
 
