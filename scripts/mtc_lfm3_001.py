@@ -95,9 +95,17 @@ def create_private(path):
     return p
 
 
+def source_bytes(path):
+    """Reviewable repository sources may be 0644; private captures may not."""
+    info = Path(path).lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        raise ValueError("invalid source closure member")
+    return Path(path).read_bytes()
+
+
 def closure():
     root = Path(__file__).resolve().parents[1]
-    return {name: sha(checked_file(root / name)) for name in CONTRACT_PATHS}
+    return {name: sha(source_bytes(root / name)) for name in CONTRACT_PATHS}
 
 
 def tasks():
