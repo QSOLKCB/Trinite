@@ -1,0 +1,30 @@
+name: MTC-LFM3-001 offline collector contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/mtc_lfm3_001.py'
+      - 'tests/mtc_lfm3_001/**'
+      - 'docs/MTC-LFM3-001.md'
+      - '.github/workflows/mtc-lfm3-001-*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Offline software-double Ollama capture conformance
+        run: python3 -I -B -m unittest discover -s tests/mtc_lfm3_001 -v
+      - name: CLI syntax and compiler check
+        run: |
+          python3 -I -B -c "import ast,pathlib; [ast.parse(pathlib.Path(p).read_text()) for p in ('scripts/mtc_lfm3_001.py','scripts/mtc_lfm3_owner_job.py')]"
+          python3 -I -B scripts/mtc_lfm3_001.py plan --help >/dev/null
+          python3 -I -B scripts/mtc_lfm3_001.py capture --help >/dev/null
+          python3 -I -B scripts/mtc_lfm3_001.py verify --help >/dev/null
