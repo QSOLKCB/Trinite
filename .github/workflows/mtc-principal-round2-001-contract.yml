@@ -1,0 +1,31 @@
+name: MTC-PRINCIPAL-R2-001 offline cumulative feedback contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/mtc_principal_round2_001.py'
+      - 'tests/mtc_principal_round2_001/**'
+      - 'docs/MTC-PRINCIPAL-R2-001.md'
+      - '.github/workflows/mtc-principal-round2-001-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-round2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse round2 code
+        run: python3 -I -B -c "import ast,pathlib; ast.parse(pathlib.Path('scripts/mtc_principal_round2_001.py').read_text())"
+      - name: Fake Ollama sequential evidence-chain tests
+        run: python3 -I -B -m unittest discover -s tests/mtc_principal_round2_001 -v
+      - name: Validate command-line contract
+        run: |
+          python3 -I -B scripts/mtc_principal_round2_001.py plan --help >/dev/null
+          python3 -I -B scripts/mtc_principal_round2_001.py capture --help >/dev/null
+          python3 -I -B scripts/mtc_principal_round2_001.py verify --help >/dev/null
