@@ -199,6 +199,7 @@ class CaptureContracts(unittest.TestCase):
         self.run_dir.mkdir(mode=0o700)
         shutil.copy2(self.plan_dir / "plan.json", self.run_dir / "plan.json")
         (self.run_dir / "attempts.jsonl").write_bytes(b'{"truncated":')
+        (self.run_dir / "attempts.jsonl").chmod(0o600)
         with self.assertRaisesRegex(ValueError, "incomplete attempt"):
             self.capture(digest, resume=True)
         self.assertEqual(FakeOllama.counts, 0)
