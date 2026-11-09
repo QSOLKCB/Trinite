@@ -1,5 +1,9 @@
 # Roadmap
 
+## MTC-HERETIC-001 — surgical authority-conditioned false-agreement pilot (10 November 2026)
+
+**ADDITIVE OFFLINE PILOT, NOT MODEL EXECUTION:** [MTC-HERETIC-001](MTC-HERETIC-001.md) introduces a balanced exposed truth × formal-language probe bank, independent Python scoring and an *optional* Heretic 2.x custom scorer adapter. The goal is to distinguish mathematical false agreement under fake proofs and synthetic authority cues from ordinary courtesy, correction or appropriate refusal. No default Heretic refusal suppression, new model install, weight modification, training rights admission, archive resealing, release or merge is authorized here. Future Heretic ARA execution, safety-preservation evaluation and new locked data are separate reviewed, owner-authorized phases; merged teacher recruitment and 2×2 Modelfile/harness ablation remain independent.
+
 ## Proposed research design — MTC-SCAFFOLD-ABLATION-001 (10 November 2026)
 
 **DOCS-ONLY / proposed, not executed:** [MTC-SCAFFOLD-ABLATION-001](MTC-SCAFFOLD-ABLATION-001.md) specifies a four-arm Modelfile × inference-harness comparison for a *fixed, separately qualified teacher* (stock / profile / harness / combined). The deterministic Python oracle remains independent; any oracle-assisted application is scored separately, never as model arithmetic. Start with a strictly exposed software/transport pilot, then a frozen prospective family-level test only after exact-scope local owner authorization. A later native-weight training stage may compare unassisted model gains before/after, subject to a separate learning, rights and checkpoint protocol. **Do not treat Modelfiles or harnesses as weight training, automatically promote a candidate, or alter the frozen Qwen results.** Recruitment PR #156 remains separately reviewable and is not modified.

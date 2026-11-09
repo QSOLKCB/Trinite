@@ -1,0 +1,37 @@
+name: MTC-HERETIC-001 offline formal-authority contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/mtc_heretic_formal_001.py'
+      - 'scripts/mtc_heretic_scorer_001.py'
+      - 'tests/mtc_heretic_001/**'
+      - 'docs/MTC-HERETIC-001.md'
+      - 'docs/ROADMAP.md'
+      - '.github/workflows/mtc-heretic-001-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contracts:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile source without importing Heretic
+        run: |
+          python3 -I -B - <<'PY'
+          import ast
+          from pathlib import Path
+          for name in ("mtc_heretic_formal_001.py", "mtc_heretic_scorer_001.py"):
+              ast.parse((Path("scripts") / name).read_text(encoding="utf-8"))
+          PY
+      - name: Execute offline mathematical and parser contracts
+        run: python3 -I -B -m unittest discover -s tests/mtc_heretic_001 -v
+      - name: Print deterministic exposed fixture inventory
+        run: python3 -I -B scripts/mtc_heretic_formal_001.py
