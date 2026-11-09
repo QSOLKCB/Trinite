@@ -1,0 +1,102 @@
+name: MTC-LFM3-001 owner-local Ollama capture (guarded)
+
+# Configure the protected environment + dedicated self-hosted runner before use.
+# A branch check is NOT a security boundary for branch-selected workflow code.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'plan / capture / verify'
+        type: choice
+        options: [plan, capture, verify]
+        required: true
+        default: plan
+      run_id:
+        description: 'Fresh private run folder (ASCII letters, digits, _, -)'
+        type: string
+        required: true
+      models:
+        description: 'PLAN: five comma-separated installed text-capable LFM3 tags'
+        type: string
+        required: false
+      request_identity:
+        description: 'CAPTURE: independently recorded sha256: plan identity'
+        type: string
+        required: false
+      manifest_identity:
+        description: 'VERIFY: independently recorded sha256: manifest identity'
+        type: string
+        required: false
+      resume:
+        type: boolean
+        description: 'Explicitly resume incomplete frozen attempt ledger'
+        default: false
+      initialize_db:
+        type: boolean
+        description: 'Initialize missing SQLite DB once, or validate existing'
+        default: false
+      chat_smoke:
+        type: boolean
+        description: 'Start local chat+SQLite, GET /, then stop'
+        default: false
+      reviewed_sha:
+        description: 'Reviewed exact main SHA pre-checked-out locally'
+        type: string
+        required: true
+      authorization:
+        description: 'Type AUTHORIZE-LOCAL-MTC-LFM3'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trinite-mtc-lfm3-local
+  cancel-in-progress: false
+
+jobs:
+  owner-local:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      vars.TRINITE_OWNER_RUNNER_ARMED == 'yes'
+    runs-on: [self-hosted, Linux, X64, trinite-lfm3]
+    environment: trinite-owner-local
+    timeout-minutes: 75
+    env:
+      LOCAL_REPO: ${{ vars.TRINITE_OWNER_CHECKOUT }}
+      OPERATION: ${{ inputs.operation }}
+      RUN_ID: ${{ inputs.run_id }}
+      MODELS: ${{ inputs.models }}
+      REQUEST_ID: ${{ inputs.request_identity }}
+      MANIFEST_ID: ${{ inputs.manifest_identity }}
+      RESUME: ${{ inputs.resume }}
+      INITIALIZE_DB: ${{ inputs.initialize_db }}
+      CHAT_SMOKE: ${{ inputs.chat_smoke }}
+      REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+      AUTHORIZATION: ${{ inputs.authorization }}
+      UV_OFFLINE: '1'
+      UV_PYTHON_DOWNLOADS: never
+    steps:
+      # NO checkout action and no upload-artifact action on owner hardware.
+      - name: Run pre-reviewed local checkout only
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$AUTHORIZATION" == "AUTHORIZE-LOCAL-MTC-LFM3" ]]
+          [[ "$REVIEWED_SHA" == "$GITHUB_SHA" ]]
+          [[ -n "$LOCAL_REPO" && -d "$LOCAL_REPO/.git" ]]
+          cd "$LOCAL_REPO"
+          command -v uv >/dev/null
+          command -v ollama >/dev/null
+          uv run --no-project python -I -B scripts/mtc_lfm3_owner_job.py \
+            --authorize-owner-local \
+            --reviewed-sha "$REVIEWED_SHA" \
+            --operation "$OPERATION" --run-id "$RUN_ID" \
+            --models "$MODELS" \
+            --request-identity "$REQUEST_ID" \
+            --manifest-identity "$MANIFEST_ID" \
+            --resume "$RESUME" \
+            --initialize-db "$INITIALIZE_DB" \
+            --chat-smoke "$CHAT_SMOKE"
