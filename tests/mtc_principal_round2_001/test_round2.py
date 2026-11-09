@@ -26,6 +26,7 @@ principal, mtc = round2.principal, round2.mtc
 TEACHER = "lfm3:1.7b"
 PRINCIPAL = "qwen3.5:27b"
 DIGESTS = {TEACHER: "1" * 64, PRINCIPAL: "2" * 64}
+DIGEST_REFS = {name: "sha256-" + digest for name, digest in DIGESTS.items()}
 TASKS = {t["prompt"]: t for t in mtc.tasks()}
 
 
@@ -35,6 +36,8 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
     response_overrides = {}
     principal_feedback_text = "Please check arithmetic again."
     counts = {"baseline": 0, "principal": 0, "revisions": 0}
+    inventory_digests = dict(DIGESTS)
+    requested_models = []
 
     def log_message(self, *_):
         pass
@@ -50,7 +53,8 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/tags":
             self.reply({"models": [
-                {"name": m, "digest": d} for m, d in DIGESTS.items()
+                {"name": m, "digest": d}
+                for m, d in FakeOllama.inventory_digests.items()
             ]})
         else:
             self.reply({"error": "not found"}, 404)
@@ -63,9 +67,14 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
         assert body["think"] is False
         assert body["format"] == "json"
         assert body["stream"] is False
-        assert body["model"] in DIGESTS
-        model = body["model"]
-        if model == PRINCIPAL:
+        requested_model = body["model"]
+        logical_model = requested_model if requested_model in DIGESTS else next(
+            (name for name, ref in DIGEST_REFS.items() if ref == requested_model),
+            None
+        )
+        assert logical_model in DIGESTS
+        FakeOllama.requested_models.append(requested_model)
+        if logical_model == PRINCIPAL:
             FakeOllama.counts["principal"] += 1
             assert body["keep_alive"] == 0
             assert body["options"] == principal.PRINCIPAL_OPTIONS
@@ -73,12 +82,12 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
             assert set(prompt) == {"task", "teacher_output"}
             if FakeOllama.thinking_only and FakeOllama.phase == 2:
                 self.reply({
-                    "model": model, "done": True, "done_reason": "length",
+                    "model": requested_model, "done": True, "done_reason": "length",
                     "message": {"content": "", "thinking": "synthetic 768 tokens"}
                 })
                 return
-            if model in FakeOllama.response_overrides:
-                self.reply(FakeOllama.response_overrides[model])
+            if logical_model in FakeOllama.response_overrides:
+                self.reply(FakeOllama.response_overrides[logical_model])
                 return
             # Qwen may falsely pronounce an incorrect answer "correct".
             output = json.dumps({
@@ -99,8 +108,8 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
                 assert body["keep_alive"] == 0
                 prompt = json.loads(body["messages"][1]["content"])
                 assert set(prompt) == {"task", "previous_answer", "principal_feedback"}
-                if model in FakeOllama.response_overrides:
-                    self.reply(FakeOllama.response_overrides[model])
+                if logical_model in FakeOllama.response_overrides:
+                    self.reply(FakeOllama.response_overrides[logical_model])
                     return
                 task = TASKS[prompt["task"]]
                 if FakeOllama.phase == 1 and task["id"] == "mod11-add-8-15":
@@ -108,7 +117,7 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
                 else:
                     answer = mtc.oracle(task)
                 output = json.dumps({"answer": answer})
-        self.reply({"model": model, "done": True, "done_reason": "stop",
+        self.reply({"model": requested_model, "done": True, "done_reason": "stop",
                     "message": {"role": "assistant", "content": output}})
 
 
@@ -137,6 +146,8 @@ class Round2Contracts(unittest.TestCase):
         FakeOllama.response_overrides = {}
         FakeOllama.principal_feedback_text = "Please check arithmetic again."
         FakeOllama.counts = {"baseline": 0, "principal": 0, "revisions": 0}
+        FakeOllama.inventory_digests = dict(DIGESTS)
+        FakeOllama.requested_models = []
         self.teacher_plan = self.root / "teacher-plan"
         self.teacher_run = self.root / "teacher-run"
         mtc.plan_command(SimpleNamespace(models=TEACHER, out=self.teacher_plan))
@@ -165,8 +176,10 @@ class Round2Contracts(unittest.TestCase):
         self.assertEqual(len(prev), 4)
         FakeOllama.phase = 2
         FakeOllama.counts = {"baseline": 0, "principal": 0, "revisions": 0}
+        FakeOllama.requested_models = []
         self.plan_dir = self.root / "plan-r2"
         self.run_dir = self.root / "run-r2"
+        self.approval_file = self.root / "round2-owner-approval.json"
 
     def freeze(self):
         round2.plan_command(SimpleNamespace(
@@ -176,11 +189,25 @@ class Round2Contracts(unittest.TestCase):
         ))
         return mtc.sha((self.plan_dir / "plan.json").read_bytes())
 
-    def capture(self, identity, authorized=True):
+    def write_approval(self, identity, out=None, approval_file=None):
+        out = self.run_dir if out is None else out
+        approval_file = self.approval_file if approval_file is None else approval_file
+        plan = mtc.strict_json((self.plan_dir / "plan.json").read_bytes())
+        mtc.write_new(approval_file, mtc.canonical(round2.authorization_value(
+            plan, identity, approval_file, out
+        )))
+        return approval_file
+
+    def capture(self, identity, authorized=True, approval_file=None):
+        approval_file = self.approval_file if approval_file is None else approval_file
+        if authorized and not approval_file.exists():
+            self.write_approval(identity, approval_file=approval_file)
         round2.capture_command(SimpleNamespace(
             teacher_run=self.teacher_run, previous_run=self.principal_run,
             plan=self.plan_dir / "plan.json", request_identity=identity,
-            out=self.run_dir, authorize_round2=authorized
+            out=self.run_dir,
+            owner_approval=(approval_file if authorized else
+                            self.root / "missing-owner-approval.json")
         ))
 
     def verify(self):
@@ -205,6 +232,18 @@ class Round2Contracts(unittest.TestCase):
         calls = mtc.read_attempts(self.run_dir / "calls.jsonl")
         self.assertEqual([x["stage"] for x in calls],
                          ["principal", "teacher"] * 4)
+        self.assertEqual([x["request_model"] for x in calls],
+                         [DIGEST_REFS[PRINCIPAL], DIGEST_REFS[TEACHER]] * 4)
+        self.assertTrue(all(x["model_digest"] == "sha256:" +
+                            DIGESTS[x["model_name"]] for x in calls))
+        self.assertEqual(
+            (self.run_dir / "owner-authorization.json").read_bytes(),
+            self.approval_file.read_bytes()
+        )
+        self.assertEqual(
+            (self.run_dir / "execution-claim.json").read_bytes(),
+            round2.claim_path(self.approval_file).read_bytes()
+        )
         summary = mtc.strict_json((self.run_dir / "summary.json").read_bytes())
         self.assertEqual(summary["baseline_oracle_matches"], 3)
         self.assertEqual(summary["revised_oracle_matches"], 4)
@@ -266,14 +305,14 @@ class Round2Contracts(unittest.TestCase):
 
     def test_completed_critique_is_journaled_before_teacher_setup_failure(self):
         identity = self.freeze()
-        inherited = principal.record_call
+        inherited = round2.record_call
 
         def fail_teacher_setup(body, model):
-            if model == TEACHER:
+            if model["name"] == TEACHER:
                 raise ValueError("synthetic teacher digest drift")
             return inherited(body, model)
 
-        with patch.object(principal, "record_call", side_effect=fail_teacher_setup):
+        with patch.object(round2, "record_call", side_effect=fail_teacher_setup):
             with self.assertRaisesRegex(ValueError, "teacher digest drift"):
                 self.capture(identity)
         calls = mtc.read_attempts(self.run_dir / "calls.jsonl")
@@ -285,29 +324,48 @@ class Round2Contracts(unittest.TestCase):
         self.assertEqual(FakeOllama.counts,
                          {"baseline": 0, "principal": 1, "revisions": 0})
 
-    def test_post_call_model_digest_drift_stops_with_call_journaled(self):
+    def test_tag_replacement_cannot_change_digest_bound_request(self):
         identity = self.freeze()
-        stable_inventory = mtc.inventory()
-        inventory_calls = 0
+        inherited = principal.call_local
 
-        def drift_after_call():
-            nonlocal inventory_calls
-            inventory_calls += 1
-            if inventory_calls == 3:
-                return [
-                    {"name": TEACHER, "digest": DIGESTS[TEACHER]},
-                    {"name": PRINCIPAL, "digest": "3" * 64},
-                ]
-            return stable_inventory
+        def replace_tag_during_request(body):
+            logical = next(name for name, ref in DIGEST_REFS.items()
+                           if ref == body["model"])
+            original = FakeOllama.inventory_digests[logical]
+            FakeOllama.inventory_digests[logical] = "3" * 64
+            try:
+                return inherited(body)
+            finally:
+                FakeOllama.inventory_digests[logical] = original
 
-        with patch.object(mtc, "inventory", side_effect=drift_after_call):
-            with self.assertRaisesRegex(ValueError, "drift after recorded call"):
-                self.capture(identity)
+        with patch.object(principal, "call_local",
+                          side_effect=replace_tag_during_request):
+            self.capture(identity)
         calls = mtc.read_attempts(self.run_dir / "calls.jsonl")
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0]["stage"], "principal")
-        self.assertEqual(mtc.read_attempts(self.run_dir / "attempts.jsonl"), [])
-        self.assertFalse((self.run_dir / "manifest.json").exists())
+        self.assertEqual(len(calls), 8)
+        self.assertEqual(FakeOllama.requested_models,
+                         [DIGEST_REFS[PRINCIPAL], DIGEST_REFS[TEACHER]] * 4)
+        self.assertEqual([event["request_model"] for event in calls],
+                         FakeOllama.requested_models)
+        self.verify()
+
+    def test_authorization_is_exact_scope_and_atomically_one_use(self):
+        identity = self.freeze()
+        self.write_approval(identity)
+        with patch.object(mtc, "create_private",
+                          side_effect=OSError("synthetic setup failure")):
+            with self.assertRaisesRegex(OSError, "synthetic setup failure"):
+                self.capture(identity)
+        claim = round2.claim_path(self.approval_file)
+        self.assertTrue(claim.is_file())
+        self.assertEqual(FakeOllama.counts["principal"], 0)
+        with self.assertRaises(FileExistsError):
+            self.capture(identity)
+        self.run_dir = self.root / "different-capture"
+        with self.assertRaisesRegex(ValueError, "exact-scope owner authorization"):
+            self.capture(identity)
+        self.assertFalse(self.run_dir.exists())
+        self.assertEqual(FakeOllama.counts["principal"], 0)
 
     def test_missing_attempted_call_records_are_rejected(self):
         identity = self.freeze()

@@ -10,8 +10,10 @@ import argparse
 import base64
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
+import stat
 
 _spec = importlib.util.spec_from_file_location(
     "mtc_principal_round1", Path(__file__).with_name("mtc_principal_001.py")
@@ -20,9 +22,16 @@ principal = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(principal)
 mtc = principal.mtc
 
-PLAN_SCHEMA = "trinite.mtc-principal-round2.plan.v1"
-MANIFEST_SCHEMA = "trinite.mtc-principal-round2.manifest.v2"
+PLAN_SCHEMA = "trinite.mtc-principal-round2.plan.v2"
+AUTHORIZATION_SCHEMA = "trinite.mtc-principal-round2.owner-authorization.v1"
+CLAIM_SCHEMA = "trinite.mtc-principal-round2.execution-claim.v1"
+MANIFEST_SCHEMA = "trinite.mtc-principal-round2.manifest.v3"
 EXPECTED_BASELINE_MATCHES = 3
+OWNER = "Trent Slade"
+AUTHORIZATION = (
+    "execute MTC-PRINCIPAL-R2-001 exactly once: at most four digest-bound "
+    "Qwen critiques and four digest-bound LFM3 revisions; no retry or resume"
+)
 CONTRACT_PATHS = (
     "AGENTS.md", ".github/AGENTS.md", "scripts/AGENTS.md",
     "tests/AGENTS.md", "docs/AGENTS.md",
@@ -54,45 +63,107 @@ def reject_nested_output(out, teacher_run, previous_run):
             raise ValueError("Round 2 output must be outside parent evidence archives")
 
 
-def record_call(body, expected_model):
-    """Record one inherited call, distinguishing malformed envelopes from wrong models."""
-    call = principal.record_call(body, expected_model)
-    if call["error"] == "model_identity_mismatch":
-        parsed = mtc.strict_json(base64.b64decode(
-            call["response_base64"], validate=True
-        ))
+def reject_nested_file(path, teacher_run, previous_run):
+    try:
+        candidate = Path(path).resolve(strict=True)
+    except FileNotFoundError:
+        raise ValueError("exact-scope owner authorization required") from None
+    for archive in (teacher_run, previous_run):
+        parent = Path(archive).resolve(strict=True)
+        if candidate == parent or parent in candidate.parents:
+            raise ValueError("Round 2 authorization must be outside parent archives")
+
+
+def digest_reference(digest):
+    if (type(digest) is not str or
+            re.fullmatch(r"sha256:[a-f0-9]{64}", digest) is None):
+        raise ValueError("invalid model digest reference")
+    # Ollama digest references bypass mutable model tags and resolve the exact
+    # locally stored manifest object.
+    return digest.replace(":", "-", 1)
+
+
+def review_payload(plan, task, original):
+    body = principal.review_payload(plan, task, original)
+    body["model"] = digest_reference(plan["principal"]["digest"])
+    return body
+
+
+def revision_payload(plan, task, original, feedback):
+    body = principal.revision_payload(plan, task, original, feedback)
+    body["model"] = digest_reference(plan["teacher"]["digest"])
+    return body
+
+
+def record_call(body, model):
+    """Issue one content-addressed call and retain its exact response envelope."""
+    expected = digest_reference(model["digest"])
+    if body.get("model") != expected:
+        raise ValueError("request is not bound to frozen model digest")
+    if mtc.model_sha(mtc.inventory(), model["name"]) != model["digest"]:
+        raise ValueError("installed model digest drift, incomplete run retained")
+    record = {"request_sha256": mtc.sha(mtc.canonical(body)),
+              "response_base64": "", "http_status": None, "error": None}
+    try:
+        parsed, raw = principal.call_local(body)
+        record["response_base64"] = base64.b64encode(raw).decode("ascii")
+        record["http_status"] = 200
         if not isinstance(parsed, dict):
-            call["error"] = "invalid_response_shape"
-    return call
+            record["error"] = "invalid_response_shape"
+        elif parsed.get("model") != expected:
+            record["error"] = "model_identity_mismatch"
+    except mtc.TransportError as exc:
+        record.update(
+            response_base64=base64.b64encode(exc.response).decode("ascii"),
+            http_status=exc.status, error=exc.code
+        )
+    return record
 
 
-def reconstruct(call, body, expected_model):
-    if isinstance(call, dict) and call.get("error") == "invalid_response_shape":
-        if (set(call) != {"request_sha256", "response_base64", "http_status", "error"}
-                or call["request_sha256"] != mtc.sha(mtc.canonical(body))
-                or call["http_status"] != 200):
-            raise ValueError("invalid malformed-response call record")
-        raw = base64.b64decode(call["response_base64"], validate=True)
-        if len(raw) > mtc.MAX_HTTP or isinstance(mtc.strict_json(raw), dict):
+def reconstruct(call, body, model):
+    expected = digest_reference(model["digest"])
+    if not isinstance(call, dict) or set(call) != {
+            "request_sha256", "response_base64", "http_status", "error"
+    } or call["request_sha256"] != mtc.sha(mtc.canonical(body)):
+        raise ValueError("call identity mismatch")
+    raw = base64.b64decode(call["response_base64"], validate=True)
+    if len(raw) > mtc.MAX_HTTP:
+        raise ValueError("excess captured response")
+    if call["error"] is None:
+        if call["http_status"] != 200:
+            raise ValueError("completed call status mismatch")
+        parsed = mtc.strict_json(raw)
+        if not isinstance(parsed, dict) or parsed.get("model") != expected:
+            raise ValueError("returned wrong digest-bound model")
+        return parsed
+    if call["error"] not in (
+            "response_truncated", "http_failure", "invalid_json", "deadline",
+            "transport_failure", "model_identity_mismatch",
+            "invalid_response_shape"):
+        raise ValueError("invalid preserved failure code")
+    if call["error"] == "model_identity_mismatch":
+        parsed = mtc.strict_json(raw)
+        if not isinstance(parsed, dict) or parsed.get("model") == expected:
+            raise ValueError("mismatched-model failure not supported by bytes")
+    elif call["error"] == "invalid_response_shape":
+        if call["http_status"] != 200 or isinstance(mtc.strict_json(raw), dict):
             raise ValueError("malformed-response failure not supported by bytes")
-        return None
-    return principal.reconstruct(call, body, expected_model)
+    return None
 
 
 def feedback_of(response, model):
     try:
-        return principal.feedback_of(response, model)
+        return principal.feedback_of(response, digest_reference(model["digest"]))
     except UnicodeError:
         return None
 
 
-def call_event(index, item_id, stage, call):
-    return {"index": index, "item_id": item_id, "stage": stage, "call": call}
-
-
-def check_installed_model(model):
-    if mtc.model_sha(mtc.inventory(), model["name"]) != model["digest"]:
-        raise ValueError("installed model digest drift after recorded call")
+def call_event(index, item_id, stage, model, call):
+    return {
+        "index": index, "item_id": item_id, "stage": stage,
+        "model_name": model["name"], "model_digest": model["digest"],
+        "request_model": digest_reference(model["digest"]), "call": call,
+    }
 
 
 def prior_evidence(teacher_run, previous_run, manifest_identity):
@@ -248,13 +319,13 @@ def validate_records(plan, originals, records):
                 row["previous_row_sha256"] != item["previous_row_sha256"] or
                 row["baseline_match"] is not item["baseline_match"]):
             raise ValueError("Round 2 lineage mismatch")
-        review_body = principal.review_payload(plan, task, originals[i])
+        review_body = review_payload(plan, task, originals[i])
         if row["principal_call"] is None:
             raise ValueError("missing recorded Principal call")
         reviewed = reconstruct(
-            row["principal_call"], review_body, plan["principal"]["name"]
+            row["principal_call"], review_body, plan["principal"]
         )
-        feedback = feedback_of(reviewed, plan["principal"]["name"]) if (
+        feedback = feedback_of(reviewed, plan["principal"]) if (
             reviewed is not None) else None
         if (row["principal_feedback"] != feedback or
                 row["verdict_matches_oracle"] is not
@@ -267,13 +338,13 @@ def validate_records(plan, originals, records):
                     row["revised_match"] is not False):
                 raise ValueError("invalid failed Principal row")
             continue
-        revision_body = principal.revision_payload(
+        revision_body = revision_payload(
             plan, task, originals[i], feedback
         )
         if row["teacher_call"] is None:
             raise ValueError("missing recorded teacher call")
         revised = reconstruct(
-            row["teacher_call"], revision_body, plan["teacher"]["name"]
+            row["teacher_call"], revision_body, plan["teacher"]
         )
         answer = mtc.parse_answer(revised) if revised is not None else None
         matched = (answer == mtc.oracle(task)) if answer is not None else False
@@ -284,15 +355,17 @@ def validate_records(plan, originals, records):
             raise ValueError("Round 2 revision / oracle mismatch")
 
 
-def validate_call_journal(records, calls):
+def validate_call_journal(plan, records, calls):
     expected = []
     for row in records:
         expected.append(call_event(
-            row["index"], row["item_id"], "principal", row["principal_call"]
+            row["index"], row["item_id"], "principal", plan["principal"],
+            row["principal_call"]
         ))
         if row["teacher_call"] is not None:
             expected.append(call_event(
-                row["index"], row["item_id"], "teacher", row["teacher_call"]
+                row["index"], row["item_id"], "teacher", plan["teacher"],
+                row["teacher_call"]
             ))
     if calls != expected:
         raise ValueError("Round 2 call journal mismatch")
@@ -335,22 +408,94 @@ def plan_command(args):
           "/4; principal_calls_max=4; revisions_max=4; no inference")
 
 
+def authorization_value(plan, request_identity, approval_file, capture_out):
+    return {
+        "schema": AUTHORIZATION_SCHEMA,
+        "approved_by": OWNER,
+        "reviewed_merged_green": True,
+        "approval_file": str(Path(approval_file).resolve(strict=False)),
+        "request_identity": request_identity,
+        "capture_out": str(Path(capture_out).resolve(strict=False)),
+        "prior_principal_manifest_identity":
+            plan["prior_principal_manifest_identity"],
+        "prior_teacher_manifest_identity": plan["prior_teacher_manifest_identity"],
+        "principal": plan["principal"], "teacher": plan["teacher"],
+        "planned_calls_max": plan["planned_calls_max"],
+        "one_use": True, "authorization": AUTHORIZATION,
+        "training_admission": False,
+    }
+
+
+def validate_authorization_value(value, plan, request_identity, approval_file,
+                                 capture_out):
+    expected = authorization_value(
+        plan, request_identity, approval_file, capture_out
+    )
+    if value != expected:
+        raise ValueError("exact-scope owner authorization required")
+    return expected
+
+
+def claim_value(authorization_raw, authorization):
+    return {
+        "schema": CLAIM_SCHEMA,
+        "authorization_identity": mtc.sha(authorization_raw),
+        "request_identity": authorization["request_identity"],
+        "approval_file": authorization["approval_file"],
+        "capture_out": authorization["capture_out"],
+        "one_use": True,
+    }
+
+
+def claim_path(approval_file):
+    path = Path(approval_file).resolve(strict=True)
+    return path.with_name(path.name + ".execution-claim.json")
+
+
+def validate_private_parent(path):
+    parent = Path(path).parent
+    info = parent.stat()
+    if (not parent.is_dir() or (os.name == "posix" and
+            (info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) & 0o077))):
+        raise ValueError("private owner-controlled authorization parent required")
+
+
+def read_authorization(plan, request_identity, approval_file, capture_out):
+    path = Path(approval_file).resolve(strict=True)
+    validate_private_parent(path)
+    raw = mtc.checked_file(path)
+    value = validate_authorization_value(
+        mtc.strict_json(raw), plan, request_identity, path, capture_out
+    )
+    return raw, value
+
+
 def capture_command(args):
-    if not args.authorize_round2:
-        raise ValueError("separate Round 2 owner authorization required")
     reject_nested_output(args.out, args.teacher_run, args.previous_run)
+    reject_nested_file(args.owner_approval, args.teacher_run, args.previous_run)
     raw = mtc.checked_file(args.plan)
     if mtc.sha(raw) != args.request_identity:
         raise ValueError("Round 2 request identity mismatch")
     plan = validate_plan(mtc.strict_json(raw))
+    authorization_raw, authorization = read_authorization(
+        plan, args.request_identity, args.owner_approval, args.out
+    )
     originals = check_prior(plan, args.teacher_run, args.previous_run)
     installed = mtc.inventory()
     for model in (plan["principal"], plan["teacher"]):
         if mtc.model_sha(installed, model["name"]) != model["digest"]:
             raise ValueError("installed model digest drift")
-    # No silent retry/resume: an interrupted HTTP request may already have executed.
+    destination = Path(args.out)
+    if destination.exists() or destination.is_symlink():
+        raise FileExistsError("Round 2 capture output already exists")
+    # The adjacent O_EXCL claim consumes this exact authorization before any
+    # inference. Failure and interruption remain consumed; there is no retry.
+    claim_raw = mtc.canonical(claim_value(authorization_raw, authorization))
+    mtc.write_new(claim_path(args.owner_approval), claim_raw)
     out = mtc.create_private(args.out)
     mtc.write_new(out / "plan.json", raw)
+    mtc.write_new(out / "owner-authorization.json", authorization_raw)
+    mtc.write_new(out / "execution-claim.json", claim_raw)
     mtc.write_new(out / "calls.jsonl", b"")
     mtc.write_new(out / "attempts.jsonl", b"")
     records = []
@@ -365,37 +510,33 @@ def capture_command(args):
             "teacher_call": None, "revised_answer": None,
             "revised_match": False, "status": "principal_failed_or_invalid",
         }
-        review_body = principal.review_payload(plan, task, original)
-        row["principal_call"] = record_call({
-            **review_body, "_expected_digest": plan["principal"]["digest"]
-        }, plan["principal"]["name"])
+        review_body = review_payload(plan, task, original)
+        row["principal_call"] = record_call(review_body, plan["principal"])
         mtc.append_line(out / "calls.jsonl", call_event(
-            index, item["item_id"], "principal", row["principal_call"]
+            index, item["item_id"], "principal", plan["principal"],
+            row["principal_call"]
         ))
-        check_installed_model(plan["principal"])
         reviewed = reconstruct(
-            row["principal_call"], review_body, plan["principal"]["name"]
+            row["principal_call"], review_body, plan["principal"]
         )
         feedback = feedback_of(
-            reviewed, plan["principal"]["name"]
+            reviewed, plan["principal"]
         ) if reviewed is not None else None
         row["principal_feedback"] = feedback
         row["verdict_matches_oracle"] = verdict_alignment(
             feedback, item["baseline_match"]
         )
         if feedback is not None:
-            revision_body = principal.revision_payload(
+            revision_body = revision_payload(
                 plan, task, original, feedback
             )
-            row["teacher_call"] = record_call({
-                **revision_body, "_expected_digest": plan["teacher"]["digest"]
-            }, plan["teacher"]["name"])
+            row["teacher_call"] = record_call(revision_body, plan["teacher"])
             mtc.append_line(out / "calls.jsonl", call_event(
-                index, item["item_id"], "teacher", row["teacher_call"]
+                index, item["item_id"], "teacher", plan["teacher"],
+                row["teacher_call"]
             ))
-            check_installed_model(plan["teacher"])
             revised = reconstruct(
-                row["teacher_call"], revision_body, plan["teacher"]["name"]
+                row["teacher_call"], revision_body, plan["teacher"]
             )
             row["revised_answer"] = mtc.parse_answer(revised) if (
                 revised is not None) else None
@@ -408,11 +549,13 @@ def capture_command(args):
                for call in (row["principal_call"], row["teacher_call"])):
             raise ValueError("mismatched model response; partial archive retained")
     validate_records(plan, originals, records)
-    validate_call_journal(records, mtc.read_attempts(out / "calls.jsonl"))
+    validate_call_journal(plan, records, mtc.read_attempts(out / "calls.jsonl"))
     mtc.write_new(out / "summary.json", mtc.canonical(summary(records)))
     manifest = {"schema": MANIFEST_SCHEMA, "members": {
         file: mtc.sha(mtc.checked_file(out / file))
-        for file in ("plan.json", "calls.jsonl", "attempts.jsonl", "summary.json")
+        for file in ("plan.json", "owner-authorization.json",
+                     "execution-claim.json", "calls.jsonl",
+                     "attempts.jsonl", "summary.json")
     }}
     mtc.write_new(out / "manifest.json", mtc.canonical(manifest))
     print("round2_manifest_identity=" + mtc.sha(mtc.canonical(manifest)))
@@ -429,21 +572,36 @@ def verify_command(args):
             manifest["schema"] != MANIFEST_SCHEMA or
             type(manifest["members"]) is not dict or
             set(manifest["members"]) != {
-                "plan.json", "calls.jsonl", "attempts.jsonl", "summary.json"
+                "plan.json", "owner-authorization.json", "execution-claim.json",
+                "calls.jsonl", "attempts.jsonl", "summary.json"
             }):
         raise ValueError("invalid Round 2 manifest")
     if {p.name for p in out.iterdir()} != {
-        "plan.json", "calls.jsonl", "attempts.jsonl", "summary.json", "manifest.json"
+        "plan.json", "owner-authorization.json", "execution-claim.json",
+        "calls.jsonl", "attempts.jsonl", "summary.json", "manifest.json"
     }:
         raise ValueError("unexpected Round 2 archive membership")
     for name, identity in manifest["members"].items():
         if mtc.sha(mtc.checked_file(out / name)) != identity:
             raise ValueError("Round 2 member hash mismatch")
-    plan = validate_plan(mtc.strict_json(mtc.checked_file(out / "plan.json")))
+    plan_raw = mtc.checked_file(out / "plan.json")
+    plan = validate_plan(mtc.strict_json(plan_raw))
+    authorization_raw = mtc.checked_file(out / "owner-authorization.json")
+    authorization = mtc.strict_json(authorization_raw)
+    approval_file = authorization.get("approval_file") if isinstance(
+        authorization, dict) else None
+    if type(approval_file) is not str:
+        raise ValueError("invalid archived owner authorization")
+    validate_authorization_value(
+        authorization, plan, mtc.sha(plan_raw), approval_file, out
+    )
+    claim_raw = mtc.checked_file(out / "execution-claim.json")
+    if claim_raw != mtc.canonical(claim_value(authorization_raw, authorization)):
+        raise ValueError("Round 2 execution claim mismatch")
     originals = check_prior(plan, args.teacher_run, args.previous_run)
     records = mtc.read_attempts(out / "attempts.jsonl")
     validate_records(plan, originals, records)
-    validate_call_journal(records, mtc.read_attempts(out / "calls.jsonl"))
+    validate_call_journal(plan, records, mtc.read_attempts(out / "calls.jsonl"))
     if len(records) != len(training_tasks()):
         raise ValueError("incomplete Round 2 records")
     if mtc.checked_file(out / "summary.json") != mtc.canonical(summary(records)):
@@ -466,7 +624,7 @@ def main(argv=None):
     capture.add_argument("--plan", type=Path, required=True)
     capture.add_argument("--request-identity", required=True)
     capture.add_argument("--out", type=Path, required=True)
-    capture.add_argument("--authorize-round2", action="store_true")
+    capture.add_argument("--owner-approval", type=Path, required=True)
     verify = sub.add_parser("verify")
     verify.add_argument("--teacher-run", type=Path, required=True)
     verify.add_argument("--previous-run", type=Path, required=True)
