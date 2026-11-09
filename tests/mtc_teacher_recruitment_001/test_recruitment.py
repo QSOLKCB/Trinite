@@ -234,7 +234,7 @@ class RecruitmentContracts(unittest.TestCase):
         ident = self.freeze()
         self.approve(ident)
         changed = {**self.parent, "summary_sha256": "sha256:"+"d"*64}
-        with patch.object(m.cause, "historical", return_value=changed):
+        with patch.object(m, "parent_evidence", return_value=changed):
             with self.assertRaisesRegex(ValueError, "lineage drift"):
                 self.capture(ident)
         self.assertFalse(self.run_path.exists())
