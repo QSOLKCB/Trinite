@@ -1,0 +1,32 @@
+name: MTC-EXAMINER-CAUSE-001 offline contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/mtc_examiner_cause_001.py'
+      - 'tests/mtc_examiner_cause_001/**'
+      - 'docs/MTC-EXAMINER-CAUSE-001.md'
+      - '.github/workflows/mtc-examiner-cause-001-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-examiner-cause:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse frozen diagnostic source
+        run: |
+          python3 -I -B -c "import ast,pathlib; ast.parse(pathlib.Path('scripts/mtc_examiner_cause_001.py').read_text())"
+      - name: Run synthetic offline tests, no installed models
+        run: python3 -I -B -m unittest discover -s tests/mtc_examiner_cause_001 -v
+      - name: Inspect offline CLI paths
+        run: |
+          python3 -I -B scripts/mtc_examiner_cause_001.py plan --help >/dev/null
+          python3 -I -B scripts/mtc_examiner_cause_001.py capture --help >/dev/null
+          python3 -I -B scripts/mtc_examiner_cause_001.py verify --help >/dev/null
