@@ -345,7 +345,7 @@ def validate_attempts(plan, attempts):
         elif row["status"] == "failed":
             if row["answer"] is not None or row["oracle_match"] is not False or (
                     row["error"] not in ("response_truncated", "http_failure", "invalid_json",
-                                         "deadline", "transport_failure", "model_digest_drift"))):
+                                         "deadline", "transport_failure", "model_digest_drift")):
                 raise ValueError("invalid failure envelope")
             if row["truncated"] and len(decoded) != MAX_HTTP:
                 raise ValueError("incorrect truncated flag")

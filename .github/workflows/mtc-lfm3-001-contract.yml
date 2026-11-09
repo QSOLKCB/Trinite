@@ -24,6 +24,7 @@ jobs:
         run: python3 -I -B -m unittest discover -s tests/mtc_lfm3_001 -v
       - name: CLI syntax and compiler check
         run: |
+          python3 -I -B -c "import ast,pathlib; [ast.parse(pathlib.Path(p).read_text()) for p in ('scripts/mtc_lfm3_001.py','scripts/mtc_lfm3_owner_job.py')]"
           python3 -I -B scripts/mtc_lfm3_001.py plan --help >/dev/null
           python3 -I -B scripts/mtc_lfm3_001.py capture --help >/dev/null
           python3 -I -B scripts/mtc_lfm3_001.py verify --help >/dev/null
