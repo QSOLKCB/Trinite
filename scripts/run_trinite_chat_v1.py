@@ -15,6 +15,7 @@ import operator
 import os
 from pathlib import Path
 import re
+import secrets
 import socket
 import stat
 import time
@@ -382,7 +383,122 @@ def result_for(request, config, adapter=teacher_chat, verifier=independent_oracl
     return base
 
 
-def http_handler(config, adapter=teacher_chat):
+
+PERSIST_REQUEST = "trinite.chat.persist.request.v1"
+SESSION_REQUEST = "trinite.chat.session.request.v1"
+SESSION_RESULT = "trinite.chat.session.result.v1"
+SESSION_ID = re.compile(r"[0-9a-f]{32}\Z")
+
+
+def session_id(value):
+    if not isinstance(value, str) or SESSION_ID.fullmatch(value) is None:
+        raise Invalid("invalid_session_id")
+    return value
+
+
+def parse_persist_request(raw):
+    data = strict_json(raw)
+    if not isinstance(data, dict) or set(data) != {"schema", "message", "session_id"}:
+        raise Invalid("invalid_persist_fields")
+    if data["schema"] != PERSIST_REQUEST:
+        raise Invalid("invalid_schema")
+    message = valid_text(data["message"])
+    return message, None if data["session_id"] is None else session_id(data["session_id"])
+
+
+def parse_session_request(raw):
+    data = strict_json(raw)
+    if not isinstance(data, dict) or set(data) != {"schema", "action", "session_id"}:
+        raise Invalid("invalid_session_fields")
+    if data["schema"] != SESSION_REQUEST or data["action"] not in ("load", "delete"):
+        raise Invalid("invalid_session_action")
+    return data["action"], session_id(data["session_id"])
+
+
+def selected_history(rows, message):
+    """Keep only a contiguous, bounded suffix of complete stored exchanges.
+
+    An oversized teacher response is displayable from disk but never passed
+    back to a model as a history entry: terminate history selection there.
+    """
+    if len(rows) % 2:
+        raise Invalid("invalid_stored_history")
+    result = []
+    for i in range(0, len(rows), 2):
+        user, assistant = rows[i:i + 2]
+        if user[0] != "user" or user[2] != "user" or assistant[0] != "assistant":
+            raise Invalid("invalid_stored_history")
+        if assistant[2] not in ("verified_exact", "model_generated_unverified"):
+            raise Invalid("invalid_stored_history")
+    for i in range(len(rows) - 2, -1, -2):
+        user, assistant = rows[i:i + 2]
+        if (len(user[1].encode("utf-8")) > MAX_MESSAGE or
+                len(assistant[1].encode("utf-8")) > MAX_MESSAGE):
+            break
+        pair = [{"role": "user", "content": user[1]},
+                {"role": "assistant", "content": assistant[1]}]
+        candidate = pair + result
+        if (len(candidate) > MAX_HISTORY or
+                len(canonical({"schema": SCHEMA, "message": message,
+                               "history": candidate})) > MAX_REQUEST):
+            break
+        result = candidate
+    return result
+
+
+class LocalSessions:
+    """Opt-in local SQLite layer; no implicit initialization, model or cloud."""
+
+    def __init__(self, path):
+        import importlib.util
+        module_path = Path(__file__).resolve().with_name("trinite_chat_sqlite_v1.py")
+        spec = importlib.util.spec_from_file_location("trinite_chat_sqlite_v1", module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.store = module
+        self.path = Path(path)
+        # Server startup validates an existing owner-authorized DB; no auto
+        # creation or persistent schema migration is permitted here.
+        connection = module.open_store(self.path, enable_persistence=True)
+        connection.close()
+
+    def tail(self, identifier):
+        return self.store.load_session_tail(self.path, identifier, limit=MAX_HISTORY)
+
+    def append(self, identifier, user, answer, classification):
+        self.store.record_exchange(
+            self.path, identifier, user, answer,
+            classification=classification, enable_persistence=True
+        )
+
+    def delete(self, identifier):
+        return self.store.delete_conversation(
+            self.path, identifier, enable_persistence=True
+        )
+
+
+def persisted_result(message, identifier, config, sessions, adapter):
+    if identifier is None:
+        identifier = secrets.token_hex(16)
+        rows = []
+    else:
+        rows = sessions.tail(identifier)
+        if rows is None:
+            raise Invalid("unknown_session")
+    history = selected_history(rows, message)
+    request = {"schema": SCHEMA, "message": message, "history": history}
+    response = result_for(request, config, adapter)
+    # Never save blocked/failed outcomes as completed exchange pairs.
+    response["persisted"] = False
+    response["session_id"] = identifier if rows else None
+    if response["status"] in ("verified_exact", "model_generated_unverified"):
+        sessions.append(identifier, message, response["text"], response["status"])
+        response["persisted"] = True
+        response["session_id"] = identifier
+    return response
+
+
+def http_handler(config, adapter=teacher_chat, sessions=None):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.0"
 
@@ -456,7 +572,7 @@ def http_handler(config, adapter=teacher_chat):
             except Invalid as exc:
                 self.fail(403, str(exc))
                 return
-            if self.path != "/api/chat":
+            if self.path not in ("/api/chat", "/api/session"):
                 self.fail(404, "not_found")
                 return
             if self.headers.get_all("Content-Type", []) != ["application/json"]:
@@ -480,6 +596,46 @@ def http_handler(config, adapter=teacher_chat):
                 raw = self.rfile.read(length)
                 if len(raw) != length:
                     raise Invalid("incomplete_body")
+                data = strict_json(raw)
+                if not isinstance(data, dict):
+                    raise Invalid("invalid_request_fields")
+                schema = data.get("schema")
+                if self.path == "/api/session":
+                    action, identifier = parse_session_request(raw)
+                    if sessions is None:
+                        self.fail(403, "persistence_disabled")
+                        return
+                    try:
+                        if action == "delete":
+                            removed = bool(sessions.delete(identifier))
+                            self.reply(200, {"schema": SESSION_RESULT, "status": "ok",
+                                             "deleted": removed})
+                        else:
+                            rows = sessions.tail(identifier)
+                            if rows is None:
+                                self.fail(404, "unknown_session")
+                                return
+                            self.reply(200, {"schema": SESSION_RESULT, "status": "ok",
+                                             "session_id": identifier,
+                                             "messages": [{"role": row[0], "content": row[1],
+                                                           "classification": row[2]}
+                                                          for row in rows]})
+                    except (sessions.store.StoreError, sessions.store.sqlite3.Error, OSError):
+                        self.fail(503, "storage_unavailable")
+                    return
+                if schema == PERSIST_REQUEST:
+                    if sessions is None:
+                        self.fail(403, "persistence_disabled")
+                        return
+                    message, identifier = parse_persist_request(raw)
+                    try:
+                        response = persisted_result(message, identifier, config,
+                                                    sessions, adapter)
+                    except (sessions.store.StoreError, sessions.store.sqlite3.Error, OSError):
+                        self.fail(503, "storage_unavailable")
+                        return
+                    self.reply(200 if response["status"] != "failed" else 502, response)
+                    return
                 req = parse_request(raw)
             except (TimeoutError, socket.timeout):
                 self.fail(408, "request_timeout")
@@ -515,7 +671,12 @@ def main(argv=None):
     parser.add_argument("--runtime-version")
     parser.add_argument("--chat-template")
     parser.add_argument("--authorize-local-teacher", action="store_true")
+    parser.add_argument("--enable-persistence", action="store_true",
+                        help="allow explicit browser opt-in to existing local SQLite DB")
+    parser.add_argument("--db-path", help="path to preinitialized local SQLite DB")
     args = parser.parse_args(argv)
+    if args.db_path is not None and not args.enable_persistence:
+        parser.error("db_path_requires_enable_persistence")
     if not 1 <= args.port <= 65535 or args.model_port == args.port:
         parser.error("invalid_listening_port")
     try:
@@ -525,9 +686,21 @@ def main(argv=None):
                         authorize_local_teacher=args.authorize_local_teacher)
     except Invalid as exc:
         parser.error(str(exc))
-    server = HTTPServer(("127.0.0.1", args.port), http_handler(config))
+    sessions = None
+    if args.enable_persistence:
+        try:
+            sessions = LocalSessions(args.db_path or (
+                Path(__file__).resolve().parent.parent / "data" / "trinite.db"
+            ))
+        except Exception as exc:
+            # Never fall back to in-tab mode without an explicit owner choice.
+            parser.error("persistence_preflight_failed: " + type(exc).__name__)
+    server = HTTPServer(("127.0.0.1", args.port),
+                        http_handler(config, sessions=sessions))
     print("TRI-CHAT-001 listening at http://127.0.0.1:" + str(args.port),
-          "| local teacher:", "enabled" if config.active else "disabled", flush=True)
+          "| local teacher:", "enabled" if config.active else "disabled",
+          "| SQLite opt-in:", "available" if sessions is not None else "disabled",
+          flush=True)
     try:
         server.serve_forever(poll_interval=0.2)
     except KeyboardInterrupt:

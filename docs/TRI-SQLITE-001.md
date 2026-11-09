@@ -51,7 +51,11 @@ The adjacent manifest is a consistency check, not an authenticity credential: an
 
 Restore verifies the manifest, exact checksum and structural schema before making a fresh destination. It rejects a destination with any existing main database or orphaned -wal/-shm/-journal sidecar, including sidecars left after the main file was unlinked, and rechecks before publication. It never overwrites an active DB. Stop the app and inspect the restored database before deciding on any separate replacement or switchover. Secure long-term retention, backup encryption and deleting old copies are owner-managed policies.
 
-## Programmatic API (not integrated into TRI-CHAT-001 yet)
+## Optional chat integration (TRI-CHAT-DB-001)
+
+[TRI-CHAT-DB-001](TRI-CHAT-DB-001.md) is a separate reviewed integration layer. It requires explicit browser opt-in and server permission; storage never starts automatically. The new `load_session_tail` helper returns at most 16 rows for a known session without reading the full 256-message history, or `None` for an unknown session. It preserves all existing v1 schema, file permission, locking, backup and source-validation contracts. Old databases need no migration.
+
+## Programmatic API
 
 ~~~python
 import importlib.util

@@ -42,6 +42,10 @@ The adapter only calls the configured local loopback OpenAI-compatible chat-comp
 
 Configured limits: HTTP JSON 16 KiB; message 8 KiB (each current/history entry); 16 history turns; teacher output 64 KiB; absolute inbound header deadline 2 seconds and body deadline 5 seconds; absolute teacher response deadline 30 seconds (including headers and slowly delivered body); 512 requested output tokens; one synchronous HTTP request at a time. The browser drops oversized assistant answers from replay history and prunes oldest complete pairs before each next request to stay within both 8-KiB entry and 16-KiB request budgets. These are application-level bounds, not proof of whole-system memory, latency or hardware containment. Never publish private chat transcripts or keys.
 
+## Opt-in SQLite follow-on
+
+[TRI-CHAT-DB-001](TRI-CHAT-DB-001.md) proposes a separate, user-controlled SQLite session mode based on the independently merged TRI-SQLITE-001 and TRI-SEC-001 storage components. The original in-tab request schema remains unchanged. The new mode is **off by default**, requires an existing validated local database and the explicit server `--enable-persistence` flag plus browser consent, and never sends private chat data to Notion. The browser may retain a random session token in localStorage after an acknowledged successful database commit. Read the complete integration contract and its remaining privacy limitations before enabling it.
+
 ## Static GitHub Pages
 
 The site/ directory is a public **static project explainer**, not a hosted chat/model. The separate Pages workflow builds and deploys from reviewed main only, even on manual dispatch. Its settings require the repository Pages Actions environment to be enabled before publishing; do not claim Pages is live just because the workflow exists. A public HTTPS Pages site cannot host the private Python model backend.
