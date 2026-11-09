@@ -5,6 +5,8 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -46,6 +48,65 @@ class SQLiteContracts(unittest.TestCase):
         with self.assertRaises(store.StoreError):
             store.backup_database(self.db, self.root / "snapshot.db")
         self.assertFalse((self.root/"snapshot.db").exists())
+
+
+    @unittest.skipUnless(os.name == "posix" and hasattr(os, "mkfifo")
+                         and hasattr(os, "O_NONBLOCK"), "POSIX FIFO support")
+    def test_fifo_rejected_without_blocking_in_all_file_entrypoints(self):
+        """Untrusted FIFO must never wait for a writer before fstat rejects.
+
+        Use a bounded subprocess for every operation: if O_NONBLOCK is removed,
+        the child can be killed and this regression fails without hanging CI.
+        """
+        child = """
+import importlib.util
+import os
+from pathlib import Path
+import sys
+import tempfile
+
+script, case = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("storage", script)
+store = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(store)
+
+with tempfile.TemporaryDirectory() as work:
+    fifo = Path(work) / "poison.db"
+    os.mkfifo(fifo, 0o600)
+    actions = {
+        "initialize": lambda: store.initialize(fifo, enable_persistence=True),
+        "read": lambda: store.list_messages(fifo, "session"),
+        "backup": lambda: store.backup_database(
+            fifo, Path(work) / "out.db", authorize_backup=True),
+        "verify": lambda: store.verify_backup(
+            fifo, Path(work) / "poison.db.manifest.json"),
+        "restore": lambda: store.restore_backup(
+            fifo, Path(work) / "poison.db.manifest.json",
+            Path(work) / "restored.db", authorize_restore=True),
+    }
+    try:
+        actions[case]()
+    except store.StoreError as error:
+        if str(error) == "not_regular_file":
+            sys.exit(0)
+        print("unexpected error:", repr(str(error)))
+        sys.exit(2)
+    print("FIFO unexpectedly accepted")
+    sys.exit(3)
+"""
+        for action in ("initialize", "read", "backup", "verify", "restore"):
+            with self.subTest(action=action):
+                try:
+                    result = subprocess.run(
+                        [sys.executable, "-I", "-B", "-c", child, str(SOURCE), action],
+                        capture_output=True, text=True, timeout=3.0, check=False,
+                    )
+                except subprocess.TimeoutExpired:
+                    self.fail(action + ": FIFO open blocked before file validation")
+                self.assertEqual(
+                    result.returncode, 0,
+                    action + ": " + (result.stdout + result.stderr).strip(),
+                )
 
     @unittest.skipUnless(os.name == "posix", "POSIX directory mode contract")
     def test_attacker_writable_parent_is_rejected_before_creation(self):

@@ -149,7 +149,10 @@ def pinned_parent(directory):
 
 def _checked_fd(parent_fd, name):
     """Open one regular owned private file without following a final symlink."""
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    # A FIFO opened O_RDONLY normally waits indefinitely for a writer,
+    # before fstat can reject the nonregular file. Nonblocking open lets
+    # _file_identity reject it promptly; it does not affect regular files.
+    flags = os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0)
     flags |= getattr(os, "O_CLOEXEC", 0)
     try:
         fd = os.open(name, flags, dir_fd=parent_fd)
