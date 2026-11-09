@@ -145,7 +145,7 @@ class IntegratedChatContracts(unittest.TestCase):
 
     def test_storage_failure_is_not_claimed_as_success_or_retried(self):
         with mock.patch.object(self.sessions, "append",
-                               side_effect=sql.StoreError("synthetic_disk_full")):
+                               side_effect=self.sessions.store.StoreError("synthetic_disk_full")):
             code, response = self.persist("17 * 19")
         self.assertEqual(code, 503)
         self.assertEqual(response["reason"], "storage_unavailable")

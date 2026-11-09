@@ -620,7 +620,7 @@ def http_handler(config, adapter=teacher_chat, sessions=None):
                                              "messages": [{"role": row[0], "content": row[1],
                                                            "classification": row[2]}
                                                           for row in rows]})
-                    except (sessions.store.StoreError, OSError) as exc:
+                    except (sessions.store.StoreError, sessions.store.sqlite3.Error, OSError):
                         self.fail(503, "storage_unavailable")
                     return
                 if schema == PERSIST_REQUEST:
@@ -628,12 +628,10 @@ def http_handler(config, adapter=teacher_chat, sessions=None):
                         self.fail(403, "persistence_disabled")
                         return
                     message, identifier = parse_persist_request(raw)
-                    if identifier is not None and sessions.tail(identifier) is None:
-                        raise Invalid("unknown_session")
                     try:
                         response = persisted_result(message, identifier, config,
                                                     sessions, adapter)
-                    except (sessions.store.StoreError, OSError) as exc:
+                    except (sessions.store.StoreError, sessions.store.sqlite3.Error, OSError):
                         self.fail(503, "storage_unavailable")
                         return
                     self.reply(200 if response["status"] != "failed" else 502, response)
@@ -694,7 +692,7 @@ def main(argv=None):
             sessions = LocalSessions(args.db_path or (
                 Path(__file__).resolve().parent.parent / "data" / "trinite.db"
             ))
-        except (OSError, ValueError, Exception) as exc:
+        except Exception as exc:
             # Never fall back to in-tab mode without an explicit owner choice.
             parser.error("persistence_preflight_failed: " + type(exc).__name__)
     server = HTTPServer(("127.0.0.1", args.port),

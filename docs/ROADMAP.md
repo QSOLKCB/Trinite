@@ -2,7 +2,7 @@
 
 ## Current implementation — TRI-CHAT-DB-001 explicit session persistence (9 November 2026)
 
-**Status: implementation proposal in a separate PR after merged TRI-CHAT-001, TRI-SQLITE-001 and TRI-SEC-001.** Connect the existing rules-first local chat server and vanilla browser UI to version-1 SQLite only with **two distinct owner/user decisions**: server startup with \`--enable-persistence\`, and a per-browser explicit **Remember in local SQLite** choice. See [TRI-CHAT-DB-001](TRI-CHAT-DB-001.md).
+**Status: implementation proposal in a separate PR after merged TRI-CHAT-001, TRI-SQLITE-001 and TRI-SEC-001.** Connect the existing rules-first local chat server and vanilla browser UI to version-1 SQLite only with **two distinct owner/user decisions**: server startup with `--enable-persistence`, and a per-browser explicit **Remember in local SQLite** choice. See [TRI-CHAT-DB-001](TRI-CHAT-DB-001.md).
 
 Acceptance: original no-database chat request shape and tests unchanged; saved requests never trust client-provided transcript history, load a bounded SQLite tail and prune context under the existing request budget; show separate exact-vs-unverified result status; persist only completed exchanges after atomic commits; generate unpredictable session identifiers; explicit reload and logical deletion; no automatic model retries or cloud fallback. Failure to open/validate the database fails startup closed. Storage permission/backup/retention/security semantics remain TRI-SQLITE-001/SEC-001, not new research evidence. Model advice cannot authorize persistence or native training.
 
