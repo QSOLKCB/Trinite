@@ -330,7 +330,13 @@ def authorization_value(plan, identity, approval_path, capture_path):
 
 
 def read_authorization(plan, identity, approval_path, capture_path):
-    path = Path(approval_path).resolve(strict=True)
+    given = Path(approval_path)
+    if given.is_symlink():
+        raise ValueError("exact-scope owner authorization required")
+    try:
+        path = given.resolve(strict=True)
+    except (FileNotFoundError, RuntimeError):
+        raise ValueError("exact-scope owner authorization required") from None
     parent = path.parent
     st = parent.stat()
     if not parent.is_dir() or (os.name == "posix" and (
