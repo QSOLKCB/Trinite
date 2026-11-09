@@ -15,7 +15,8 @@ import stat
 SCHEMA = "trinite.ollama-log.receipt.v1"
 MAX_LOG = 64 * 1024 * 1024
 MAX_LINE = 64 * 1024
-MAX_MANIFEST = 1024 * 1024
+MAX_MANIFEST = 1024 * 1024  # Existing experiment-manifest input bound.
+MAX_RECEIPT = 8 * 1024 * 1024  # Separate, shared seal/verify output bound.
 CHUNK = 64 * 1024
 SHA = re.compile(r"sha256:[0-9a-f]{64}\Z")
 LABEL = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}\Z")
@@ -289,6 +290,8 @@ def seal_command(args):
     record = receipt_value(args.log, args.experiment_manifest,
                            args.experiment_identity, args.session_label)
     raw = canonical(record)
+    if not 1 <= len(raw) <= MAX_RECEIPT:
+        raise ValueError("receipt exceeds limit")
     write_new(args.out, raw)
     print("ollama_log_receipt_identity=" + sha(raw))
     print("observed_log_sha256=" + record["log"]["sha256"])
@@ -300,9 +303,9 @@ def seal_command(args):
 def verify_command(args):
     raw_fd, info = open_private_regular(args.receipt)
     with os.fdopen(raw_fd, "rb") as source:
-        if not 1 <= info.st_size <= MAX_MANIFEST:
+        if not 1 <= info.st_size <= MAX_RECEIPT:
             raise ValueError("receipt exceeds limit")
-        raw = source.read(MAX_MANIFEST + 1)
+        raw = source.read(MAX_RECEIPT + 1)
         after = os.fstat(source.fileno())
     if (len(raw) != info.st_size or info.st_mtime_ns != after.st_mtime_ns
             or info.st_ctime_ns != after.st_ctime_ns):

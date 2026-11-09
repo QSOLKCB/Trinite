@@ -210,6 +210,46 @@ class ReceiptTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "differs from receipt"):
                 self.verify(digest)
 
+
+    def test_large_repeated_startup_events_seal_and_verify_consistently(self):
+        # Reproduces the P2 review: 25,000 event lines generated a >1 MiB
+        # receipt, which seal once accepted but verify rejected.
+        repeated = (
+            'time=2026-11-09T00:00:00Z '
+            'msg="Listening on 127.0.0.1:11434 (version 0.40.15)"\n'
+        ).encode("ascii") * 25_000
+        self.assertLess(len(repeated), mod.MAX_LOG)
+        private_file(self.log, repeated)
+        digest = self.seal(label="repeated-listening-events")
+        receipt_bytes = self.receipt.read_bytes()
+        self.assertGreater(len(receipt_bytes), mod.MAX_MANIFEST)
+        self.assertLessEqual(len(receipt_bytes), mod.MAX_RECEIPT)
+        record = json.loads(receipt_bytes)
+        self.assertEqual(record["log"]["line_count"], 25_000)
+        self.assertEqual(len(record["log"]["listen_events"]), 25_000)
+        self.verify(digest)
+
+    def test_seal_rejects_receipt_above_shared_limit_before_creating_file(self):
+        # Lower the shared bound inside this test to make the case quick.
+        # The same 25,000-line repro is bigger than 1 MiB as a receipt.
+        repeated = (
+            'time=2026-11-09T00:00:00Z '
+            'msg="Listening on 127.0.0.1:11434 (version 0.40.15)"\n'
+        ).encode("ascii") * 25_000
+        private_file(self.log, repeated)
+        with patch.object(mod, "MAX_RECEIPT", mod.MAX_MANIFEST):
+            with self.assertRaisesRegex(ValueError, "receipt exceeds limit"):
+                self.seal()
+        self.assertFalse(self.receipt.exists())
+
+    def test_verify_uses_same_receipt_limit_as_seal(self):
+        digest = self.seal()
+        actual_size = self.receipt.stat().st_size
+        with patch.object(mod, "MAX_RECEIPT", actual_size - 1):
+            with self.assertRaisesRegex(ValueError, "receipt exceeds limit"):
+                self.verify(digest)
+        self.verify(digest)
+
     def test_preexisting_receipt_not_overwritten(self):
         digest = self.seal()
         raw = self.receipt.read_bytes()
