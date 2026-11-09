@@ -1,0 +1,32 @@
+name: MTC-PRINCIPAL-001 offline Qwen/LFM supervision contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/mtc_principal_001.py'
+      - 'tests/mtc_principal_001/**'
+      - 'docs/MTC-PRINCIPAL-001.md'
+      - '.github/workflows/mtc-principal-001-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-principal-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse Principal source as Python without writing bytecode
+        run: |
+          python3 -I -B -c "import ast,pathlib; ast.parse(pathlib.Path('scripts/mtc_principal_001.py').read_text())"
+      - name: Deterministic fake Ollama tests, no model loads
+        run: python3 -I -B -m unittest discover -s tests/mtc_principal_001 -v
+      - name: CLI command discovery
+        run: |
+          python3 -I -B scripts/mtc_principal_001.py plan --help >/dev/null
+          python3 -I -B scripts/mtc_principal_001.py capture --help >/dev/null
+          python3 -I -B scripts/mtc_principal_001.py verify --help >/dev/null
