@@ -1,5 +1,9 @@
 # Roadmap
 
+## Proposed research design — MTC-SCAFFOLD-ABLATION-001 (10 November 2026)
+
+**DOCS-ONLY / proposed, not executed:** [MTC-SCAFFOLD-ABLATION-001](MTC-SCAFFOLD-ABLATION-001.md) specifies a four-arm Modelfile × inference-harness comparison for a *fixed, separately qualified teacher* (stock / profile / harness / combined). The deterministic Python oracle remains independent; any oracle-assisted application is scored separately, never as model arithmetic. Start with a strictly exposed software/transport pilot, then a frozen prospective family-level test only after exact-scope local owner authorization. A later native-weight training stage may compare unassisted model gains before/after, subject to a separate learning, rights and checkpoint protocol. **Do not treat Modelfiles or harnesses as weight training, automatically promote a candidate, or alter the frozen Qwen results.** Recruitment PR #156 remains separately reviewable and is not modified.
+
 ## Current implementation — TRI-CHAT-DB-001 explicit session persistence (9 November 2026)
 
 **Status: implementation proposal in a separate PR after merged TRI-CHAT-001, TRI-SQLITE-001 and TRI-SEC-001.** Connect the existing rules-first local chat server and vanilla browser UI to version-1 SQLite only with **two distinct owner/user decisions**: server startup with `--enable-persistence`, and a per-browser explicit **Remember in local SQLite** choice. See [TRI-CHAT-DB-001](TRI-CHAT-DB-001.md).
