@@ -16,7 +16,7 @@ on:
         type: string
         required: true
       models:
-        description: 'PLAN: five comma-separated installed text-capable LFM3 tags'
+        description: 'PLAN: 1-5 distinct installed text-capable LFM3 tags'
         type: string
         required: false
       request_identity:

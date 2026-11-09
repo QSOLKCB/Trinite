@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MTC-LFM3-001: bounded local five-teacher text capture. NEVER training admission."""
+"""MTC-LFM3-002: bounded local 1-5 teacher capture. NEVER training admission."""
 from __future__ import annotations
 
 import argparse
@@ -17,10 +17,11 @@ import socket
 import stat
 import time
 
-SCHEMA = "trinite.mtc-lfm3.plan.v1"
-MANIFEST_SCHEMA = "trinite.mtc-lfm3.manifest.v1"
+SCHEMA = "trinite.mtc-lfm3.plan.v2"
+MANIFEST_SCHEMA = "trinite.mtc-lfm3.manifest.v2"
 URL_HOST, URL_PORT = "127.0.0.1", 11434
-COUNT_MODELS = 5
+MIN_MODELS = 1
+MAX_MODELS = 5
 COUNT_ITEMS = 6
 MAX_HTTP = 65536
 DEADLINE = 70.0
@@ -159,8 +160,8 @@ def strict_json(raw):
 
 def validate_models(value):
     names = [x.strip() for x in value.split(",")]
-    if len(names) != COUNT_MODELS or len(set(names)) != COUNT_MODELS:
-        raise ValueError("exactly five distinct installed model tags required")
+    if not MIN_MODELS <= len(names) <= MAX_MODELS or len(set(names)) != len(names):
+        raise ValueError("one to five distinct installed model tags required")
     for name in names:
         if not NAME.fullmatch(name) or "lfm3" not in name.lower() or "d1" in name.lower():
             raise ValueError("each tag must name a text-capable LFM3 variant, not d1")
@@ -259,11 +260,15 @@ def model_sha(models, name):
 
 
 def build_plan(names):
-    models = inventory()
+    names = validate_models(",".join(names))
+    installed = inventory()
+    models = [{"name": name, "digest": model_sha(installed, name)} for name in names]
+    if len({model["digest"] for model in models}) != len(models):
+        raise ValueError("duplicate installed model digest: aliases are not independent teachers")
     return {"schema": SCHEMA, "source_closure": closure(),
-            "models": [{"name": name, "digest": model_sha(models, name)} for name in names],
+            "models": models,
             "tasks": tasks(), "sampling": SETTINGS, "endpoint": "http://127.0.0.1:11434",
-            "count": COUNT_ITEMS * COUNT_MODELS, "status": "QUARANTINED_NOT_ADMITTED",
+            "count": COUNT_ITEMS * len(models), "status": "QUARANTINED_NOT_ADMITTED",
             "admission": False}
 
 
@@ -275,19 +280,26 @@ def validate_plan(plan):
         raise ValueError("source or plan closure drift")
     if plan["tasks"] != tasks() or plan["sampling"] != SETTINGS or (
         plan["endpoint"] != "http://127.0.0.1:11434" or
-        plan["count"] != 30 or plan["status"] != "QUARANTINED_NOT_ADMITTED" or
+        plan["status"] != "QUARANTINED_NOT_ADMITTED" or
         plan["admission"] is not False
     ):
         raise ValueError("frozen request changed")
-    if type(plan["models"]) is not list or len(plan["models"]) != COUNT_MODELS:
+    models = plan["models"]
+    if type(models) is not list or not MIN_MODELS <= len(models) <= MAX_MODELS:
         raise ValueError("invalid model list")
-    names = validate_models(",".join(x["name"] for x in plan["models"]))
-    for i, name in enumerate(names):
-        entry = plan["models"][i]
-        if (type(entry) is not dict or set(entry) != {"name", "digest"} or
-                entry["name"] != name or type(entry["digest"]) is not str or
+    if any(type(entry) is not dict or set(entry) != {"name", "digest"} or
+           type(entry["name"]) is not str or type(entry["digest"]) is not str
+           for entry in models):
+        raise ValueError("invalid frozen model identity")
+    names = validate_models(",".join(entry["name"] for entry in models))
+    for entry, name in zip(models, names):
+        if (entry["name"] != name or
                 re.fullmatch(r"sha256:[a-f0-9]{64}", entry["digest"]) is None):
             raise ValueError("invalid frozen model identity")
+    if len({entry["digest"] for entry in models}) != len(models):
+        raise ValueError("duplicate frozen model digest")
+    if type(plan["count"]) is not int or plan["count"] != len(models) * COUNT_ITEMS:
+        raise ValueError("frozen request count mismatch")
 
 
 def expected_requests(plan):
@@ -376,8 +388,8 @@ def read_attempts(path):
     return result
 
 
-def summary(attempts):
-    return {"planned": COUNT_MODELS * COUNT_ITEMS,
+def summary(attempts, plan):
+    return {"planned": plan["count"],
             "attempted": len(attempts),
             "completed": sum(x["status"] == "completed" for x in attempts),
             "failed": sum(x["status"] == "failed" for x in attempts),
@@ -393,7 +405,7 @@ def plan_command(args):
     output = create_private(args.out)
     write_new(output / "plan.json", canonical(plan))
     print("request_identity=" + sha(canonical(plan)))
-    print("planned_calls=30; no inference executed")
+    print("planned_calls=" + str(plan["count"]) + "; no inference executed")
 
 
 def capture_command(args):
@@ -448,13 +460,13 @@ def capture_command(args):
         if row["error"] == "model_digest_drift":
             raise ValueError("installed model digest drift; partial evidence retained")
     validate_attempts(plan, prior)
-    write_new(run_dir / "summary.json", canonical(summary(prior)))
+    write_new(run_dir / "summary.json", canonical(summary(prior, plan)))
     manifest = {"schema": MANIFEST_SCHEMA,
                 "members": {name: sha(checked_file(run_dir / name)) for name in
                             ("plan.json", "attempts.jsonl", "summary.json")}}
     write_new(run_dir / "manifest.json", canonical(manifest))
     print("manifest_identity=" + sha(canonical(manifest)))
-    print("attempts=30; private quarantined capture; no student training")
+    print("attempts=" + str(len(prior)) + "; private quarantined capture; no student training")
 
 
 def verify_command(args):
@@ -480,19 +492,19 @@ def verify_command(args):
     validate_plan(plan)
     attempts = read_attempts(run / "attempts.jsonl")
     validate_attempts(plan, attempts)
-    if len(attempts) != COUNT_MODELS * COUNT_ITEMS:
+    if len(attempts) != plan["count"]:
         raise ValueError("incomplete attempt inventory")
-    if checked_file(run / "summary.json") != canonical(summary(attempts)):
+    if checked_file(run / "summary.json") != canonical(summary(attempts, plan)):
         raise ValueError("summary mismatch")
     print("verified_recorded_capture=" + args.manifest_identity)
     print("rights_status=QUARANTINED_NOT_ADMITTED; training_admission=0")
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="MTC-LFM3-001 local five-teacher capture")
+    parser = argparse.ArgumentParser(description="MTC-LFM3-002 local one-to-five-teacher capture")
     cmds = parser.add_subparsers(dest="command", required=True)
     freeze = cmds.add_parser("plan")
-    freeze.add_argument("--models", required=True, help="five distinct comma-separated installed LFM3 names")
+    freeze.add_argument("--models", required=True, help="1-5 distinct comma-separated installed LFM3 names")
     freeze.add_argument("--out", type=Path, required=True)
     capture = cmds.add_parser("capture")
     capture.add_argument("--plan", type=Path, required=True)

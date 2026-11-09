@@ -1,4 +1,4 @@
-"""MTC-LFM3-001 offline conformance: five Ollama software doubles, never real inference."""
+"""MTC-LFM3-002 offline 1-5 teacher conformance, never real inference."""
 import base64
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -30,6 +30,7 @@ class FakeOllama(BaseHTTPRequestHandler):
     counts = 0
     fail = False
     wrong_model = False
+    duplicate_digest = False
 
     def log_message(self, *_):
         pass
@@ -45,7 +46,8 @@ class FakeOllama(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/tags":
             self.respond({"models": [
-                {"name": m, "digest": DIGESTS[m]} for m in MODELS
+                {"name": m, "digest": DIGESTS[MODELS[0]] if self.duplicate_digest and m == MODELS[1] else DIGESTS[m]}
+                for m in MODELS
             ]})
         elif self.path == "/api/version":
             self.respond({"version": "fake-local"})
@@ -97,6 +99,7 @@ class CaptureContracts(unittest.TestCase):
         FakeOllama.counts = 0
         FakeOllama.fail = False
         FakeOllama.wrong_model = False
+        FakeOllama.duplicate_digest = False
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.plan_dir = self.root / "plan"
@@ -105,8 +108,9 @@ class CaptureContracts(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def freeze(self):
-        mtc.plan_command(type("A", (), {"models": ",".join(MODELS),
+    def freeze(self, names=None):
+        selected = MODELS if names is None else names
+        mtc.plan_command(type("A", (), {"models": ",".join(selected),
                                         "out": self.plan_dir})())
         return mtc.sha((self.plan_dir / "plan.json").read_bytes())
 
@@ -137,7 +141,7 @@ class CaptureContracts(unittest.TestCase):
         rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
         self.assertEqual(len(rows), 30)
         self.assertEqual(sum(row["oracle_match"] for row in rows), 30)
-        self.assertEqual(mtc.summary(rows)["admitted_rows"], 0)
+        self.assertEqual(mtc.summary(rows, mtc.strict_json((self.plan_dir / "plan.json").read_bytes()))["admitted_rows"], 0)
         self.assertEqual({p.name for p in self.run_dir.iterdir()},
                          {"plan.json", "attempts.jsonl", "summary.json", "manifest.json"})
         self.verify()
@@ -147,8 +151,81 @@ class CaptureContracts(unittest.TestCase):
             self.assertTrue(all((f.stat().st_mode & 0o077) == 0
                                 for f in directory.iterdir()))
 
+    def test_one_teacher_plan_capture_verify_and_principal_selection(self):
+        identity = self.freeze(MODELS[:1])
+        plan = mtc.strict_json((self.plan_dir / "plan.json").read_bytes())
+        self.assertEqual(plan["count"], 6)
+        self.assertEqual(plan["schema"], mtc.SCHEMA)
+        self.assertEqual([model["name"] for model in plan["models"]], MODELS[:1])
+        self.capture(identity)
+        self.assertEqual(FakeOllama.counts, 6)
+        rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        self.assertEqual(len(rows), 6)
+        self.assertEqual(mtc.summary(rows, plan)["planned"], 6)
+        self.assertEqual(mtc.summary(rows, plan)["admitted_rows"], 0)
+        self.verify()
+        # Principal must still find exactly four frozen TRAIN examples when
+        # the five-model baseline has been replaced with one selected teacher.
+        spec = importlib.util.spec_from_file_location(
+            "principal_single_teacher",
+            ROOT / "scripts" / "mtc_principal_001.py"
+        )
+        principal = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(principal)
+        selected, model_digest = principal.selections(plan, rows, MODELS[0])
+        self.assertEqual(len(selected), 4)
+        self.assertEqual(model_digest, "sha256:" + DIGESTS[MODELS[0]])
+
+    def test_three_teacher_count_is_frozen_and_verified(self):
+        identity = self.freeze(MODELS[:3])
+        plan = mtc.strict_json((self.plan_dir / "plan.json").read_bytes())
+        self.assertEqual(plan["count"], 18)
+        self.capture(identity)
+        self.assertEqual(FakeOllama.counts, 18)
+        rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        self.assertEqual(mtc.summary(rows, plan)["planned"], 18)
+        self.verify()
+
+    def test_aliased_model_digests_fail_before_plan_creation(self):
+        FakeOllama.duplicate_digest = True
+        with self.assertRaisesRegex(ValueError, "duplicate installed model digest"):
+            self.freeze(MODELS[:2])
+        self.assertFalse(self.plan_dir.exists())
+        self.assertEqual(FakeOllama.counts, 0)
+
+    def test_forged_model_digest_or_request_count_is_rejected(self):
+        self.freeze(MODELS[:2])
+        plan = mtc.strict_json((self.plan_dir / "plan.json").read_bytes())
+        self.assertEqual(plan["count"], 12)
+        wrong_count = dict(plan, count=30)
+        with self.assertRaisesRegex(ValueError, "frozen request count mismatch"):
+            mtc.validate_plan(wrong_count)
+        wrong_count["count"] = True
+        with self.assertRaisesRegex(ValueError, "frozen request count mismatch"):
+            mtc.validate_plan(wrong_count)
+        collision = {**plan, "models": [dict(x) for x in plan["models"]]}
+        collision["models"][1]["digest"] = collision["models"][0]["digest"]
+        with self.assertRaisesRegex(ValueError, "duplicate frozen model digest"):
+            mtc.validate_plan(collision)
+
+    def test_single_teacher_resume_preserves_recorded_prefix(self):
+        request_id = self.freeze(MODELS[:1])
+        self.capture(request_id)
+        rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        (self.run_dir / "manifest.json").unlink()
+        (self.run_dir / "summary.json").unlink()
+        (self.run_dir / "attempts.jsonl").write_bytes(
+            b"".join(mtc.canonical(x) for x in rows[:2])
+        )
+        self.capture(request_id, resume=True)
+        self.assertEqual(FakeOllama.counts, 6 + 4)
+        self.assertEqual(mtc.read_attempts(self.run_dir / "attempts.jsonl")[:2],
+                         rows[:2])
+        self.verify()
+
     def test_freeze_refuses_duplicate_uninstalled_or_decision_models(self):
-        for names in (MODELS[:4], MODELS[:4] + [MODELS[0]],
+        for names in ([], MODELS + ["lfm3-extra:test"],
+                      MODELS[:4] + [MODELS[0]],
                       MODELS[:4] + ["other:test"],
                       MODELS[:4] + ["lfm3-d1:test"]):
             with self.subTest(names=names):
@@ -176,7 +253,7 @@ class CaptureContracts(unittest.TestCase):
         self.assertEqual(len(rows), 30)
         self.assertTrue(all(x["status"] == "failed" for x in rows))
         self.assertTrue(all(x["http_status"] == 503 for x in rows))
-        self.assertEqual(mtc.summary(rows)["admitted_rows"], 0)
+        self.assertEqual(mtc.summary(rows, mtc.strict_json((self.plan_dir / "plan.json").read_bytes()))["admitted_rows"], 0)
         self.assertIn("synthetic_failure",
                       base64.b64decode(rows[0]["response_base64"]).decode())
         self.verify()
