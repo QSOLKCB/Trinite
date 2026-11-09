@@ -21,7 +21,8 @@ _spec.loader.exec_module(principal)
 mtc = principal.mtc
 
 PLAN_SCHEMA = "trinite.mtc-principal-round2.plan.v1"
-MANIFEST_SCHEMA = "trinite.mtc-principal-round2.manifest.v1"
+MANIFEST_SCHEMA = "trinite.mtc-principal-round2.manifest.v2"
+EXPECTED_BASELINE_MATCHES = 3
 CONTRACT_PATHS = (
     "AGENTS.md", ".github/AGENTS.md", "scripts/AGENTS.md",
     "tests/AGENTS.md", "docs/AGENTS.md",
@@ -51,6 +52,47 @@ def reject_nested_output(out, teacher_run, previous_run):
         parent = Path(archive).resolve(strict=True)
         if destination == parent or parent in destination.parents:
             raise ValueError("Round 2 output must be outside parent evidence archives")
+
+
+def record_call(body, expected_model):
+    """Record one inherited call, distinguishing malformed envelopes from wrong models."""
+    call = principal.record_call(body, expected_model)
+    if call["error"] == "model_identity_mismatch":
+        parsed = mtc.strict_json(base64.b64decode(
+            call["response_base64"], validate=True
+        ))
+        if not isinstance(parsed, dict):
+            call["error"] = "invalid_response_shape"
+    return call
+
+
+def reconstruct(call, body, expected_model):
+    if isinstance(call, dict) and call.get("error") == "invalid_response_shape":
+        if (set(call) != {"request_sha256", "response_base64", "http_status", "error"}
+                or call["request_sha256"] != mtc.sha(mtc.canonical(body))
+                or call["http_status"] != 200):
+            raise ValueError("invalid malformed-response call record")
+        raw = base64.b64decode(call["response_base64"], validate=True)
+        if len(raw) > mtc.MAX_HTTP or isinstance(mtc.strict_json(raw), dict):
+            raise ValueError("malformed-response failure not supported by bytes")
+        return None
+    return principal.reconstruct(call, body, expected_model)
+
+
+def feedback_of(response, model):
+    try:
+        return principal.feedback_of(response, model)
+    except UnicodeError:
+        return None
+
+
+def call_event(index, item_id, stage, call):
+    return {"index": index, "item_id": item_id, "stage": stage, "call": call}
+
+
+def check_installed_model(model):
+    if mtc.model_sha(mtc.inventory(), model["name"]) != model["digest"]:
+        raise ValueError("installed model digest drift after recorded call")
 
 
 def prior_evidence(teacher_run, previous_run, manifest_identity):
@@ -92,6 +134,8 @@ def prior_evidence(teacher_run, previous_run, manifest_identity):
             "baseline_answer": row["revised_answer"],
             "baseline_match": row["revised_match"],
         }, content))
+    if sum(record["baseline_match"] for record, _ in result) != EXPECTED_BASELINE_MATCHES:
+        raise ValueError("previous Principal baseline is not the required 3/4")
     return prev_plan, result
 
 
@@ -164,6 +208,8 @@ def validate_plan(plan):
                 type(record["baseline_match"]) is not bool or
                 record["baseline_match"] is not (record["baseline_answer"] == mtc.oracle(task))):
             raise ValueError("invalid prior row or oracle binding")
+    if sum(record["baseline_match"] for record in items) != EXPECTED_BASELINE_MATCHES:
+        raise ValueError("Round 2 plan baseline is not the required 3/4")
     return plan
 
 
@@ -203,10 +249,12 @@ def validate_records(plan, originals, records):
                 row["baseline_match"] is not item["baseline_match"]):
             raise ValueError("Round 2 lineage mismatch")
         review_body = principal.review_payload(plan, task, originals[i])
-        reviewed = principal.reconstruct(
+        if row["principal_call"] is None:
+            raise ValueError("missing recorded Principal call")
+        reviewed = reconstruct(
             row["principal_call"], review_body, plan["principal"]["name"]
         )
-        feedback = principal.feedback_of(reviewed, plan["principal"]["name"]) if (
+        feedback = feedback_of(reviewed, plan["principal"]["name"]) if (
             reviewed is not None) else None
         if (row["principal_feedback"] != feedback or
                 row["verdict_matches_oracle"] is not
@@ -222,7 +270,9 @@ def validate_records(plan, originals, records):
         revision_body = principal.revision_payload(
             plan, task, originals[i], feedback
         )
-        revised = principal.reconstruct(
+        if row["teacher_call"] is None:
+            raise ValueError("missing recorded teacher call")
+        revised = reconstruct(
             row["teacher_call"], revision_body, plan["teacher"]["name"]
         )
         answer = mtc.parse_answer(revised) if revised is not None else None
@@ -232,6 +282,20 @@ def validate_records(plan, originals, records):
                 row["status"] != ("completed" if revised is not None
                                   else "revision_transport_failed")):
             raise ValueError("Round 2 revision / oracle mismatch")
+
+
+def validate_call_journal(records, calls):
+    expected = []
+    for row in records:
+        expected.append(call_event(
+            row["index"], row["item_id"], "principal", row["principal_call"]
+        ))
+        if row["teacher_call"] is not None:
+            expected.append(call_event(
+                row["index"], row["item_id"], "teacher", row["teacher_call"]
+            ))
+    if calls != expected:
+        raise ValueError("Round 2 call journal mismatch")
 
 
 def summary(rows):
@@ -287,6 +351,7 @@ def capture_command(args):
     # No silent retry/resume: an interrupted HTTP request may already have executed.
     out = mtc.create_private(args.out)
     mtc.write_new(out / "plan.json", raw)
+    mtc.write_new(out / "calls.jsonl", b"")
     mtc.write_new(out / "attempts.jsonl", b"")
     records = []
     for index, task in enumerate(training_tasks()):
@@ -301,13 +366,17 @@ def capture_command(args):
             "revised_match": False, "status": "principal_failed_or_invalid",
         }
         review_body = principal.review_payload(plan, task, original)
-        row["principal_call"] = principal.record_call({
+        row["principal_call"] = record_call({
             **review_body, "_expected_digest": plan["principal"]["digest"]
         }, plan["principal"]["name"])
-        reviewed = principal.reconstruct(
+        mtc.append_line(out / "calls.jsonl", call_event(
+            index, item["item_id"], "principal", row["principal_call"]
+        ))
+        check_installed_model(plan["principal"])
+        reviewed = reconstruct(
             row["principal_call"], review_body, plan["principal"]["name"]
         )
-        feedback = principal.feedback_of(
+        feedback = feedback_of(
             reviewed, plan["principal"]["name"]
         ) if reviewed is not None else None
         row["principal_feedback"] = feedback
@@ -318,10 +387,14 @@ def capture_command(args):
             revision_body = principal.revision_payload(
                 plan, task, original, feedback
             )
-            row["teacher_call"] = principal.record_call({
+            row["teacher_call"] = record_call({
                 **revision_body, "_expected_digest": plan["teacher"]["digest"]
             }, plan["teacher"]["name"])
-            revised = principal.reconstruct(
+            mtc.append_line(out / "calls.jsonl", call_event(
+                index, item["item_id"], "teacher", row["teacher_call"]
+            ))
+            check_installed_model(plan["teacher"])
+            revised = reconstruct(
                 row["teacher_call"], revision_body, plan["teacher"]["name"]
             )
             row["revised_answer"] = mtc.parse_answer(revised) if (
@@ -335,10 +408,11 @@ def capture_command(args):
                for call in (row["principal_call"], row["teacher_call"])):
             raise ValueError("mismatched model response; partial archive retained")
     validate_records(plan, originals, records)
+    validate_call_journal(records, mtc.read_attempts(out / "calls.jsonl"))
     mtc.write_new(out / "summary.json", mtc.canonical(summary(records)))
     manifest = {"schema": MANIFEST_SCHEMA, "members": {
         file: mtc.sha(mtc.checked_file(out / file))
-        for file in ("plan.json", "attempts.jsonl", "summary.json")
+        for file in ("plan.json", "calls.jsonl", "attempts.jsonl", "summary.json")
     }}
     mtc.write_new(out / "manifest.json", mtc.canonical(manifest))
     print("round2_manifest_identity=" + mtc.sha(mtc.canonical(manifest)))
@@ -354,10 +428,12 @@ def verify_command(args):
     if (type(manifest) is not dict or set(manifest) != {"schema", "members"} or
             manifest["schema"] != MANIFEST_SCHEMA or
             type(manifest["members"]) is not dict or
-            set(manifest["members"]) != {"plan.json", "attempts.jsonl", "summary.json"}):
+            set(manifest["members"]) != {
+                "plan.json", "calls.jsonl", "attempts.jsonl", "summary.json"
+            }):
         raise ValueError("invalid Round 2 manifest")
     if {p.name for p in out.iterdir()} != {
-        "plan.json", "attempts.jsonl", "summary.json", "manifest.json"
+        "plan.json", "calls.jsonl", "attempts.jsonl", "summary.json", "manifest.json"
     }:
         raise ValueError("unexpected Round 2 archive membership")
     for name, identity in manifest["members"].items():
@@ -367,6 +443,7 @@ def verify_command(args):
     originals = check_prior(plan, args.teacher_run, args.previous_run)
     records = mtc.read_attempts(out / "attempts.jsonl")
     validate_records(plan, originals, records)
+    validate_call_journal(records, mtc.read_attempts(out / "calls.jsonl"))
     if len(records) != len(training_tasks()):
         raise ValueError("incomplete Round 2 records")
     if mtc.checked_file(out / "summary.json") != mtc.canonical(summary(records)):

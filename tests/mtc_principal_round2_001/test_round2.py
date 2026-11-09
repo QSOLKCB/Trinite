@@ -32,6 +32,8 @@ TASKS = {t["prompt"]: t for t in mtc.tasks()}
 class FakeOllama(http.server.BaseHTTPRequestHandler):
     phase = 1
     thinking_only = False
+    response_overrides = {}
+    principal_feedback_text = "Please check arithmetic again."
     counts = {"baseline": 0, "principal": 0, "revisions": 0}
 
     def log_message(self, *_):
@@ -75,9 +77,12 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
                     "message": {"content": "", "thinking": "synthetic 768 tokens"}
                 })
                 return
+            if model in FakeOllama.response_overrides:
+                self.reply(FakeOllama.response_overrides[model])
+                return
             # Qwen may falsely pronounce an incorrect answer "correct".
             output = json.dumps({
-                "verdict": "correct", "feedback": "Please check arithmetic again.",
+                "verdict": "correct", "feedback": FakeOllama.principal_feedback_text,
                 "suggested_answer": "999"
             })
         else:
@@ -94,6 +99,9 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
                 assert body["keep_alive"] == 0
                 prompt = json.loads(body["messages"][1]["content"])
                 assert set(prompt) == {"task", "previous_answer", "principal_feedback"}
+                if model in FakeOllama.response_overrides:
+                    self.reply(FakeOllama.response_overrides[model])
+                    return
                 task = TASKS[prompt["task"]]
                 if FakeOllama.phase == 1 and task["id"] == "mod11-add-8-15":
                     answer = "2"
@@ -126,6 +134,8 @@ class Round2Contracts(unittest.TestCase):
         self.root = Path(self.tmp.name)
         FakeOllama.phase = 1
         FakeOllama.thinking_only = False
+        FakeOllama.response_overrides = {}
+        FakeOllama.principal_feedback_text = "Please check arithmetic again."
         FakeOllama.counts = {"baseline": 0, "principal": 0, "revisions": 0}
         self.teacher_plan = self.root / "teacher-plan"
         self.teacher_run = self.root / "teacher-run"
@@ -192,6 +202,9 @@ class Round2Contracts(unittest.TestCase):
         self.capture(identity)
         self.assertEqual(FakeOllama.counts,
                          {"baseline": 0, "principal": 4, "revisions": 4})
+        calls = mtc.read_attempts(self.run_dir / "calls.jsonl")
+        self.assertEqual([x["stage"] for x in calls],
+                         ["principal", "teacher"] * 4)
         summary = mtc.strict_json((self.run_dir / "summary.json").read_bytes())
         self.assertEqual(summary["baseline_oracle_matches"], 3)
         self.assertEqual(summary["revised_oracle_matches"], 4)
@@ -250,6 +263,127 @@ class Round2Contracts(unittest.TestCase):
         self.assertEqual(result["regressions"], 0)
         self.assertEqual(result["revisions_scored"], 0)
         self.verify()
+
+    def test_completed_critique_is_journaled_before_teacher_setup_failure(self):
+        identity = self.freeze()
+        inherited = principal.record_call
+
+        def fail_teacher_setup(body, model):
+            if model == TEACHER:
+                raise ValueError("synthetic teacher digest drift")
+            return inherited(body, model)
+
+        with patch.object(principal, "record_call", side_effect=fail_teacher_setup):
+            with self.assertRaisesRegex(ValueError, "teacher digest drift"):
+                self.capture(identity)
+        calls = mtc.read_attempts(self.run_dir / "calls.jsonl")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["stage"], "principal")
+        self.assertIsNone(calls[0]["call"]["error"])
+        self.assertEqual(mtc.read_attempts(self.run_dir / "attempts.jsonl"), [])
+        self.assertFalse((self.run_dir / "manifest.json").exists())
+        self.assertEqual(FakeOllama.counts,
+                         {"baseline": 0, "principal": 1, "revisions": 0})
+
+    def test_post_call_model_digest_drift_stops_with_call_journaled(self):
+        identity = self.freeze()
+        stable_inventory = mtc.inventory()
+        inventory_calls = 0
+
+        def drift_after_call():
+            nonlocal inventory_calls
+            inventory_calls += 1
+            if inventory_calls == 3:
+                return [
+                    {"name": TEACHER, "digest": DIGESTS[TEACHER]},
+                    {"name": PRINCIPAL, "digest": "3" * 64},
+                ]
+            return stable_inventory
+
+        with patch.object(mtc, "inventory", side_effect=drift_after_call):
+            with self.assertRaisesRegex(ValueError, "drift after recorded call"):
+                self.capture(identity)
+        calls = mtc.read_attempts(self.run_dir / "calls.jsonl")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["stage"], "principal")
+        self.assertEqual(mtc.read_attempts(self.run_dir / "attempts.jsonl"), [])
+        self.assertFalse((self.run_dir / "manifest.json").exists())
+
+    def test_missing_attempted_call_records_are_rejected(self):
+        identity = self.freeze()
+        self.capture(identity)
+        plan = mtc.strict_json((self.run_dir / "plan.json").read_bytes())
+        originals = round2.check_prior(plan, self.teacher_run, self.principal_run)
+        rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+
+        missing_principal = [dict(row) for row in rows]
+        missing_principal[0].update(
+            principal_call=None, principal_feedback=None,
+            verdict_matches_oracle=None, teacher_call=None,
+            revised_answer=None, revised_match=False,
+            status="principal_failed_or_invalid"
+        )
+        with self.assertRaisesRegex(ValueError, "missing recorded Principal call"):
+            round2.validate_records(plan, originals, missing_principal)
+
+        missing_teacher = [dict(row) for row in rows]
+        missing_teacher[0].update(
+            teacher_call=None, revised_answer=None, revised_match=False,
+            status="revision_transport_failed"
+        )
+        with self.assertRaisesRegex(ValueError, "missing recorded teacher call"):
+            round2.validate_records(plan, originals, missing_teacher)
+
+    def test_non_object_reply_is_preserved_as_invalid(self):
+        identity = self.freeze()
+        FakeOllama.response_overrides = {PRINCIPAL: []}
+        self.capture(identity)
+        rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        self.assertTrue(all(row["status"] == "principal_failed_or_invalid"
+                            for row in rows))
+        self.assertTrue(all(row["principal_call"]["error"] == "invalid_response_shape"
+                            for row in rows))
+        self.assertEqual(FakeOllama.counts["revisions"], 0)
+        self.verify()
+
+    def test_non_utf8_feedback_is_preserved_as_invalid(self):
+        identity = self.freeze()
+        FakeOllama.principal_feedback_text = "\ud800"
+        self.capture(identity)
+        rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        self.assertTrue(all(row["status"] == "principal_failed_or_invalid"
+                            for row in rows))
+        self.assertTrue(all(row["principal_call"]["error"] is None for row in rows))
+        self.assertEqual(FakeOllama.counts["revisions"], 0)
+        self.verify()
+
+    def test_prior_baseline_must_be_exactly_three_of_four(self):
+        rows = mtc.read_attempts(self.principal_run / "attempts.jsonl")
+        target = next(row for row in rows if row["item_id"] == "mod11-add-8-15")
+        task = next(task for task in mtc.tasks() if task["id"] == target["item_id"])
+        response = mtc.strict_json(base64.b64decode(
+            target["teacher_call"]["response_base64"], validate=True
+        ))
+        response["message"]["content"] = json.dumps({"answer": mtc.oracle(task)})
+        target["teacher_call"]["response_base64"] = base64.b64encode(
+            mtc.canonical(response)
+        ).decode("ascii")
+        target["revised_answer"] = mtc.oracle(task)
+        target["revised_match"] = True
+        (self.principal_run / "attempts.jsonl").write_bytes(
+            b"".join(mtc.canonical(row) for row in rows)
+        )
+        (self.principal_run / "summary.json").write_bytes(
+            mtc.canonical(principal.report(rows))
+        )
+        manifest = mtc.strict_json((self.principal_run / "manifest.json").read_bytes())
+        for name in ("attempts.jsonl", "summary.json"):
+            manifest["members"][name] = mtc.sha((self.principal_run / name).read_bytes())
+        (self.principal_run / "manifest.json").write_bytes(mtc.canonical(manifest))
+        self.principal_anchor = mtc.sha((self.principal_run / "manifest.json").read_bytes())
+        with self.assertRaisesRegex(ValueError, "required 3/4"):
+            self.freeze()
+        self.assertFalse(self.plan_dir.exists())
 
     def test_no_overwrite_no_implicit_resume_and_manifest_tamper(self):
         identity = self.freeze()

@@ -3,7 +3,19 @@ name: MTC-PRINCIPAL-R2-001 offline cumulative feedback contracts
 on:
   pull_request:
     paths:
+      - 'AGENTS.md'
+      - '.github/AGENTS.md'
+      - 'scripts/AGENTS.md'
+      - 'tests/AGENTS.md'
+      - 'docs/AGENTS.md'
+      - 'docs/AGENT-IBAE-GOVERNANCE.md'
+      - 'docs/DATA.md'
+      - 'docs/INVARIANTS.md'
+      - 'docs/MTC-LFM3-001.md'
+      - 'docs/MTC-PRINCIPAL-001.md'
       - 'scripts/mtc_principal_round2_001.py'
+      - 'scripts/mtc_principal_001.py'
+      - 'scripts/mtc_lfm3_001.py'
       - 'tests/mtc_principal_round2_001/**'
       - 'docs/MTC-PRINCIPAL-R2-001.md'
       - '.github/workflows/mtc-principal-round2-001-contract.yml'
