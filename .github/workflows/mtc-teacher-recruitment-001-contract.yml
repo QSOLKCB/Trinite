@@ -1,0 +1,31 @@
+name: MTC-TEACHER-RECRUITMENT-001 offline contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/mtc_teacher_recruitment_001.py'
+      - 'tests/mtc_teacher_recruitment_001/**'
+      - 'docs/MTC-TEACHER-RECRUITMENT-001.md'
+      - '.github/workflows/mtc-teacher-recruitment-001-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-recruitment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate Python syntax
+        run: python3 -I -B -c "import ast,pathlib; ast.parse(pathlib.Path('scripts/mtc_teacher_recruitment_001.py').read_text())"
+      - name: Run synthetic offline recruitment contracts
+        run: python3 -I -B -m unittest discover -s tests/mtc_teacher_recruitment_001 -v
+      - name: Validate command-line interface
+        run: |
+          python3 -I -B scripts/mtc_teacher_recruitment_001.py plan --help >/dev/null
+          python3 -I -B scripts/mtc_teacher_recruitment_001.py capture --help >/dev/null
+          python3 -I -B scripts/mtc_teacher_recruitment_001.py verify --help >/dev/null
