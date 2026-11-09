@@ -1,0 +1,31 @@
+name: MTC-PRINCIPAL-VALIDATION-001 examiner audit and control contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/mtc_principal_validation_001.py'
+      - 'tests/mtc_principal_validation_001/**'
+      - 'docs/MTC-PRINCIPAL-VALIDATION-001.md'
+      - '.github/workflows/mtc-principal-validation-001-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-examiner-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse syntax without imports or bytecode
+        run: python3 -I -B -c "import ast,pathlib; ast.parse(pathlib.Path('scripts/mtc_principal_validation_001.py').read_text())"
+      - name: Execute synthetic local Ollama contracts
+        run: python3 -I -B -m unittest discover -s tests/mtc_principal_validation_001 -v
+      - name: Read-only CLI discovery
+        run: |
+          python3 -I -B scripts/mtc_principal_validation_001.py plan --help >/dev/null
+          python3 -I -B scripts/mtc_principal_validation_001.py capture --help >/dev/null
+          python3 -I -B scripts/mtc_principal_validation_001.py verify --help >/dev/null
