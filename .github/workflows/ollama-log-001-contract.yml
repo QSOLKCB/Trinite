@@ -1,0 +1,30 @@
+name: OLLAMA-LOG-001 offline receipt contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/ollama_log_receipt_001.py'
+      - 'tests/ollama_log_receipt_001/**'
+      - 'docs/OLLAMA-LOG-001.md'
+      - '.github/workflows/ollama-log-001-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-log-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify source syntax without loading models
+        run: python3 -I -B -c "import ast,pathlib; ast.parse(pathlib.Path('scripts/ollama_log_receipt_001.py').read_text())"
+      - name: Run synthetic offline receipt conformance
+        run: python3 -I -B -m unittest discover -s tests/ollama_log_receipt_001 -v
+      - name: Confirm command-line interface
+        run: |
+          python3 -I -B scripts/ollama_log_receipt_001.py seal --help >/dev/null
+          python3 -I -B scripts/ollama_log_receipt_001.py verify --help >/dev/null
