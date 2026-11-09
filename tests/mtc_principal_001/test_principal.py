@@ -29,6 +29,8 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
     malformed_principal = False
     wrong_principal_model = False
     fail_revisions = False
+    thinking_only_principal = False
+    thinking_only_teacher = False
 
     def log_message(self, *_):
         pass
@@ -59,9 +61,19 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
             FakeOllama.counts["principal"] += 1
             assert body["keep_alive"] == 0
             assert body["options"] == principal.PRINCIPAL_OPTIONS
+            assert body["think"] is False
+            assert body["format"] == "json"
             assert len(body["messages"]) == 2
             content = json.loads(body["messages"][1]["content"])
             assert set(content) == {"task", "teacher_output"}
+            if FakeOllama.thinking_only_principal:
+                self.reply({
+                    "model": model, "done": True, "done_reason": "length",
+                    "eval_count": principal.PRINCIPAL_OPTIONS["num_predict"],
+                    "message": {"role": "assistant", "content": "",
+                                "thinking": "synthetic principal token exhaustion"},
+                })
+                return
             if FakeOllama.malformed_principal:
                 review = "not structured"
             else:
@@ -83,6 +95,8 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
             FakeOllama.counts["revision"] += 1
             assert body["keep_alive"] == 0
             assert body["options"] == mtc.SETTINGS
+            assert body["think"] is False
+            assert body["format"] == "json"
             assert len(body["messages"]) == 2
             msg = json.loads(body["messages"][1]["content"])
             assert set(msg) == {"task", "previous_answer", "principal_feedback"}
@@ -91,6 +105,14 @@ class FakeOllama(http.server.BaseHTTPRequestHandler):
                 return
             task = TASKS[msg["task"]]
             answer = mtc.oracle(task)
+        if FakeOllama.thinking_only_teacher:
+            self.reply({
+                "model": model, "done": True, "done_reason": "length",
+                "eval_count": mtc.SETTINGS["num_predict"],
+                "message": {"role": "assistant", "content": "",
+                            "thinking": "synthetic teacher token exhaustion"},
+            })
+            return
         self.reply({"model": model, "done": True,
                     "message": {"role": "assistant",
                                 "content": json.dumps({"answer": answer})}})
@@ -116,6 +138,8 @@ class PrincipalContract(unittest.TestCase):
         FakeOllama.malformed_principal = False
         FakeOllama.wrong_principal_model = False
         FakeOllama.fail_revisions = False
+        FakeOllama.thinking_only_principal = False
+        FakeOllama.thinking_only_teacher = False
         FakeOllama.counts = {"original": 0, "principal": 0, "revision": 0}
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -185,6 +209,72 @@ class PrincipalContract(unittest.TestCase):
             self.assertEqual(d.stat().st_mode & 0o077, 0)
             self.assertTrue(all((f.stat().st_mode & 0o077) == 0
                                 for f in d.iterdir()))
+
+
+    def test_principal_thinking_only_review_is_recorded_and_never_sent_as_feedback(self):
+        identity = self.freeze()
+        FakeOllama.thinking_only_principal = True
+        self.capture(identity)
+        self.assertEqual(FakeOllama.counts["principal"], 4)
+        self.assertEqual(FakeOllama.counts["revision"], 0)
+        records = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        self.assertEqual(len(records), 4)
+        self.assertTrue(all(x["principal_feedback"] is None and
+                            x["status"] == "principal_failed_or_invalid" and
+                            x["teacher_call"] is None for x in records))
+        self.verify()
+
+    def test_teacher_thinking_only_revision_cannot_inflate_oracle_matches(self):
+        identity = self.freeze()
+        FakeOllama.thinking_only_teacher = True
+        self.capture(identity)
+        self.assertEqual(FakeOllama.counts["principal"], 4)
+        self.assertEqual(FakeOllama.counts["revision"], 4)
+        records = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        self.assertTrue(all(x["status"] == "completed" and
+                            x["revised_answer"] is None and
+                            x["revised_match"] is False for x in records))
+        self.verify()
+
+    def test_missing_or_invalid_baseline_answer_skips_principal_calls(self):
+        # A true thinking-only baseline has no answer content. No Principal
+        # inference should be wasted reviewing the empty string.
+        self.assertIsNone(principal.bound_original({
+            "status": "completed",
+            "response_base64": base64.b64encode(mtc.canonical({
+                "done": True, "done_reason": "length",
+                "message": {"content": "", "thinking": "exhausted"}
+            })).decode("ascii"),
+        }))
+        self.assertIsNone(principal.bound_original({
+            "status": "completed",
+            "response_base64": base64.b64encode(mtc.canonical({
+                "done": True, "done_reason": "stop",
+                "message": {"content": "not_json"}
+            })).decode("ascii"),
+        }))
+
+    def test_principal_ignores_truncated_json_even_if_it_looks_valid(self):
+        response = {
+            "model": QWEN, "done": True, "done_reason": "length",
+            "message": {"content": json.dumps({
+                "verdict": "correct", "feedback": "okay", "suggested_answer": "323"
+            })}
+        }
+        self.assertIsNone(principal.feedback_of(response, QWEN))
+        self.assertIsNotNone(principal.feedback_of({
+            **response, "done_reason": "stop"
+        }, QWEN))
+        identity = self.freeze()
+        plan = mtc.strict_json((self.plan_dir / "plan.json").read_bytes())
+        self.assertEqual(plan["response_policy"], {"think": False, "format": "json"})
+        self.assertEqual(plan["schema"], "trinite.mtc-principal.plan.v2")
+        with self.assertRaisesRegex(ValueError, "source/policy drift"):
+            principal.check_plan({**plan, "response_policy":
+                                  {"think": True, "format": "json"}})
+        with self.assertRaises(ValueError):
+            principal.check_plan({k: v for k, v in plan.items()
+                                  if k != "response_policy"})
 
     def test_authorization_denied_before_any_principal_model_call(self):
         identity = self.freeze()

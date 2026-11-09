@@ -31,6 +31,7 @@ class FakeOllama(BaseHTTPRequestHandler):
     fail = False
     wrong_model = False
     duplicate_digest = False
+    thinking_only = False
 
     def log_message(self, *_):
         pass
@@ -62,12 +63,21 @@ class FakeOllama(BaseHTTPRequestHandler):
         data = json.loads(raw)
         assert data["stream"] is False
         assert data["options"] == mtc.SETTINGS
+        assert data["think"] is False  # top-level Ollama flag, not options
+        assert data["format"] == "json"
         assert data["model"] in MODELS
         assert len(data["messages"]) == 1
         assert "images" not in data["messages"][0]
         FakeOllama.counts += 1
         if FakeOllama.fail:
             self.respond({"error": "synthetic_failure"}, 503)
+        elif FakeOllama.thinking_only:
+            self.respond({
+                "model": data["model"], "done": True,
+                "done_reason": "length", "eval_count": mtc.SETTINGS["num_predict"],
+                "message": {"role": "assistant", "content": "",
+                            "thinking": "synthetic reasoning budget exhausted"},
+            })
         else:
             expected = ANSWERS[data["messages"][0]["content"]]
             self.respond({
@@ -100,6 +110,7 @@ class CaptureContracts(unittest.TestCase):
         FakeOllama.fail = False
         FakeOllama.wrong_model = False
         FakeOllama.duplicate_digest = False
+        FakeOllama.thinking_only = False
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.plan_dir = self.root / "plan"
@@ -222,6 +233,48 @@ class CaptureContracts(unittest.TestCase):
         self.assertEqual(mtc.read_attempts(self.run_dir / "attempts.jsonl")[:2],
                          rows[:2])
         self.verify()
+
+
+    def test_thinking_only_budget_exhaustion_is_retained_without_oracle_label(self):
+        identity = self.freeze(MODELS[:1])
+        FakeOllama.thinking_only = True
+        self.capture(identity)
+        self.assertEqual(FakeOllama.counts, 6)
+        rows = mtc.read_attempts(self.run_dir / "attempts.jsonl")
+        self.assertEqual(len(rows), 6)
+        self.assertTrue(all(row["status"] == "completed" and
+                            row["oracle_match"] is False and
+                            row["answer"] is None for row in rows))
+        for row in rows:
+            parsed = mtc.strict_json(base64.b64decode(row["response_base64"]))
+            self.assertEqual(parsed["done_reason"], "length")
+            self.assertEqual(parsed["message"]["content"], "")
+            self.assertTrue(parsed["message"]["thinking"])
+        plan = mtc.strict_json((self.plan_dir / "plan.json").read_bytes())
+        self.assertEqual(plan["response_policy"], {"think": False, "format": "json"})
+        self.assertEqual(mtc.summary(rows, plan)["oracle_matches"], 0)
+        self.verify()
+
+    def test_truncated_content_and_drifted_response_policy_fail_closed(self):
+        # A JSON-looking answer inside an exhausted reply is not final output.
+        response = {"done": True, "done_reason": "length",
+                    "message": {"content": '{"answer":"323"}'}}
+        self.assertIsNone(mtc.parse_answer(response))
+        self.assertEqual(mtc.parse_answer({
+            **response, "done_reason": "stop"
+        }), "323")
+        self.freeze(MODELS[:1])
+        plan = mtc.strict_json((self.plan_dir / "plan.json").read_bytes())
+        self.assertEqual(plan["schema"], "trinite.mtc-lfm3.plan.v3")
+        for modified in (
+            {**plan, "response_policy": {"think": True, "format": "json"}},
+            {**plan, "response_policy": {"think": False}},
+        ):
+            with self.assertRaisesRegex(ValueError, "frozen request changed"):
+                mtc.validate_plan(modified)
+        with self.assertRaises(ValueError):
+            mtc.validate_plan({k: v for k, v in plan.items()
+                               if k != "response_policy"})
 
     def test_freeze_refuses_duplicate_uninstalled_or_decision_models(self):
         for names in ([], MODELS + ["lfm3-extra:test"],

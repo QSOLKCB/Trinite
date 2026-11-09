@@ -17,8 +17,8 @@ import socket
 import stat
 import time
 
-SCHEMA = "trinite.mtc-lfm3.plan.v2"
-MANIFEST_SCHEMA = "trinite.mtc-lfm3.manifest.v2"
+SCHEMA = "trinite.mtc-lfm3.plan.v3"
+MANIFEST_SCHEMA = "trinite.mtc-lfm3.manifest.v3"
 URL_HOST, URL_PORT = "127.0.0.1", 11434
 MIN_MODELS = 1
 MAX_MODELS = 5
@@ -36,6 +36,9 @@ CONTRACT_PATHS = (
     ".github/workflows/mtc-lfm3-001-owner-local.yml",
 )
 SETTINGS = {"temperature": 0, "seed": 17, "num_predict": 96, "num_ctx": 2048}
+# Must be top-level /api/chat fields: otherwise the model may exhaust its
+# token budget producing only message.thinking, with no final content.
+RESPONSE_POLICY = {"think": False, "format": "json"}
 NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._:/+-]{0,127}\Z")
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -267,18 +270,20 @@ def build_plan(names):
         raise ValueError("duplicate installed model digest: aliases are not independent teachers")
     return {"schema": SCHEMA, "source_closure": closure(),
             "models": models,
-            "tasks": tasks(), "sampling": SETTINGS, "endpoint": "http://127.0.0.1:11434",
+            "tasks": tasks(), "sampling": SETTINGS, "response_policy": RESPONSE_POLICY,
+            "endpoint": "http://127.0.0.1:11434",
             "count": COUNT_ITEMS * len(models), "status": "QUARANTINED_NOT_ADMITTED",
             "admission": False}
 
 
 def validate_plan(plan):
     if not isinstance(plan, dict) or set(plan) != {
-        "schema", "source_closure", "models", "tasks", "sampling",
+        "schema", "source_closure", "models", "tasks", "sampling", "response_policy",
         "endpoint", "count", "status", "admission",
     } or plan["schema"] != SCHEMA or plan["source_closure"] != closure():
         raise ValueError("source or plan closure drift")
     if plan["tasks"] != tasks() or plan["sampling"] != SETTINGS or (
+        plan["response_policy"] != RESPONSE_POLICY or
         plan["endpoint"] != "http://127.0.0.1:11434" or
         plan["status"] != "QUARANTINED_NOT_ADMITTED" or
         plan["admission"] is not False
@@ -309,13 +314,17 @@ def expected_requests(plan):
 
 
 def chat_body(model, task):
-    return {"model": model, "stream": False,
+    return {"model": model, "stream": False, **RESPONSE_POLICY,
             "messages": [{"role": "user", "content": task["prompt"]}],
             "options": SETTINGS}
 
 
 def parse_answer(response):
-    if not isinstance(response, dict) or response.get("done") is not True:
+    if (not isinstance(response, dict) or response.get("done") is not True
+            or response.get("done_reason") == "length"):
+        # A token-exhausted reply is never evidence of a final answer,
+        # even if its content looks superficially parseable.
+        return None
         return None
     message = response.get("message")
     if not isinstance(message, dict) or not isinstance(message.get("content"), str):

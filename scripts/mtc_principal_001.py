@@ -24,8 +24,8 @@ _spec = importlib.util.spec_from_file_location("mtc_lfm3_001_for_principal",
 mtc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mtc)
 
-PLAN_SCHEMA = "trinite.mtc-principal.plan.v1"
-MANIFEST_SCHEMA = "trinite.mtc-principal.manifest.v1"
+PLAN_SCHEMA = "trinite.mtc-principal.plan.v2"
+MANIFEST_SCHEMA = "trinite.mtc-principal.manifest.v2"
 PRINCIPAL_PATTERN = re.compile(r"qwen3\.5:27b(?:-[A-Za-z0-9._-]+)?\Z")
 LIMIT = 4  # Four TRAIN examples, never development/locked_test candidates.
 MAX_TEXT = 4096
@@ -89,6 +89,7 @@ def plan_value(run, anchor, teacher_name, principal_name):
         "teacher": {"name": teacher_name, "digest": teacher_digest},
         "items": selected,
         "options": PRINCIPAL_OPTIONS,
+        "response_policy": mtc.RESPONSE_POLICY,
         "planned_calls_max": 2 * LIMIT,
         "rights_status": "QUARANTINED_NOT_ADMITTED",
         "training_admission": False,
@@ -98,11 +99,14 @@ def plan_value(run, anchor, teacher_name, principal_name):
 def check_plan(plan):
     if not isinstance(plan, dict) or set(plan) != {
         "schema", "source_closure", "prior_manifest_identity", "principal", "teacher",
-        "items", "options", "planned_calls_max", "rights_status", "training_admission"
+        "items", "options", "response_policy", "planned_calls_max",
+        "rights_status", "training_admission"
     }:
         raise ValueError("invalid principal plan fields")
     if (plan["schema"] != PLAN_SCHEMA or plan["source_closure"] != closure()
-            or plan["options"] != PRINCIPAL_OPTIONS or plan["planned_calls_max"] != 8
+            or plan["options"] != PRINCIPAL_OPTIONS
+            or plan["response_policy"] != mtc.RESPONSE_POLICY
+            or plan["planned_calls_max"] != 8
             or plan["rights_status"] != "QUARANTINED_NOT_ADMITTED"
             or plan["training_admission"] is not False):
         raise ValueError("principal source/policy drift")
@@ -137,7 +141,11 @@ def bound_original(row):
     response = mtc.strict_json(base64.b64decode(row["response_base64"], validate=True))
     message = response.get("message") if isinstance(response, dict) else None
     content = message.get("content") if isinstance(message, dict) else None
-    if not isinstance(content, str) or len(content.encode("utf-8")) > MAX_TEXT:
+    if (not isinstance(content, str) or not content.strip()
+            or len(content.encode("utf-8")) > MAX_TEXT
+            or mtc.parse_answer(response) is None):
+        # Do not spend a Principal call on an empty thinking-only or
+        # malformed teacher answer. Preserve the teacher evidence as-is.
         return None
     return content
 
@@ -145,6 +153,7 @@ def bound_original(row):
 def review_payload(plan, task, original):
     return {
         "model": plan["principal"]["name"], "stream": False, "keep_alive": 0,
+        **mtc.RESPONSE_POLICY,
         "messages": [
             {"role": "system", "content": (
                 "You are the Principal reviewing an LFM3 teacher on a first-party "
@@ -161,8 +170,9 @@ def review_payload(plan, task, original):
 
 
 def feedback_of(response, model):
-    if not isinstance(response, dict) or response.get("model") != model or (
-            response.get("done") is not True):
+    if (not isinstance(response, dict) or response.get("model") != model
+            or response.get("done") is not True
+            or response.get("done_reason") == "length"):
         return None
     message = response.get("message")
     if not isinstance(message, dict) or not isinstance(message.get("content"), str):
@@ -186,6 +196,7 @@ def feedback_of(response, model):
 def revision_payload(plan, task, original, principal_feedback):
     return {
         "model": plan["teacher"]["name"], "stream": False, "keep_alive": 0,
+        **mtc.RESPONSE_POLICY,
         "messages": [
             {"role": "system", "content": (
                 "You are a teacher revising one arithmetic answer after a supervisor "
