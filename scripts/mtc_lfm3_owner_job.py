@@ -220,7 +220,7 @@ def main(argv=None):
                    "scripts/mtc_lfm3_001.py"]
             if args.operation == "plan":
                 if not args.models:
-                    raise ValueError("five explicit LFM3 model tags required")
+                    raise ValueError("one to five installed LFM3 model tags required")
                 base.mkdir(mode=0o700, exist_ok=False)
                 run(cli + ["plan", "--models", args.models,
                            "--out", str(base / "plan")])

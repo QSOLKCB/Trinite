@@ -1,17 +1,17 @@
-# MTC-LFM3-001 — five-model owner-local Ollama capture
+# MTC-LFM3-002 — one-to-five-model owner-local Ollama capture
 
-**Status: review proposal; NO owner hardware inference has occurred.** This is a separate 30-call text-teacher experiment using five explicitly selected, installed LFM3 models and six frozen arithmetic/GF(3) prompts each. It does not change the historical MTC-001 28-call evidence or automatically add teacher outputs to Trinite training.
+**Status: follow-up implementation for review; no owner hardware inference has been executed by this change.** Select **one to five** installed, text-capable LFM3 models and six frozen arithmetic/GF(3) prompts per model (**6–30 calls**). The original five-model schedule remains supported. This is a new source-bound plan/manifest v2 contract: historical v1 frozen packets must be verified using their original pinned checkout, never silently resealed as v2. MTC-001's earlier 28-call evidence remains untouched and outputs never automatically enter Trinite training.
 
-**Dependency:** This workflow PR is stacked on TRI-CHAT-DB-001 (#146), because its optional chat smoke exercises that PR's SQLite-enabled server flags. Merge #146 first. No Trinite training, model download, artifact upload, publication, or external inference is authorized by CI tests.
+**Dependency:** TRI-CHAT-DB-001 (#146), MTC-LFM3-001 (#147) and Principal supervision (#148) are merged. This follow-up only changes model-cardinality validation and the frozen capture envelope; no student training, model download, artifact upload, publication, or external inference is authorized by CI tests.
 
 ## Operations and capture contract
 
-1. **Plan:** Read five exact installed text-capable LFM3 model tags and their SHA-256 digests from local Ollama /api/tags. Freeze 6 original formal prompts per model, exact generation settings, split/family assignments, source/governance/workflow/test closure, schedule and 30-call budget into a private plan.json. Print its request_identity SHA-256. No inference or pull.
+1. **Plan:** Read **1–5 distinct** installed text-capable LFM3 model tags and their SHA-256 digests from local Ollama /api/tags. Reject both duplicate tags and different tags resolving to the **same installed digest** (aliases/quantization identities must not be counted as independent teachers). Freeze 6 original formal prompts per model, exact generation settings, split/family assignments, source/governance/workflow/test closure, and a **derived 6 × number-of-models** call budget into a private plan.json. Print its request_identity SHA-256. No inference or pull.
 2. **Capture:** A separate approved dispatch supplies that exact request identity. Send sequential local /api/chat requests with stream false, temperature 0, seed 17, context 2048, at most 96 output tokens, a 64 KiB response cap and 70-second transport deadline per request. Record exact request hashes, raw API response bytes, HTTP failures, installed digests and independent oracle comparisons. Bad results are retained; success is never presumed.
-3. **Verify:** Without Ollama, recompute the frozen source closure and expected task identities, request hashes, parsed response/oracle classifications, all archive member SHA-256 values and separately retained manifest_identity. Require all 30 attempts. A passed verification confirms **recorded bytes and local arithmetic consistency**, not attested Ollama execution or student learning.
+3. **Verify:** Without Ollama, recompute the frozen source closure and expected task identities, request hashes, parsed response/oracle classifications, all archive member SHA-256 values and separately retained manifest_identity. Require **exactly the count frozen in the v2 plan (6–30 attempts)**. A passed verification confirms **recorded bytes and local arithmetic consistency**, not attested Ollama execution or student learning.
 4. **Resume:** With explicit resume=true, continue only an incomplete run with an intact prefix of frozen attempts; do not rerun recorded rows. A partial JSON line or model/source drift must fail closed.
 
-All outputs are **QUARANTINED_NOT_ADMITTED**; training_admission=0. Six formal tasks are exposed engineering checks, not a scientifically locked test of reasoning. The five models share possible training ancestry and are not independent truth oracles. Non-generative d1 and vision/audio/omni inference need separate versioned protocols and cannot be substituted into this text-only capture.
+All outputs are **QUARANTINED_NOT_ADMITTED**; training_admission=0. Six formal tasks are exposed engineering checks, not a scientifically locked test of reasoning. Models may share training ancestry and are not independent truth oracles, even when their SHA-256 digests differ. Non-generative d1 and vision/audio/omni inference need separate versioned protocols and cannot be substituted into this text-only capture.
 
 ## Runner security prerequisites
 
@@ -27,7 +27,7 @@ The runner must already have **uv, Ollama and Python**. The job sets UV_OFFLINE=
 
 After merging #146 and this PR, manually prepare a clean checkout of the reviewed main commit on the owner runner. Navigate to Actions → **MTC-LFM3-001 owner-local Ollama capture (guarded)** → Run workflow on main. Supply a new run_id such as liquid-001, the reviewed_sha of that exact main commit, and type AUTHORIZE-LOCAL-MTC-LFM3.
 
-**First dispatch:** choose operation=plan and enter five real installed, distinct Ollama model tags in the models field, separated by commas. Find their exact spellings with ollama list locally. Retain the printed request_identity outside the local run directory.
+**First dispatch:** choose operation=plan and enter **one to five** real installed, digest-distinct Ollama model tags in the models field, separated by commas. For the current first real teacher, enter only `lfm3:1.7b`. Find their exact spellings with ollama list locally. Retain the printed request_identity outside the local run directory.
 
 **Second dispatch:** choose operation=capture using the same run_id and exact request_identity. Explicitly authorize again. Optionally set initialize_db=true and chat_smoke=true to run both requested local Trinite commands. If an existing database is present it is validated rather than initialized again. Keep the printed manifest_identity separately; if capture is interrupted, preserve partial evidence and use resume only with the exact same source, models, schedule and approval.
 
@@ -60,7 +60,7 @@ The launcher checks GET / on localhost, then stops the child process group with 
 python3 -I -B -m unittest discover -s tests/mtc_lfm3_001 -v
 ~~~
 
-Hosted CI uses a fake loopback Ollama server, exercises freeze/capture/verify, five model digests, exact outputs, rights quarantine, interrupted/resumed captures, errors and tampering, plus the owner-launcher input validation. It never uses an RTX card, installed model weights or the owner runner.
+Hosted CI uses a fake loopback Ollama server, exercises freeze/capture/verify across one, intermediate, and five models; rejects duplicate names/digests and forged call counts; checks exact outputs, rights quarantine, interrupted/resumed captures, errors and tampering, plus owner-launcher validation. It never uses an RTX card, installed model weights or the owner runner.
 
 Existing Trinite TRI-I02/I03/I07/I08/I11/I13/I14 and TRI-O01/O02/O04/O06/O08/O10/O11 remain in force: generated teacher text is not authority, independently verified exact labels are distinct from model prose, exposure is explicit, and admission/rights decisions require an independent new gate. Notion remains a curated knowledge index, not a raw capture repository.
 
