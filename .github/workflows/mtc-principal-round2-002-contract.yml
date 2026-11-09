@@ -1,0 +1,31 @@
+name: MTC-PRINCIPAL-R2-002 installed-tag correction contracts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/mtc_principal_round2_002.py'
+      - 'tests/mtc_principal_round2_002/**'
+      - 'docs/MTC-PRINCIPAL-R2-002.md'
+      - '.github/workflows/mtc-principal-round2-002-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-round2-tagged:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python syntax, no package installs
+        run: python3 -I -B -c "import ast,pathlib; ast.parse(pathlib.Path('scripts/mtc_principal_round2_002.py').read_text())"
+      - name: Fake Ollama installed-tag and one-use evidence tests
+        run: python3 -I -B -m unittest discover -s tests/mtc_principal_round2_002 -v
+      - name: Command-line contracts
+        run: |
+          python3 -I -B scripts/mtc_principal_round2_002.py plan --help >/dev/null
+          python3 -I -B scripts/mtc_principal_round2_002.py capture --help >/dev/null
+          python3 -I -B scripts/mtc_principal_round2_002.py verify --help >/dev/null
